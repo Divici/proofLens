@@ -1,0 +1,54 @@
+# Personal study / reference material — not project documentation
+PRIOR_ART_garces.md
+STUDY_GUIDE.md
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+*.pem
+
+# Node / package managers
+node_modules/
+.pnp
+.pnp.*
+.yarn/install-state.gz
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Sentry
+.sentryclirc
+.env.sentry-build-plugin
