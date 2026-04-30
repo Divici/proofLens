@@ -11,7 +11,7 @@ interface NavLink {
 const NAV_LINKS: ReadonlyArray<NavLink> = [
   { href: "/review", label: "New review" },
   { href: "/batch", label: "Batch", comingSoon: true },
-  { href: "/history", label: "History", comingSoon: true },
+  { href: "/history", label: "History" },
 ];
 
 export function SiteNav() {

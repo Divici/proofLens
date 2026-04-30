@@ -12,32 +12,33 @@ describe("SiteNav", () => {
     expect(review).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("marks unshipped /batch and /history routes as coming-soon and non-actionable", () => {
+  it("renders the /history link as a real anchor (slice 0005)", () => {
+    render(<SiteNav />);
+    const history = screen.getByRole("link", { name: /history/i });
+    expect(history).toBeInTheDocument();
+    expect(history).toHaveAttribute("href", "/history");
+    expect(history).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("marks unshipped /batch route as coming-soon and non-actionable", () => {
     render(<SiteNav />);
 
-    // Both labels are rendered (so users see what's coming)…
+    // The label is rendered (so users see what's coming)…
     expect(screen.getByText(/batch/i)).toBeInTheDocument();
-    expect(screen.getByText(/history/i)).toBeInTheDocument();
 
-    // …but neither is rendered as a real anchor — they are non-anchor
-    // placeholders with role="link" + aria-disabled (so AT announces state).
+    // …but it is not rendered as a real anchor — it is a non-anchor
+    // placeholder with role="link" + aria-disabled (so AT announces state).
     const batchPlaceholder = screen.getByTestId("nav-disabled-batch");
-    const historyPlaceholder = screen.getByTestId("nav-disabled-history");
-
-    for (const node of [batchPlaceholder, historyPlaceholder]) {
-      expect(node).toHaveAttribute("aria-disabled", "true");
-      expect(node).toHaveAttribute("tabIndex", "-1");
-      expect(node).toHaveAttribute("title", "Coming soon");
-      // Crucially, the placeholder is NOT a real <a> with an href the
-      // browser would follow — only real Links have an `href`.
-      expect(node.tagName).not.toBe("A");
-      expect(node).not.toHaveAttribute("href");
-    }
+    expect(batchPlaceholder).toHaveAttribute("aria-disabled", "true");
+    expect(batchPlaceholder).toHaveAttribute("tabIndex", "-1");
+    expect(batchPlaceholder).toHaveAttribute("title", "Coming soon");
+    expect(batchPlaceholder.tagName).not.toBe("A");
+    expect(batchPlaceholder).not.toHaveAttribute("href");
   });
 
   it("includes a 'Soon' pill on disabled nav items", () => {
     render(<SiteNav />);
     const pills = screen.getAllByText(/^soon$/i);
-    expect(pills.length).toBeGreaterThanOrEqual(2);
+    expect(pills.length).toBeGreaterThanOrEqual(1);
   });
 });

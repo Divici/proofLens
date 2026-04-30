@@ -9,14 +9,24 @@ import {
   CircleAlert,
   CircleSlash,
   CircleCheck,
+  UserCog,
 } from "lucide-react";
-import type { FieldResult, FieldStatus } from "@/lib/verify/types";
+import type {
+  FieldOverride,
+  FieldResult,
+  FieldStatus,
+} from "@/lib/verify/types";
+import { HumanOverridePanel } from "./HumanOverridePanel";
 import { cn } from "@/lib/utils";
 
 export interface FieldRowProps {
   result: FieldResult;
   onSelect: (field: string) => void;
   selected: boolean;
+  /** Optional override controls — when provided, an "Override" toggle appears. */
+  reviewerName?: string;
+  onOverrideSave?: (field: string, override: FieldOverride) => void;
+  onOverrideClear?: (field: string) => void;
 }
 
 interface StatusVisual {
@@ -108,67 +118,125 @@ function renderExpected(value: FieldResult["expected"]): React.ReactNode {
   return String(value);
 }
 
-export function FieldRow({ result, onSelect, selected }: FieldRowProps) {
-  const visual = STATUS_VISUALS[result.status];
+export function FieldRow({
+  result,
+  onSelect,
+  selected,
+  reviewerName,
+  onOverrideSave,
+  onOverrideClear,
+}: FieldRowProps) {
+  const override = result.humanOverride;
+  const visualStatus: FieldStatus = override?.humanStatus ?? result.status;
+  const visual = STATUS_VISUALS[visualStatus];
   const { Icon } = visual;
   const expected = renderExpected(result.expected);
+  const overrideEnabled = onOverrideSave !== undefined;
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(result.field)}
-      aria-pressed={selected}
-      data-status={result.status}
+    <div
       className={cn(
-        "group flex w-full flex-col items-stretch gap-2 px-4 py-3 text-left transition-colors",
-        "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        selected && "bg-muted/70",
+        "flex flex-col",
+        override
+          ? "border-l-4 border-violet-500 bg-violet-500/5"
+          : null,
       )}
+      data-status={visualStatus}
+      data-overridden={override ? "true" : "false"}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Icon
-            className={cn("size-4 shrink-0", visual.iconClass)}
-            aria-hidden={true}
-            data-testid={visual.testId}
-          />
-          <span className="text-foreground/90 text-xs font-semibold uppercase tracking-wide">
-            {result.label}
+      <button
+        type="button"
+        onClick={() => onSelect(result.field)}
+        aria-pressed={selected}
+        aria-expanded={selected}
+        data-status={visualStatus}
+        className={cn(
+          "group flex w-full flex-col items-stretch gap-2 px-4 py-3 text-left transition-colors",
+          "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          selected && "bg-muted/70",
+        )}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Icon
+              className={cn("size-4 shrink-0", visual.iconClass)}
+              aria-hidden={true}
+              data-testid={visual.testId}
+            />
+            <span className="text-foreground/90 text-xs font-semibold uppercase tracking-wide">
+              {result.label}
+            </span>
+            {override ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300"
+                title="Human override applied"
+                data-testid="override-indicator"
+              >
+                <UserCog className="size-3" aria-hidden="true" />
+                Human
+              </span>
+            ) : null}
+          </div>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+              visual.badgeClass,
+            )}
+          >
+            {visual.label}
           </span>
         </div>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-            visual.badgeClass,
-          )}
-        >
-          {visual.label}
-        </span>
-      </div>
 
-      <div className="flex flex-col gap-1">
-        <div className="text-foreground text-sm">{renderValue(result.value)}</div>
-        {expected !== null && expected !== "" ? (
-          <div className="text-muted-foreground text-xs">
-            Expected: <span className="text-foreground/80">{expected}</span>
+        <div className="flex flex-col gap-1">
+          <div className="text-foreground text-sm">
+            {renderValue(result.value)}
+          </div>
+          {expected !== null && expected !== "" ? (
+            <div className="text-muted-foreground text-xs">
+              Expected: <span className="text-foreground/80">{expected}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          {result.explanation}
+        </p>
+
+        {override ? (
+          <p className="text-violet-700 dark:text-violet-300 text-[11px] italic">
+            Override note: “{override.reason}” — {override.reviewerName}
+          </p>
+        ) : null}
+
+        {result.evidenceQuote ? (
+          <div className="text-muted-foreground border-l-2 border-border pl-2 text-[11px] italic">
+            “{result.evidenceQuote}”
           </div>
         ) : null}
-      </div>
 
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        {result.explanation}
-      </p>
+        <div className="flex items-center justify-between gap-2 pt-1 text-[11px] text-muted-foreground">
+          <span>{result.suggestedAction}</span>
+          <span>Confidence: {Math.round(result.confidence * 100)}%</span>
+        </div>
+      </button>
 
-      {result.evidenceQuote ? (
-        <div className="text-muted-foreground border-l-2 border-border pl-2 text-[11px] italic">
-          “{result.evidenceQuote}”
+      {selected && overrideEnabled ? (
+        <div className="px-4 pb-3">
+          <HumanOverridePanel
+            fieldLabel={result.label}
+            fieldKey={result.field}
+            originalAiStatus={override?.originalAiStatus ?? result.status}
+            reviewerName={reviewerName ?? ""}
+            existingOverride={override}
+            onSave={(payload) => onOverrideSave!(result.field, payload)}
+            onClear={
+              onOverrideClear
+                ? () => onOverrideClear(result.field)
+                : undefined
+            }
+          />
         </div>
       ) : null}
-
-      <div className="flex items-center justify-between gap-2 pt-1 text-[11px] text-muted-foreground">
-        <span>{result.suggestedAction}</span>
-        <span>Confidence: {Math.round(result.confidence * 100)}%</span>
-      </div>
-    </button>
+    </div>
   );
 }

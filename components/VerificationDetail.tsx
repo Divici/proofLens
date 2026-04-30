@@ -18,9 +18,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { FieldRow } from "./FieldRow";
+import { FinalDecisionPanel } from "./FinalDecisionPanel";
 import { LabelImagePreview } from "./LabelImagePreview";
-import type { FieldResult, OverallStatus } from "@/lib/verify/types";
+import type {
+  FieldOverride,
+  FieldResult,
+  OverallStatus,
+} from "@/lib/verify/types";
 import type { BeverageType } from "@/lib/ai/schema";
+import type { HumanDecision } from "@/lib/storage/types";
 import {
   FLAG_LABELS,
   type ImageQualityFlag,
@@ -46,6 +52,16 @@ export interface VerificationDetailProps {
    * only universal fields were verified.
    */
   beverageType?: BeverageType;
+  /** Slice 0005 — override + final-decision UI (optional for back-compat). */
+  reviewerName?: string;
+  onOverrideSave?: (field: string, override: FieldOverride) => void;
+  onOverrideClear?: (field: string) => void;
+  onReviewerNameChange?: (name: string) => void;
+  onSaveDecision?: (decision: HumanDecision) => void;
+  existingDecision?: HumanDecision;
+  saving?: boolean;
+  /** Show a non-blocking quota warning banner above the decision panel. */
+  quotaWarning?: { percentage: number } | null;
 }
 
 const OVERALL_VISUALS: Record<
@@ -98,6 +114,14 @@ export function VerificationDetail({
   className,
   imageQualityFlags,
   beverageType,
+  reviewerName,
+  onOverrideSave,
+  onOverrideClear,
+  onReviewerNameChange,
+  onSaveDecision,
+  existingDecision,
+  saving,
+  quotaWarning,
 }: VerificationDetailProps) {
   const [activeField, setActiveField] = useState<string | null>(null);
   const qualityFlags = imageQualityFlags ?? [];
@@ -218,6 +242,9 @@ export function VerificationDetail({
                     result={result}
                     onSelect={handleSelect}
                     selected={activeField === result.field}
+                    reviewerName={reviewerName}
+                    onOverrideSave={onOverrideSave}
+                    onOverrideClear={onOverrideClear}
                   />
                 </li>
               ))}
@@ -246,6 +273,33 @@ export function VerificationDetail({
           </span>
         </div>
       </Card>
+
+      {quotaWarning ? (
+        <div
+          role="status"
+          aria-label="Storage quota warning"
+          className="border-amber-600/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 flex items-start gap-2 rounded-xl border px-4 py-3 text-xs"
+        >
+          <AlertTriangle
+            aria-hidden="true"
+            className="mt-0.5 size-4 shrink-0"
+          />
+          <span>
+            History is nearly full ({quotaWarning.percentage.toFixed(1)}% used).
+            Export and clear before adding many more reviews.
+          </span>
+        </div>
+      ) : null}
+
+      {onSaveDecision ? (
+        <FinalDecisionPanel
+          defaultReviewerName={reviewerName ?? ""}
+          existingDecision={existingDecision}
+          onSave={onSaveDecision}
+          onReviewerNameChange={onReviewerNameChange}
+          saving={saving}
+        />
+      ) : null}
     </div>
   );
 }
