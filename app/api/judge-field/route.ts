@@ -12,6 +12,13 @@ import {
  * POST /api/judge-field — stateless LLM-judge tie-breaker for the
  * nuanced ladder's gray band (0.78 ≤ similarity < 0.92).
  *
+ * Note: the LLM-judge endpoint at /api/judge-field exists but is NOT YET
+ * called from the verification pipeline; gray-band cases route to
+ * "manual-review" status until production wiring lands. See
+ * slice-3-detail.md track 5. The endpoint is reachable and tested
+ * end-to-end so wiring it from `lib/verify/pipeline.ts` will be a small
+ * change.
+ *
  * Per Marcus IT note + slice 0003 spec:
  *
  *   - Stateless server endpoint — nothing persists across requests.

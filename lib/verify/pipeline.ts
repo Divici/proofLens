@@ -43,6 +43,10 @@ import type {
  *
  * Returns a `FieldResult[]` (one per regulated field) plus the rolled-up
  * overall status. Stateless — no IO except the optional judge callback.
+ *
+ * Note: the LLM-judge endpoint at /api/judge-field exists but is NOT YET
+ * called from this pipeline; gray-band cases route to "manual-review"
+ * status until production wiring lands. See slice-3-detail.md track 5.
  */
 
 export interface PipelineInput {
@@ -460,7 +464,12 @@ export async function runVerificationPipeline({
           label: "Government warning",
           status,
           value: extracted.governmentWarningText.value,
-          expected: outcome.canonical,
+          // Short label rather than the full ~321-char canonical body —
+          // the long canonical would overflow narrow viewports inside
+          // FieldRow's "Expected: ..." line, and the templated explanation
+          // already covers the diff. The full canonical is still
+          // available via `outcomes[0].detail`.
+          expected: "27 CFR § 16.21 verbatim text",
           aiConfidence: extracted.governmentWarningText.confidence,
           outcomes: ruleOutcomes,
           evidenceQuote: extracted.governmentWarningText.evidenceQuote,

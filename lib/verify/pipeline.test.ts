@@ -174,6 +174,25 @@ describe("runVerificationPipeline", () => {
     expect(brand?.bbox?.x0).toBe(100);
   });
 
+  it("uses a short expected label for the gov-warning row instead of the full canonical body", async () => {
+    const result = await runVerificationPipeline({
+      extracted: passingExtraction(),
+      expected: EXPECTED,
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const gov = result.fieldResults.find(
+      (f) => f.field === "governmentWarning",
+    );
+    // The short label keeps FieldRow's "Expected: ..." readable on narrow
+    // viewports — the full canonical is still queryable via outcomes detail
+    // when the audit log needs it.
+    expect(gov?.expected).toBe("27 CFR § 16.21 verbatim text");
+    expect(typeof gov?.expected).toBe("string");
+    expect((gov?.expected as string).length).toBeLessThan(64);
+  });
+
   it("treats gov-warning as not-required when the application says so", async () => {
     const result = await runVerificationPipeline({
       extracted: passingExtraction(),

@@ -149,15 +149,36 @@ export async function POST(
   const inputBuffer = Buffer.from(arrayBuffer);
 
   let processedBuffer: Buffer;
-  let imageWidth = 0;
-  let imageHeight = 0;
+  let imageWidth: number;
+  let imageHeight: number;
   try {
     const preprocessed = await preprocess(inputBuffer);
     processedBuffer = preprocessed.buffer;
     // sharp metadata gives us the rendered dimensions for the bbox overlay.
     const meta = await sharp(processedBuffer).metadata();
-    imageWidth = meta.width ?? 0;
-    imageHeight = meta.height ?? 0;
+    // BoundingBoxSchema requires positive dimensions and the SVG viewBox
+    // breaks at width=0/height=0. Refuse the request rather than silently
+    // shipping a broken overlay.
+    if (
+      typeof meta.width !== "number" ||
+      typeof meta.height !== "number" ||
+      meta.width <= 0 ||
+      meta.height <= 0
+    ) {
+      console.error("[extract-label] image metadata missing dimensions", {
+        width: meta.width,
+        height: meta.height,
+      });
+      return NextResponse.json<ExtractLabelErrorBody>(
+        {
+          error:
+            "Could not read image dimensions. Please try uploading the file again or pick a different image.",
+        },
+        { status: 400 },
+      );
+    }
+    imageWidth = meta.width;
+    imageHeight = meta.height;
   } catch (cause) {
     console.error("[extract-label] preprocess failed", cause);
     return NextResponse.json<ExtractLabelErrorBody>(
@@ -207,10 +228,10 @@ export async function POST(
     words: ocr.words,
     rawText: ocr.text,
     imageDims: { width: imageWidth, height: imageHeight },
-    // Gray-band judge is wired in production via the /api/judge-field
-    // endpoint. The pipeline accepts an optional callback; not threading
-    // it here keeps the route stateless and avoids the function dialing
-    // back into itself. Slice 0009 polish moves to a server-action call.
+    // Note: the LLM-judge endpoint at /api/judge-field exists but is NOT
+    // YET called from this pipeline; gray-band cases route to
+    // "manual-review" status until production wiring lands. See
+    // slice-3-detail.md track 5.
   });
 
   const processingTimeMs = Date.now() - start;

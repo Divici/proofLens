@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VerificationDetail } from "./VerificationDetail";
-import type { FieldResult } from "@/lib/verify/types";
+import type { FieldResult, OverallStatus } from "@/lib/verify/types";
 
 const FIELDS: FieldResult[] = [
   {
@@ -128,6 +128,35 @@ describe("VerificationDetail", () => {
       container.querySelector("[data-testid='bbox-polygon']"),
     ).toBeNull();
   });
+
+  it.each<OverallStatus>([
+    "pass",
+    "pass-with-warnings",
+    "fail",
+    "needs-manual-review",
+    "request-better-image",
+  ])(
+    "renders an icon alongside the overall pill label for status %s (R-018 a11y)",
+    (status) => {
+      const { unmount } = render(
+        <VerificationDetail
+          imageSrc="/img.jpg"
+          fieldResults={FIELDS}
+          overall={status}
+          processingTimeMs={2400}
+          primaryUsd={0.0042}
+          ocrConfidence={0.92}
+        />,
+      );
+      // The pill must always include an icon (color + icon + text — never
+      // color-only). Per R-018 a11y, this is non-negotiable.
+      const icon = screen.getByTestId("overall-status-icon");
+      expect(icon).toBeInTheDocument();
+      // Icon is decorative; the text label provides the accessible name.
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      unmount();
+    },
+  );
 
   it("renders telemetry (latency + AI spend + OCR confidence)", () => {
     render(

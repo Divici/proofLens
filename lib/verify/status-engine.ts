@@ -45,6 +45,10 @@ export function resolveStrictStatus({
 export interface ResolveNuancedArgs {
   ladderKind: LadderKind;
   aiConfidence: number;
+  // TODO(slice-0004): wire image-quality override; see
+  // status-engine.ts:31 (matching strict-side hook point). Currently
+  // accepted but unused — caller-side ergonomics over a churn-y signature
+  // change when the override lands.
   imageQualityPoor?: boolean;
 }
 

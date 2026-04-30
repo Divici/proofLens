@@ -371,6 +371,52 @@ describe("POST /api/extract-label", () => {
     expect(body.error).toMatch(/4 ?MB/i);
   });
 
+  it("returns 400 with a friendly message when sharp metadata is missing dimensions", async () => {
+    // Simulate a corrupt or unreadable image where sharp.metadata() comes
+    // back without width/height. BoundingBoxSchema requires positive
+    // dimensions, so the route must refuse rather than ship a broken
+    // SVG overlay (viewBox="0 0 0 0").
+    //
+    // We mock the route's `sharp` import directly rather than mocking the
+    // shared "sharp" module — preprocess() also imports sharp, and we need
+    // its real pipeline so processedBuffer is a real JPEG. Easiest path:
+    // mock the `preprocess` module to return a known buffer, then mock
+    // sharp() so .metadata() returns undefined dimensions.
+    vi.doMock("@/lib/image/preprocess", () => ({
+      MAX_LONGEST_EDGE: 1568,
+      preprocess: async (input: Buffer) => ({
+        buffer: input,
+        width: 800,
+        height: 600,
+        originalSizeBytes: input.byteLength,
+        processedSizeBytes: input.byteLength,
+      }),
+    }));
+    vi.doMock("sharp", () => {
+      const sharpFn = () => ({
+        metadata: () =>
+          Promise.resolve({ width: undefined, height: undefined }),
+      });
+      return { default: sharpFn };
+    });
+
+    const blob = await makeJpegBlob(800, 600);
+    const request = await buildRequest(
+      blob,
+      JSON.stringify(VALID_APPLICATION_DATA),
+    );
+
+    const { POST } = await import("./route");
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/dimensions|upload/i);
+
+    vi.doUnmock("sharp");
+    vi.doUnmock("@/lib/image/preprocess");
+  });
+
   it("returns 502 when OpenRouter responds with an error", async () => {
     server.use(
       http.post(

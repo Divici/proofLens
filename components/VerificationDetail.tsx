@@ -2,6 +2,14 @@
 
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
+  Camera,
+  CircleCheck,
+  Eye,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -10,11 +18,7 @@ import {
 } from "@/components/ui/card";
 import { FieldRow } from "./FieldRow";
 import { LabelImagePreview } from "./LabelImagePreview";
-import type {
-  FieldResult,
-  FieldStatus,
-  OverallStatus,
-} from "@/lib/verify/types";
+import type { FieldResult, OverallStatus } from "@/lib/verify/types";
 import { cn } from "@/lib/utils";
 
 export interface VerificationDetailProps {
@@ -29,43 +33,43 @@ export interface VerificationDetailProps {
 
 const OVERALL_VISUALS: Record<
   OverallStatus,
-  { label: string; tone: string; description: string }
+  { label: string; tone: string; description: string; Icon: LucideIcon }
 > = {
   pass: {
     label: "Pass",
     tone: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-600/30",
     description: "Every required field matches the application.",
+    Icon: CircleCheck,
   },
   "pass-with-warnings": {
     label: "Pass with Warnings",
     tone: "bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-600/30",
     description:
       "All required fields are present; some are likely matches and warrant a second look.",
+    Icon: AlertTriangle,
   },
   fail: {
     label: "Fail",
     tone: "bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-rose-600/30",
     description:
       "At least one strict check failed. Reject or request a corrected label.",
+    Icon: XCircle,
   },
   "needs-manual-review": {
     label: "Needs Manual Review",
     tone: "bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-violet-600/30",
     description:
       "Some fields require human judgement before this label can be cleared.",
+    Icon: Eye,
   },
   "request-better-image": {
     label: "Request Better Image",
     tone: "bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-orange-600/30",
     description:
       "OCR confidence is low. Ask the applicant for a clearer scan before reviewing.",
+    Icon: Camera,
   },
 };
-
-function statusTone(status: FieldStatus): string {
-  // (kept here in case the verdict panel needs per-field counts later)
-  return status;
-}
 
 export function VerificationDetail({
   imageSrc,
@@ -89,6 +93,7 @@ export function VerificationDetail({
   };
 
   const overallVisual = OVERALL_VISUALS[overall];
+  const OverallIcon = overallVisual.Icon;
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -106,6 +111,11 @@ export function VerificationDetail({
               <span className="text-foreground/60 text-[10px] font-medium uppercase tracking-wide">
                 Overall:
               </span>
+              <OverallIcon
+                aria-hidden="true"
+                data-testid="overall-status-icon"
+                className="size-3.5"
+              />
               <span>{overallVisual.label}</span>
             </span>
           </CardTitle>
@@ -130,10 +140,7 @@ export function VerificationDetail({
               className="divide-border divide-y border-b border-t lg:border-t-0"
             >
               {fieldResults.map((result) => (
-                <li
-                  key={result.field}
-                  data-status={statusTone(result.status)}
-                >
+                <li key={result.field} data-status={result.status}>
                   <FieldRow
                     result={result}
                     onSelect={handleSelect}
