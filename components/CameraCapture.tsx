@@ -168,10 +168,10 @@ export function CameraCapture({
    */
   useEffect(() => {
     if (phase.kind !== "previewing") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowTapHint(false);
       return;
     }
-    setShowTapHint(false);
     const timer = setTimeout(() => {
       const video = videoRef.current;
       if (!video || video.videoWidth === 0) {

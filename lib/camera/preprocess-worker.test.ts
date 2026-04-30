@@ -96,12 +96,6 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
     // rejection. We assert runCapturePreprocess resolves cleanly to the
     // payload from the first event.
     type Listener<T> = ((event: T) => void) | null;
-    type FakeWorker = {
-      onmessage: Listener<MessageEvent<unknown>>;
-      onerror: Listener<{ message: string }>;
-      postMessage: (msg: unknown) => void;
-      terminate: () => void;
-    };
     const okBlob = new Blob(["jpeg"], { type: "image/jpeg" });
 
     const originalWorker = globalThis.Worker;
@@ -113,7 +107,7 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
     const originalCreateURL = URL.createObjectURL;
     const originalRevokeURL = URL.revokeObjectURL;
 
-    let workerInstance: FakeWorker | null = null;
+    let workerCount = 0;
     URL.createObjectURL = vi.fn(() => "blob:mock");
     URL.revokeObjectURL = vi.fn();
     // Stub OffscreenCanvas + convertToBlob so canUseOffscreen is true.
@@ -133,12 +127,13 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
     (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap =
       vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() }));
 
-    (globalThis as unknown as { Worker: unknown }).Worker = function (
-      this: FakeWorker,
-    ) {
-      this.onmessage = null;
-      this.onerror = null;
-      this.postMessage = () => {
+    class FakeWorkerImpl {
+      onmessage: Listener<MessageEvent<unknown>> = null;
+      onerror: Listener<{ message: string }> = null;
+      constructor() {
+        workerCount += 1;
+      }
+      postMessage() {
         // Defer until the caller has wired up the handlers.
         queueMicrotask(() => {
           this.onmessage?.({
@@ -147,10 +142,11 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
           // Late stray error — must be ignored.
           this.onerror?.({ message: "late stray error" });
         });
-      };
-      this.terminate = () => {};
-      workerInstance = this;
-    } as unknown as typeof Worker;
+      }
+      terminate() {}
+    }
+    (globalThis as unknown as { Worker: unknown }).Worker =
+      FakeWorkerImpl as unknown as typeof Worker;
 
     try {
       const out = await runCapturePreprocess(
@@ -160,7 +156,7 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
       expect(out.width).toBe(100);
       expect(out.height).toBe(100);
       // Verifies the fake worker was actually used.
-      expect(workerInstance).not.toBeNull();
+      expect(workerCount).toBeGreaterThan(0);
     } finally {
       (globalThis as unknown as { Worker: unknown }).Worker = originalWorker;
       (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap =
@@ -174,12 +170,6 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
 
   it("ignores a late onmessage that fires after onerror", async () => {
     type Listener<T> = ((event: T) => void) | null;
-    type FakeWorker = {
-      onmessage: Listener<MessageEvent<unknown>>;
-      onerror: Listener<{ message: string }>;
-      postMessage: (msg: unknown) => void;
-      terminate: () => void;
-    };
 
     const originalWorker = globalThis.Worker;
     const originalCreateBitmap = (
@@ -207,12 +197,10 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
     (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap =
       vi.fn(async () => fallbackBitmap);
 
-    (globalThis as unknown as { Worker: unknown }).Worker = function (
-      this: FakeWorker,
-    ) {
-      this.onmessage = null;
-      this.onerror = null;
-      this.postMessage = () => {
+    class FakeWorkerImpl {
+      onmessage: Listener<MessageEvent<unknown>> = null;
+      onerror: Listener<{ message: string }> = null;
+      postMessage() {
         queueMicrotask(() => {
           // Reject first via onerror.
           this.onerror?.({ message: "first error" });
@@ -226,9 +214,11 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
             },
           } as MessageEvent<unknown>);
         });
-      };
-      this.terminate = () => {};
-    } as unknown as typeof Worker;
+      }
+      terminate() {}
+    }
+    (globalThis as unknown as { Worker: unknown }).Worker =
+      FakeWorkerImpl as unknown as typeof Worker;
 
     try {
       // The worker rejects, so runCapturePreprocess falls back to the
