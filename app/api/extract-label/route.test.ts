@@ -4,6 +4,44 @@ import { http, HttpResponse } from "msw";
 import sharp from "sharp";
 import { server } from "@/test/msw/server";
 
+// Mock Tesseract.js to keep the route test deterministic + fast.
+// The verification pipeline still runs against a real word stream below.
+vi.mock("@/lib/ocr/tesseract", () => ({
+  tesseractExtract: vi.fn(async () => ({
+    text:
+      "OLD TOM DISTILLERY\nKentucky Straight Bourbon Whiskey\n45% Alc./Vol.\n750 mL\nGOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    words: [
+      {
+        text: "OLD",
+        confidence: 0.95,
+        bbox: { x0: 100, y0: 100, x1: 140, y1: 130 },
+      },
+      {
+        text: "TOM",
+        confidence: 0.94,
+        bbox: { x0: 150, y0: 100, x1: 200, y1: 130 },
+      },
+      {
+        text: "DISTILLERY",
+        confidence: 0.92,
+        bbox: { x0: 210, y0: 100, x1: 360, y1: 130 },
+      },
+      {
+        text: "GOVERNMENT",
+        confidence: 0.95,
+        bbox: { x0: 100, y0: 800, x1: 280, y1: 830 },
+      },
+      {
+        text: "WARNING",
+        confidence: 0.95,
+        bbox: { x0: 290, y0: 800, x1: 420, y1: 830 },
+      },
+    ],
+    confidence: 0.92,
+  })),
+  __resetWorkerForTests: vi.fn(async () => {}),
+}));
+
 const VALID_ENV: Record<string, string> = {
   OPENROUTER_API_KEY: "sk-test-fixture",
   OPENROUTER_MODEL_PRIMARY: "anthropic/claude-haiku-4.5",
@@ -159,7 +197,7 @@ describe("POST /api/extract-label", () => {
     restore();
   });
 
-  it("returns 200 with extracted data, processingTimeMs, and aiSpend on a happy path", async () => {
+  it("returns 200 with extracted data, fieldResults, overall, and telemetry on a happy path", async () => {
     let receivedAuth: string | null = null;
     server.use(
       http.post(
@@ -190,6 +228,33 @@ describe("POST /api/extract-label", () => {
     expect(body.processingTimeMs).toBeGreaterThanOrEqual(0);
     expect(typeof body.aiSpend.primaryUsd).toBe("number");
     expect(body.aiSpend.primaryUsd).toBeGreaterThan(0);
+
+    // Verification pipeline output is now part of the response.
+    expect(Array.isArray(body.fieldResults)).toBe(true);
+    expect(body.fieldResults.length).toBeGreaterThan(0);
+    expect(typeof body.overall).toBe("string");
+    expect(typeof body.rawText).toBe("string");
+    expect(body.rawText.length).toBeGreaterThan(0);
+    expect(typeof body.ocrConfidence).toBe("number");
+    expect(typeof body.imageWidth).toBe("number");
+    expect(typeof body.imageHeight).toBe("number");
+
+    // Every field result has a status drawn from the 8-state enum.
+    const allowedStatuses = new Set([
+      "pass",
+      "likely-match",
+      "warning",
+      "fail",
+      "missing",
+      "low-confidence",
+      "manual-review",
+      "not-required",
+    ]);
+    for (const fr of body.fieldResults) {
+      expect(allowedStatuses.has(fr.status)).toBe(true);
+      expect(typeof fr.explanation).toBe("string");
+      expect(fr.explanation.length).toBeGreaterThan(0);
+    }
 
     expect(receivedAuth).toBe("Bearer sk-test-fixture");
   });
@@ -304,6 +369,52 @@ describe("POST /api/extract-label", () => {
     expect(response.status).toBe(413);
     const body = await response.json();
     expect(body.error).toMatch(/4 ?MB/i);
+  });
+
+  it("returns 400 with a friendly message when sharp metadata is missing dimensions", async () => {
+    // Simulate a corrupt or unreadable image where sharp.metadata() comes
+    // back without width/height. BoundingBoxSchema requires positive
+    // dimensions, so the route must refuse rather than ship a broken
+    // SVG overlay (viewBox="0 0 0 0").
+    //
+    // We mock the route's `sharp` import directly rather than mocking the
+    // shared "sharp" module — preprocess() also imports sharp, and we need
+    // its real pipeline so processedBuffer is a real JPEG. Easiest path:
+    // mock the `preprocess` module to return a known buffer, then mock
+    // sharp() so .metadata() returns undefined dimensions.
+    vi.doMock("@/lib/image/preprocess", () => ({
+      MAX_LONGEST_EDGE: 1568,
+      preprocess: async (input: Buffer) => ({
+        buffer: input,
+        width: 800,
+        height: 600,
+        originalSizeBytes: input.byteLength,
+        processedSizeBytes: input.byteLength,
+      }),
+    }));
+    vi.doMock("sharp", () => {
+      const sharpFn = () => ({
+        metadata: () =>
+          Promise.resolve({ width: undefined, height: undefined }),
+      });
+      return { default: sharpFn };
+    });
+
+    const blob = await makeJpegBlob(800, 600);
+    const request = await buildRequest(
+      blob,
+      JSON.stringify(VALID_APPLICATION_DATA),
+    );
+
+    const { POST } = await import("./route");
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/dimensions|upload/i);
+
+    vi.doUnmock("sharp");
+    vi.doUnmock("@/lib/image/preprocess");
   });
 
   it("returns 502 when OpenRouter responds with an error", async () => {
