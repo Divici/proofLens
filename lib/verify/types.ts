@@ -91,6 +91,22 @@ export const RuleOutcomeSchema = z.object({
 
 export type RuleOutcome = z.infer<typeof RuleOutcomeSchema>;
 
+/**
+ * Per-field human-override audit record (slice 0005, R-012). Captured
+ * when the reviewer disagrees with the AI's verdict on a single field.
+ * The original AI status is frozen on the record so the History UI can
+ * render an "AI vs human" diff.
+ */
+export const FieldOverrideSchema = z.object({
+  originalAiStatus: FieldStatusSchema,
+  humanStatus: FieldStatusSchema,
+  reason: z.string().max(500),
+  timestamp: z.string(),
+  reviewerName: z.string(),
+});
+
+export type FieldOverride = z.infer<typeof FieldOverrideSchema>;
+
 export const FieldResultSchema = z.object({
   /** Stable field key (matches `ExtractedLabelData` keys). */
   field: z.string(),
@@ -113,6 +129,8 @@ export const FieldResultSchema = z.object({
   bbox: BoundingBoxSchema.nullable(),
   /** Full rule trail for the audit log. */
   outcomes: z.array(RuleOutcomeSchema),
+  /** Optional reviewer override (slice 0005, R-012). */
+  humanOverride: FieldOverrideSchema.optional(),
 });
 
 export type FieldResult = z.infer<typeof FieldResultSchema>;
