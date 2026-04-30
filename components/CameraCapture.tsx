@@ -8,7 +8,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { Camera, Loader2, RotateCcw, Send, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Camera,
+  Loader2,
+  RotateCcw,
+  Send,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   CameraCaptureError,
@@ -46,11 +53,10 @@ import { cn } from "@/lib/utils";
  *      `autoPlay`. Without `playsInline` Safari hijacks playback into a
  *      fullscreen player. Without `muted` autoplay is blocked. Without
  *      `autoPlay` the user has to explicitly press play after permission.
- *   2. `srcObject` must be assigned only after `play()` resolves on iOS
- *      Safari (≤ 16.x). Setting it before triggers a silent "stalled"
- *      state where the preview is black and `videoWidth` stays at 0.
- *      We assign `srcObject`, await `play()`, then re-assign on a
- *      `loadedmetadata` listener so the natural dimensions are correct.
+ *   2. Assign `srcObject`, then call `play()`. Safari accepts both orders,
+ *      this matches the WebKit example and is the most compatible across
+ *      browsers. We then trust `loadedmetadata` to fire when the natural
+ *      dimensions are known.
  *   3. `getUserMedia` must be called from a user gesture handler. The
  *      "Allow camera" button click satisfies this. The OS-level prompt
  *      can only fire from a user-initiated event on iOS Safari.
@@ -82,6 +88,7 @@ type Phase =
   | { kind: "error"; code: CameraErrorCode }
   | { kind: "previewing" }
   | { kind: "preprocessing" }
+  | { kind: "capture-failed" }
   | { kind: "captured-pending-review"; result: CameraCaptureResult }
   | { kind: "submitting"; result: CameraCaptureResult };
 
@@ -99,6 +106,7 @@ export function CameraCapture({
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showTapHint, setShowTapHint] = useState(false);
   const cameraSelectId = useId();
 
   /**
@@ -153,9 +161,41 @@ export function CameraCapture({
   }, [phase]);
 
   /**
+   * iOS Safari can silently reject `play()` outside of a user gesture,
+   * leaving the preview frozen at videoWidth=0 with no error. After 1s of
+   * stalled preview, we surface a tap-to-start hint that calls play() in
+   * a fresh user-gesture context.
+   */
+  useEffect(() => {
+    if (phase.kind !== "previewing") {
+      setShowTapHint(false);
+      return;
+    }
+    setShowTapHint(false);
+    const timer = setTimeout(() => {
+      const video = videoRef.current;
+      if (!video || video.videoWidth === 0) {
+        setShowTapHint(true);
+      }
+    }, 1000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [phase]);
+
+  const handleTapToStart = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    setShowTapHint(false);
+    // Best-effort — swallow rejection; the hint will reappear if the
+    // stream is still stalled.
+    void video.play().catch(() => {});
+  }, []);
+
+  /**
    * Wire the active stream into the <video> element following the
-   * iOS-Safari-safe sequence: assign srcObject, await play(), then trust
-   * `loadedmetadata` to fire when natural dimensions are known.
+   * iOS-Safari-safe sequence: assign srcObject, then play(). Safari accepts
+   * both orders, this matches the WebKit example.
    */
   const attachStreamToVideo = useCallback(async (stream: MediaStream) => {
     const video = videoRef.current;
@@ -163,7 +203,8 @@ export function CameraCapture({
     // Quirk #1 prerequisites are set declaratively on the element below.
     video.srcObject = stream;
     try {
-      // Quirk #2: wait for play() to settle before counting on metadata.
+      // Quirk #2: assign srcObject, then play() — Safari accepts both
+      // orders, this matches the WebKit example.
       await video.play();
     } catch {
       // Some browsers reject autoplay even when muted; the element is
@@ -240,7 +281,10 @@ export function CameraCapture({
       });
     } catch (cause) {
       console.error("[camera] capture failed", cause);
-      setPhase({ kind: "error", code: "not-readable" });
+      // Free the stream so the iOS in-use indicator clears while the
+      // user reads the failure copy.
+      teardownStream();
+      setPhase({ kind: "capture-failed" });
     }
   }, [captureFrame, teardownStream]);
 
@@ -309,6 +353,33 @@ export function CameraCapture({
           onAllow={handleAllow}
           onUseUpload={onCancel}
         />
+      ) : phase.kind === "capture-failed" ? (
+        <div
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 flex flex-col items-center gap-3 rounded-xl border p-6 text-center"
+        >
+          <div className="bg-muted text-destructive rounded-full p-3">
+            <AlertTriangle className="size-6" aria-hidden="true" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <strong className="text-foreground text-base font-semibold">
+              Capture failed — try again
+            </strong>
+            <p className="text-muted-foreground text-sm">
+              We couldn&apos;t pull a frame from the camera. Tap retake to
+              re-open the live preview.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="lg"
+            className="w-full sm:w-auto"
+            onClick={handleRetake}
+          >
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Retake
+          </Button>
+        </div>
       ) : (
         <div className="flex flex-col gap-3">
           {cameras.length > 1 && phase.kind === "previewing" ? (
@@ -381,6 +452,16 @@ export function CameraCapture({
                 Connecting to camera…
               </div>
             ) : null}
+            {phase.kind === "previewing" && showTapHint ? (
+              <button
+                type="button"
+                onClick={handleTapToStart}
+                aria-label="Tap preview to start"
+                className="bg-background/70 hover:bg-background/80 absolute inset-0 flex cursor-pointer items-center justify-center text-sm font-medium"
+              >
+                Tap preview to start
+              </button>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
@@ -388,7 +469,7 @@ export function CameraCapture({
               <Button
                 type="button"
                 size="lg"
-                className="min-w-40"
+                className="w-full min-w-40 sm:w-auto"
                 onClick={handleCapture}
               >
                 <Camera className="size-5" aria-hidden="true" />

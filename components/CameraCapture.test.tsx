@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -246,5 +246,133 @@ describe("CameraCapture", () => {
     render(<CameraCapture onCapture={() => {}} onCancel={onCancel} />);
     await user.click(screen.getByRole("button", { name: /^cancel$/i }));
     expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("tears down the stream and renders a retry panel when capture fails", async () => {
+    const user = userEvent.setup();
+    const failingCaptureFrame = vi.fn().mockRejectedValue(
+      new Error("video frame is not yet ready"),
+    );
+
+    render(
+      <CameraCapture
+        onCapture={() => {}}
+        onCancel={() => {}}
+        captureFrame={failingCaptureFrame}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /allow camera/i }));
+    await waitFor(() =>
+      screen.getByRole("button", { name: /^capture$/i }),
+    );
+
+    // Reset the stop counter so we only assert teardown caused by failure.
+    mockStopStream.mockClear();
+
+    await user.click(screen.getByRole("button", { name: /^capture$/i }));
+
+    await waitFor(() => {
+      expect(failingCaptureFrame).toHaveBeenCalledOnce();
+      // The capture-failed retry panel should be visible (not the
+      // permissions shell). It surfaces a Retake action.
+      expect(
+        screen.getByRole("button", { name: /retake/i }),
+      ).toBeInTheDocument();
+    });
+
+    // The orange iOS indicator only clears once every track is stopped —
+    // assert the stream was torn down on capture failure.
+    expect(mockStopStream).toHaveBeenCalled();
+
+    // The standard idle "Allow camera" button must NOT be present in the
+    // capture-failed UI (we want the retry panel instead).
+    expect(
+      screen.queryByRole("button", { name: /allow camera/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("surfaces a tap-preview hint after 1s when videoWidth stays at 0", async () => {
+    const user = userEvent.setup();
+    render(<CameraCapture onCapture={() => {}} onCancel={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: /allow camera/i }));
+    await waitFor(() =>
+      screen.getByRole("button", { name: /^capture$/i }),
+    );
+
+    // jsdom keeps videoWidth at 0 by default — exactly the iOS-stalled
+    // condition the hint targets.
+    expect(
+      screen.queryByRole("button", { name: /tap preview to start/i }),
+    ).not.toBeInTheDocument();
+
+    // Wait just past the 1s threshold for the hint to appear.
+    await waitFor(
+      () => {
+        expect(
+          screen.getByRole("button", { name: /tap preview to start/i }),
+        ).toBeInTheDocument();
+      },
+      { timeout: 2500 },
+    );
+  });
+
+  it("calls play() on the video element when the tap-preview hint is clicked", async () => {
+    const playMock = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.play = playMock;
+    const user = userEvent.setup();
+    render(<CameraCapture onCapture={() => {}} onCancel={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: /allow camera/i }));
+    await waitFor(() =>
+      screen.getByRole("button", { name: /^capture$/i }),
+    );
+    const hint = await waitFor(
+      () => screen.getByRole("button", { name: /tap preview to start/i }),
+      { timeout: 2500 },
+    );
+
+    const callsBefore = playMock.mock.calls.length;
+    await act(async () => {
+      hint.click();
+    });
+    expect(playMock.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
+  it("returns to live preview when Retake is clicked from the capture-failed panel", async () => {
+    const user = userEvent.setup();
+    const failingCaptureFrame = vi.fn().mockRejectedValue(
+      new Error("video frame is not yet ready"),
+    );
+
+    render(
+      <CameraCapture
+        onCapture={() => {}}
+        onCancel={() => {}}
+        captureFrame={failingCaptureFrame}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /allow camera/i }));
+    await waitFor(() =>
+      screen.getByRole("button", { name: /^capture$/i }),
+    );
+
+    await user.click(screen.getByRole("button", { name: /^capture$/i }));
+    await waitFor(() =>
+      screen.getByRole("button", { name: /retake/i }),
+    );
+
+    // The retake button on the failure panel re-requests the stream.
+    mockRequestCameraStream.mockClear();
+    await user.click(screen.getByRole("button", { name: /retake/i }));
+
+    await waitFor(() => {
+      expect(mockRequestCameraStream).toHaveBeenCalled();
+      expect(
+        screen.getByRole("button", { name: /^capture$/i }),
+      ).toBeInTheDocument();
+    });
   });
 });
