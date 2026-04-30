@@ -5,7 +5,6 @@ import {
   isUniversalField,
   ruleFor,
   REQUIREMENT_NOT_APPLICABLE,
-  REQUIREMENT_OPTIONAL,
   REQUIREMENT_CONDITIONAL,
   REQUIREMENT_REQUIRED,
   type BeverageField,
