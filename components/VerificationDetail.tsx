@@ -6,6 +6,7 @@ import {
   Camera,
   CircleCheck,
   Eye,
+  HelpCircle,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -19,6 +20,12 @@ import {
 import { FieldRow } from "./FieldRow";
 import { LabelImagePreview } from "./LabelImagePreview";
 import type { FieldResult, OverallStatus } from "@/lib/verify/types";
+import type { BeverageType } from "@/lib/ai/schema";
+import {
+  FLAG_LABELS,
+  type ImageQualityFlag,
+} from "@/lib/quality/types";
+import { UNKNOWN_BEVERAGE_BANNER } from "@/lib/verify/beverage-rules";
 import { cn } from "@/lib/utils";
 
 export interface VerificationDetailProps {
@@ -29,6 +36,16 @@ export interface VerificationDetailProps {
   primaryUsd: number;
   ocrConfidence: number;
   className?: string;
+  /**
+   * Image-quality flags to surface in a banner above the field rows.
+   * Empty / undefined → no banner.
+   */
+  imageQualityFlags?: ReadonlyArray<ImageQualityFlag>;
+  /**
+   * Beverage type — when "unknown", an additional banner explains that
+   * only universal fields were verified.
+   */
+  beverageType?: BeverageType;
 }
 
 const OVERALL_VISUALS: Record<
@@ -79,8 +96,13 @@ export function VerificationDetail({
   primaryUsd,
   ocrConfidence,
   className,
+  imageQualityFlags,
+  beverageType,
 }: VerificationDetailProps) {
   const [activeField, setActiveField] = useState<string | null>(null);
+  const qualityFlags = imageQualityFlags ?? [];
+  const showQualityBanner = qualityFlags.length > 0;
+  const showUnknownBanner = beverageType === "unknown";
 
   const activeBbox = useMemo(() => {
     if (!activeField) return null;
@@ -135,6 +157,57 @@ export function VerificationDetail({
           </div>
 
           <div className="flex flex-col">
+            {showQualityBanner ? (
+              <div
+                role="alert"
+                aria-label="Image quality issues detected"
+                className="border-b border-orange-600/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-700 dark:text-orange-300"
+              >
+                <div className="flex items-start gap-2">
+                  <Camera
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0"
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <p className="font-semibold">
+                      Image quality issues detected.
+                    </p>
+                    <ul className="flex flex-wrap items-center gap-1.5">
+                      {qualityFlags.map((flag) => (
+                        <li
+                          key={flag}
+                          className="inline-flex items-center rounded-full bg-orange-600/20 px-2 py-0.5 text-xs font-medium"
+                        >
+                          {FLAG_LABELS[flag]}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs">
+                      Suggested action: Request Better Image — verification
+                      cells that would have passed are demoted to manual
+                      review while strict-fail rows remain Fail.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {showUnknownBanner ? (
+              <div
+                role="alert"
+                aria-label="Beverage type unknown"
+                className="border-b border-violet-600/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-700 dark:text-violet-300"
+              >
+                <div className="flex items-start gap-2">
+                  <HelpCircle
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0"
+                  />
+                  <p>{UNKNOWN_BEVERAGE_BANNER}</p>
+                </div>
+              </div>
+            ) : null}
+
             <ul
               role="list"
               className="divide-border divide-y border-b border-t lg:border-t-0"

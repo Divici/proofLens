@@ -158,6 +158,63 @@ describe("VerificationDetail", () => {
     },
   );
 
+  it("renders the image-quality banner when flags are present (R-011)", () => {
+    render(
+      <VerificationDetail
+        imageSrc="/img.jpg"
+        fieldResults={FIELDS}
+        overall="needs-manual-review"
+        processingTimeMs={2400}
+        primaryUsd={0.0042}
+        ocrConfidence={0.92}
+        imageQualityFlags={["blur", "glare"]}
+      />,
+    );
+    const banner = screen.getByRole("alert", {
+      name: /image quality/i,
+    });
+    expect(banner).toBeInTheDocument();
+    expect(banner.textContent?.toLowerCase()).toContain("blur");
+    expect(banner.textContent?.toLowerCase()).toContain("glare");
+    expect(banner.textContent?.toLowerCase()).toContain("request better image");
+  });
+
+  it("does not render the image-quality banner when no flags are present", () => {
+    render(
+      <VerificationDetail
+        imageSrc="/img.jpg"
+        fieldResults={FIELDS}
+        overall="pass"
+        processingTimeMs={2400}
+        primaryUsd={0.0042}
+        ocrConfidence={0.92}
+        imageQualityFlags={[]}
+      />,
+    );
+    expect(
+      screen.queryByRole("alert", { name: /image quality/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the unknown-beverage banner when beverageType is unknown", () => {
+    render(
+      <VerificationDetail
+        imageSrc="/img.jpg"
+        fieldResults={FIELDS}
+        overall="needs-manual-review"
+        processingTimeMs={2400}
+        primaryUsd={0.0042}
+        ocrConfidence={0.92}
+        beverageType="unknown"
+      />,
+    );
+    const banner = screen.getByRole("alert", {
+      name: /beverage type unknown/i,
+    });
+    expect(banner).toBeInTheDocument();
+    expect(banner.textContent).toMatch(/Part 4\/5\/7/);
+  });
+
   it("renders telemetry (latency + AI spend + OCR confidence)", () => {
     render(
       <VerificationDetail

@@ -14,6 +14,7 @@ import type {
   ExtractedLabelData,
 } from "@/lib/ai/schema";
 import type { FieldResult, OverallStatus } from "@/lib/verify/types";
+import type { ImageQualityFlag } from "@/lib/quality/types";
 
 interface ExtractionResult {
   extracted: ExtractedLabelData;
@@ -26,6 +27,8 @@ interface ExtractionResult {
   ocrConfidence: number;
   imageWidth: number;
   imageHeight: number;
+  imageQualityFlags?: ImageQualityFlag[];
+  imageQualityPoor?: boolean;
 }
 
 type ExtractionStatus =
@@ -245,6 +248,8 @@ export default function ReviewPage() {
                 processingTimeMs={status.result.processingTimeMs}
                 primaryUsd={status.result.aiSpend.primaryUsd}
                 ocrConfidence={status.result.ocrConfidence}
+                imageQualityFlags={status.result.imageQualityFlags ?? []}
+                beverageType={status.result.expected.beverageType}
               />
             ) : null}
           </section>

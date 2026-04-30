@@ -112,6 +112,34 @@ describe("ExpectedDataForm", () => {
     expect(submit).toBeDisabled();
   });
 
+  it("marks ABV (Optional) hint when wine is selected with low ABV", async () => {
+    const user = userEvent.setup();
+    render(<ExpectedDataForm onSubmit={() => {}} />);
+
+    // Switch beverage to wine and set ABV to 12% — a Conditional resolves
+    // to Optional under § 4.36 (≤ 14% is optional unless table/light).
+    await user.selectOptions(
+      screen.getByLabelText(/beverage type/i),
+      "wine",
+    );
+    await user.clear(screen.getByLabelText(/abv/i));
+    await user.type(screen.getByLabelText(/abv/i), "12");
+
+    // The form surfaces an "(Optional)" hint next to the ABV field for
+    // wines ≤ 14% so reviewers know a missing label ABV won't strict-fail.
+    expect(screen.getByText(/abv.*optional/i)).toBeInTheDocument();
+  });
+
+  it("does not show ABV optional hint for spirits (ABV always required)", async () => {
+    const user = userEvent.setup();
+    render(<ExpectedDataForm onSubmit={() => {}} />);
+    await user.selectOptions(
+      screen.getByLabelText(/beverage type/i),
+      "distilled-spirits",
+    );
+    expect(screen.queryByText(/abv.*optional/i)).not.toBeInTheDocument();
+  });
+
   it("recovers gracefully and surfaces an error toast when the parent onSubmit throws", async () => {
     toastErrorMock.mockClear();
     const consoleError = vi
