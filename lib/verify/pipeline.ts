@@ -224,6 +224,7 @@ export async function runVerificationPipeline({
     const outcome = abvMatch({
       extracted: candidate,
       expected: expected.abv,
+      beverageType: expected.beverageType,
     });
     const status = resolveStrictStatus({
       matchPassed: outcome.status === "pass",
