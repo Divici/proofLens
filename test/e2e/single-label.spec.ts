@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const EXTRACTED_FIXTURE = {
   brand: {
-    value: "OLD TOM DISTILLERY",
+    value: "Old Tom Distillery",
     evidenceQuote: "OLD TOM DISTILLERY",
     confidence: 0.96,
   },
@@ -43,10 +43,60 @@ const EXTRACTED_FIXTURE = {
     evidenceQuote: "GOVERNMENT WARNING: ...",
     confidence: 0.94,
   },
-  rawText: null,
+  rawText:
+    "OLD TOM DISTILLERY\nKentucky Straight Bourbon Whiskey\n45% Alc./Vol.\n750 mL\n",
   imageQualityNotes: ["Slight glare in the upper-left corner"],
   extractionConfidence: 0.91,
 };
+
+const FIELD_RESULTS = [
+  {
+    field: "brand",
+    label: "Brand name",
+    status: "pass",
+    value: "Old Tom Distillery",
+    expected: "Old Tom Distillery",
+    confidence: 0.96,
+    explanation: "Value matches the expected entry exactly.",
+    suggestedAction: "No action needed.",
+    evidenceQuote: "OLD TOM DISTILLERY",
+    bbox: {
+      x0: 100,
+      y0: 100,
+      x1: 360,
+      y1: 130,
+      imageWidth: 1024,
+      imageHeight: 1280,
+    },
+    outcomes: [],
+  },
+  {
+    field: "abv",
+    label: "Alcohol content (ABV)",
+    status: "pass",
+    value: "45% Alc./Vol.",
+    expected: 45,
+    confidence: 0.93,
+    explanation: "Alcohol content 45% matches the expected 45% within tolerance.",
+    suggestedAction: "No action needed.",
+    evidenceQuote: "45% Alc./Vol. (90 Proof)",
+    bbox: null,
+    outcomes: [],
+  },
+  {
+    field: "governmentWarning",
+    label: "Government warning",
+    status: "pass",
+    value: "GOVERNMENT WARNING: ...",
+    expected: "GOVERNMENT WARNING: ...",
+    confidence: 0.94,
+    explanation: "Government warning text matches 27 CFR § 16.21 verbatim.",
+    suggestedAction: "No action needed.",
+    evidenceQuote: "GOVERNMENT WARNING: ...",
+    bbox: null,
+    outcomes: [],
+  },
+];
 
 const SUCCESS_BODY = {
   extracted: EXTRACTED_FIXTURE,
@@ -62,16 +112,21 @@ const SUCCESS_BODY = {
     applicationNotes: "TTB-2026-00001",
     beverageType: "distilled-spirits",
   },
+  rawText:
+    "OLD TOM DISTILLERY\nGOVERNMENT WARNING: (1) According to the Surgeon General",
+  fieldResults: FIELD_RESULTS,
+  overall: "pass",
   processingTimeMs: 2400,
   aiSpend: { primaryUsd: 0.0042 },
+  ocrConfidence: 0.92,
+  imageWidth: 1024,
+  imageHeight: 1280,
 };
 
 test.describe("single-label review flow", () => {
-  test("loads demo data, submits, and shows extracted fields", async ({
+  test("loads demo data, submits, and shows verification detail screen", async ({
     page,
   }) => {
-    // Mock the server endpoint at the API boundary so we don't hit
-    // OpenRouter from CI. Vitest exercises the real handler separately.
     await page.route("**/api/extract-label", async (route) => {
       await route.fulfill({
         status: 200,
@@ -86,27 +141,23 @@ test.describe("single-label review flow", () => {
       page.getByRole("heading", { level: 1, name: /new review/i }),
     ).toBeVisible();
 
-    // Load the demo image (fetched from /demo-labels/01-spirits-pass.jpg).
     await page.getByRole("button", { name: /load demo image/i }).click();
     await expect(
       page.getByRole("img", { name: /uploaded label preview/i }),
     ).toBeVisible();
 
-    // Load the demo expected-data into the form.
     await page.getByRole("button", { name: /load demo data/i }).click();
-    await expect(page.getByLabel(/brand name/i)).toHaveValue(
+    await expect(page.getByLabel(/brand name/i).first()).toHaveValue(
       "Old Tom Distillery",
     );
 
-    // Submit the form.
     await page.getByRole("button", { name: /verify label/i }).click();
 
-    // Extracted card appears.
-    await expect(page.getByText("Extracted label data")).toBeVisible();
-    await expect(
-      page.getByText("OLD TOM DISTILLERY").first(),
-    ).toBeVisible();
+    // Verification detail panel renders.
+    await expect(page.getByText("Verification result")).toBeVisible();
+    await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();
     await expect(page.getByText(/2\.4\s*s/)).toBeVisible();
     await expect(page.getByText(/\$0\.0042/)).toBeVisible();
+    await expect(page.getByText(/92%/)).toBeVisible();
   });
 });
