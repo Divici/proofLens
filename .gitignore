@@ -43,6 +43,9 @@ yarn-error.log*
 # Test / coverage
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # IDE / editor
 .vscode/
