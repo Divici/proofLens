@@ -2,12 +2,25 @@
 
 ## Current phase
 
-**Phase 4 — Bootstrap (autonomous scaffold)** — generating `.claude/`,
-`memory-bank/`, seed ADR, gitignore updates. Will commit as
-`chore: bootstrap conductor scaffold`.
+**Phase 5 — Build (autonomous per slice)** — slice 0001 (scaffold + dev
+loop) merged into main. Slice 0002 (single-label happy path, LLM only)
+queued for execution.
 
 ## Just completed
 
+- **Slice 0001 (scaffold + dev loop)** merged. Next.js 16 + TS strict +
+  Tailwind v4 + shadcn/ui (button, card, input, label, select, sonner) +
+  Inter via `next/font`. `lib/env.ts` Zod-validates 5 OpenRouter env
+  vars (with trailing-slash normalization on `OPENROUTER_BASE_URL`).
+  `/api/health` returns `{ ok, providers: { openrouter }, ts }` with
+  503-on-failure contract. `/about` server-rendered. Vitest + RTL +
+  jsdom + MSW; Playwright smoke spec on `/`, `/about`, `/api/health`.
+  GitHub Actions CI (typecheck/lint/test/e2e). `vercel.json` with
+  framework: nextjs. Future-slice deps pinned in `package.json`.
+  README + `.env.example` (names only).
+- **Slice 0001 review nits** all addressed: env trailing-slash strip,
+  health route try/catch contract, Playwright default port back to 3000
+  (with `PORT=3210` documented as override).
 - **Phase 0 (ALIGN)** — `ALIGNMENT.md` written (gitignored). Polished
   product with deployed URL deliverable. Auth removed (POC). Marcus IT
   note locked. Cadence picked: per-milestone (pause after 0003, 0005,
