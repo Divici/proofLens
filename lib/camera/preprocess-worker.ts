@@ -118,12 +118,26 @@ export async function runCapturePreprocess(
 }
 
 function canUseOffscreen(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    typeof Worker !== "undefined" &&
-    typeof OffscreenCanvas !== "undefined" &&
-    typeof createImageBitmap !== "undefined"
-  );
+  if (typeof Worker === "undefined") return false;
+  if (typeof OffscreenCanvas === "undefined") return false;
+  if (typeof createImageBitmap === "undefined") return false;
+  // Firefox shipped `OffscreenCanvas` before `convertToBlob`, so probe
+  // for the encode method itself before trusting the worker path.
+  try {
+    const probe = new OffscreenCanvas(1, 1);
+    return typeof probe.convertToBlob === "function";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Test-only export of the feature probe. The probe touches global
+ * `OffscreenCanvas` so unit tests need to drive it directly to cover
+ * the legacy-Firefox branch.
+ */
+export function canUseOffscreenForTest(): boolean {
+  return canUseOffscreen();
 }
 
 /**
@@ -139,16 +153,30 @@ async function runInWorker(input: Blob): Promise<PreprocessedCapture> {
   const worker = new Worker(url, { type: "module" });
   try {
     return await new Promise<PreprocessedCapture>((resolve, reject) => {
+      // Guard against `worker.onerror` firing after `worker.onmessage`
+      // (or vice versa). Without this, stray late events would attempt
+      // a second settle and surface as noisy unhandled rejections.
+      let settled = false;
+      const settleOk = (out: PreprocessedCapture) => {
+        if (settled) return;
+        settled = true;
+        resolve(out);
+      };
+      const settleErr = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        reject(err);
+      };
       worker.onmessage = (event: MessageEvent<WorkerOutboundMessage>) => {
         const data = event.data;
         if (data.kind === "ok") {
-          resolve({ blob: data.blob, width: data.width, height: data.height });
+          settleOk({ blob: data.blob, width: data.width, height: data.height });
         } else {
-          reject(new Error(data.error));
+          settleErr(new Error(data.error));
         }
       };
       worker.onerror = (event) => {
-        reject(new Error(event.message || "preprocess worker errored"));
+        settleErr(new Error(event.message || "preprocess worker errored"));
       };
       const message: WorkerInboundMessage = {
         blob: input,

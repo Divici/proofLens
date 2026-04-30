@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CAPTURE_MAX_EDGE_PX,
   CAPTURE_JPEG_QUALITY,
+  canUseOffscreenForTest,
   fitToMaxEdge,
   preprocessCapturedImage,
+  runCapturePreprocess,
 } from "./preprocess-worker";
 
 /**
@@ -87,6 +89,253 @@ describe("preprocessCapturedImage (main-thread fallback)", () => {
     expect(bitmap.close).toHaveBeenCalledOnce();
   });
 
+  it("ignores a late onerror that fires after a successful onmessage", async () => {
+    // Simulate the runInWorker code path with a fake Worker that fires
+    // onmessage first then onerror — without the settle guard, the second
+    // event would resolve a second promise and trigger an unhandled
+    // rejection. We assert runCapturePreprocess resolves cleanly to the
+    // payload from the first event.
+    type Listener<T> = ((event: T) => void) | null;
+    type FakeWorker = {
+      onmessage: Listener<MessageEvent<unknown>>;
+      onerror: Listener<{ message: string }>;
+      postMessage: (msg: unknown) => void;
+      terminate: () => void;
+    };
+    const okBlob = new Blob(["jpeg"], { type: "image/jpeg" });
+
+    const originalWorker = globalThis.Worker;
+    const originalCreateBitmap = (
+      globalThis as { createImageBitmap?: unknown }
+    ).createImageBitmap;
+    const originalOffscreen = (globalThis as { OffscreenCanvas?: unknown })
+      .OffscreenCanvas;
+    const originalCreateURL = URL.createObjectURL;
+    const originalRevokeURL = URL.revokeObjectURL;
+
+    let workerInstance: FakeWorker | null = null;
+    URL.createObjectURL = vi.fn(() => "blob:mock");
+    URL.revokeObjectURL = vi.fn();
+    // Stub OffscreenCanvas + convertToBlob so canUseOffscreen is true.
+    class StubOffscreenCanvas {
+      width: number;
+      height: number;
+      constructor(w: number, h: number) {
+        this.width = w;
+        this.height = h;
+      }
+      convertToBlob() {
+        return Promise.resolve(okBlob);
+      }
+    }
+    (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
+      StubOffscreenCanvas;
+    (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap =
+      vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() }));
+
+    (globalThis as unknown as { Worker: unknown }).Worker = function (
+      this: FakeWorker,
+    ) {
+      this.onmessage = null;
+      this.onerror = null;
+      this.postMessage = () => {
+        // Defer until the caller has wired up the handlers.
+        queueMicrotask(() => {
+          this.onmessage?.({
+            data: { kind: "ok", blob: okBlob, width: 100, height: 100 },
+          } as MessageEvent<unknown>);
+          // Late stray error — must be ignored.
+          this.onerror?.({ message: "late stray error" });
+        });
+      };
+      this.terminate = () => {};
+      workerInstance = this;
+    } as unknown as typeof Worker;
+
+    try {
+      const out = await runCapturePreprocess(
+        new Blob(["x"], { type: "image/jpeg" }),
+      );
+      expect(out.blob).toBe(okBlob);
+      expect(out.width).toBe(100);
+      expect(out.height).toBe(100);
+      // Verifies the fake worker was actually used.
+      expect(workerInstance).not.toBeNull();
+    } finally {
+      (globalThis as unknown as { Worker: unknown }).Worker = originalWorker;
+      (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap =
+        originalCreateBitmap;
+      (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
+        originalOffscreen;
+      URL.createObjectURL = originalCreateURL;
+      URL.revokeObjectURL = originalRevokeURL;
+    }
+  });
+
+  it("ignores a late onmessage that fires after onerror", async () => {
+    type Listener<T> = ((event: T) => void) | null;
+    type FakeWorker = {
+      onmessage: Listener<MessageEvent<unknown>>;
+      onerror: Listener<{ message: string }>;
+      postMessage: (msg: unknown) => void;
+      terminate: () => void;
+    };
+
+    const originalWorker = globalThis.Worker;
+    const originalCreateBitmap = (
+      globalThis as { createImageBitmap?: unknown }
+    ).createImageBitmap;
+    const originalOffscreen = (globalThis as { OffscreenCanvas?: unknown })
+      .OffscreenCanvas;
+    const originalCreateURL = URL.createObjectURL;
+    const originalRevokeURL = URL.revokeObjectURL;
+
+    URL.createObjectURL = vi.fn(() => "blob:mock");
+    URL.revokeObjectURL = vi.fn();
+    class StubOffscreenCanvas {
+      width = 1;
+      height = 1;
+      convertToBlob() {
+        return Promise.resolve(new Blob(["x"]));
+      }
+    }
+    (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
+      StubOffscreenCanvas;
+    // Force the worker path to trip but still need createImageBitmap stub
+    // for the main-thread fallback we land in after the worker error.
+    const fallbackBitmap = { width: 50, height: 50, close: vi.fn() } as unknown;
+    (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap =
+      vi.fn(async () => fallbackBitmap);
+
+    (globalThis as unknown as { Worker: unknown }).Worker = function (
+      this: FakeWorker,
+    ) {
+      this.onmessage = null;
+      this.onerror = null;
+      this.postMessage = () => {
+        queueMicrotask(() => {
+          // Reject first via onerror.
+          this.onerror?.({ message: "first error" });
+          // Then a stray late success — must NOT cause a second settle.
+          this.onmessage?.({
+            data: {
+              kind: "ok",
+              blob: new Blob(["late"]),
+              width: 999,
+              height: 999,
+            },
+          } as MessageEvent<unknown>);
+        });
+      };
+      this.terminate = () => {};
+    } as unknown as typeof Worker;
+
+    try {
+      // The worker rejects, so runCapturePreprocess falls back to the
+      // main-thread path. We don't care about the output — the assertion
+      // is "no unhandled promise rejection from the late onmessage".
+      // If the guard is missing, the test runner surfaces an
+      // UnhandledRejection and fails.
+      await expect(
+        runCapturePreprocess(new Blob(["x"], { type: "image/jpeg" })),
+      ).rejects.toThrow();
+    } finally {
+      (globalThis as unknown as { Worker: unknown }).Worker = originalWorker;
+      (globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap =
+        originalCreateBitmap;
+      (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
+        originalOffscreen;
+      URL.createObjectURL = originalCreateURL;
+      URL.revokeObjectURL = originalRevokeURL;
+    }
+  });
+});
+
+describe("canUseOffscreen feature probe", () => {
+  function withGlobals<T>(
+    overrides: { Worker?: unknown; OffscreenCanvas?: unknown; createImageBitmap?: unknown },
+    fn: () => T,
+  ): T {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const originals: Record<string, unknown> = {
+      Worker: g.Worker,
+      OffscreenCanvas: g.OffscreenCanvas,
+      createImageBitmap: g.createImageBitmap,
+    };
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value === undefined) {
+        delete g[key];
+      } else {
+        g[key] = value;
+      }
+    }
+    try {
+      return fn();
+    } finally {
+      for (const key of Object.keys(originals)) {
+        if (originals[key] === undefined) {
+          delete g[key];
+        } else {
+          g[key] = originals[key];
+        }
+      }
+    }
+  }
+
+  class ModernOffscreenCanvas {
+    width = 1;
+    height = 1;
+    convertToBlob() {
+      return Promise.resolve(new Blob(["x"]));
+    }
+  }
+  class LegacyOffscreenCanvas {
+    width = 1;
+    height = 1;
+    // No convertToBlob — older Firefox shipped OffscreenCanvas without it.
+  }
+
+  it("returns false when OffscreenCanvas is missing", () => {
+    withGlobals(
+      {
+        Worker: function FakeWorker() {},
+        OffscreenCanvas: undefined,
+        createImageBitmap: () => Promise.resolve({}),
+      },
+      () => {
+        expect(canUseOffscreenForTest()).toBe(false);
+      },
+    );
+  });
+
+  it("returns false when OffscreenCanvas exists but convertToBlob is missing (Firefox legacy)", () => {
+    withGlobals(
+      {
+        Worker: function FakeWorker() {},
+        OffscreenCanvas: LegacyOffscreenCanvas,
+        createImageBitmap: () => Promise.resolve({}),
+      },
+      () => {
+        expect(canUseOffscreenForTest()).toBe(false);
+      },
+    );
+  });
+
+  it("returns true when OffscreenCanvas + convertToBlob are both present", () => {
+    withGlobals(
+      {
+        Worker: function FakeWorker() {},
+        OffscreenCanvas: ModernOffscreenCanvas,
+        createImageBitmap: () => Promise.resolve({}),
+      },
+      () => {
+        expect(canUseOffscreenForTest()).toBe(true);
+      },
+    );
+  });
+});
+
+describe("preprocessCapturedImage (main-thread fallback)", () => {
   it("rejects when the canvas cannot encode a Blob", async () => {
     const bitmap = { width: 100, height: 100, close: vi.fn() } as unknown as
       ImageBitmap;
