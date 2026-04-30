@@ -91,3 +91,103 @@ describe("abvMatch — spirits tolerance ±0.3 pp", () => {
     expect(result.reason).toBe("unparseable");
   });
 });
+
+describe("abvMatch — per-beverage tolerances (slice 0004)", () => {
+  it("malt-beverage: ±0.3 pp tolerance per 27 CFR § 7.65 (4.0% vs 4.3%) passes", () => {
+    const result = abvMatch({
+      extracted: "4.3% alc/vol",
+      expected: 4.0,
+      beverageType: "malt-beverage",
+    });
+    expect(result.status).toBe("pass");
+    expect(result.tolerance).toBe(0.3);
+  });
+
+  it("malt-beverage: ±0.3 pp tolerance, 4.0% vs 4.5% fails", () => {
+    const result = abvMatch({
+      extracted: "4.5% alc/vol",
+      expected: 4.0,
+      beverageType: "malt-beverage",
+    });
+    expect(result.status).toBe("fail");
+  });
+
+  it("wine table (≤ 14%): ±1.5 pp tolerance per 27 CFR § 4.36 (12% vs 13%) passes", () => {
+    const result = abvMatch({
+      extracted: "13% alc/vol",
+      expected: 12,
+      beverageType: "wine",
+    });
+    expect(result.status).toBe("pass");
+    expect(result.tolerance).toBe(1.5);
+  });
+
+  it("wine table (≤ 14%): ±1.5 pp tolerance, 12% vs 13.5% passes at boundary", () => {
+    const result = abvMatch({
+      extracted: "13.5% alc/vol",
+      expected: 12,
+      beverageType: "wine",
+    });
+    expect(result.status).toBe("pass");
+  });
+
+  it("wine table (≤ 14%): 12% vs 13.6% fails just past tolerance", () => {
+    const result = abvMatch({
+      extracted: "13.6% alc/vol",
+      expected: 12,
+      beverageType: "wine",
+    });
+    expect(result.status).toBe("fail");
+  });
+
+  it("wine over 14%: ±1.0 pp tolerance per 27 CFR § 4.36 (15% vs 16%) passes", () => {
+    const result = abvMatch({
+      extracted: "16% alc/vol",
+      expected: 15,
+      beverageType: "wine",
+    });
+    expect(result.status).toBe("pass");
+    expect(result.tolerance).toBe(1.0);
+  });
+
+  it("wine over 14%: 15% vs 16.1% fails just past tolerance", () => {
+    const result = abvMatch({
+      extracted: "16.1% alc/vol",
+      expected: 15,
+      beverageType: "wine",
+    });
+    expect(result.status).toBe("fail");
+  });
+
+  it("wine: tolerance does not span the 14% taxable boundary (14% vs 15.4% fails)", () => {
+    // Wine at 14% sits in the "≤ 14%" tier; an extracted 15.4% would be
+    // > 14% and lives in the other tier — the regulation forbids the
+    // tolerance band from straddling 14%.
+    const result = abvMatch({
+      extracted: "15.4% alc/vol",
+      expected: 14,
+      beverageType: "wine",
+    });
+    expect(result.status).toBe("fail");
+  });
+
+  it("distilled-spirits: explicitly typed still uses ±0.3 pp", () => {
+    const result = abvMatch({
+      extracted: "45.3% alc/vol",
+      expected: 45,
+      beverageType: "distilled-spirits",
+    });
+    expect(result.status).toBe("pass");
+    expect(result.tolerance).toBe(0.3);
+  });
+
+  it("unknown beverage: defaults to spirits tolerance ±0.3 pp (most conservative)", () => {
+    const result = abvMatch({
+      extracted: "45.3% alc/vol",
+      expected: 45,
+      beverageType: "unknown",
+    });
+    expect(result.status).toBe("pass");
+    expect(result.tolerance).toBe(0.3);
+  });
+});

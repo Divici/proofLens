@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
@@ -9,6 +9,7 @@ import {
   type ApplicationData,
 } from "@/lib/ai/schema";
 import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
+import { evaluateRule } from "@/lib/verify/beverage-rules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,8 +71,21 @@ export function ExpectedDataForm({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = form;
+
+  // `useWatch` is the React-Compiler-safe alternative to `form.watch()`.
+  // It subscribes to the underlying RHF store via a hook (so the compiler
+  // can memoize correctly) AND avoids re-rendering the entire form on every
+  // keystroke — only this component re-renders when these specific fields
+  // change.
+  const beverageType = useWatch({ control, name: "beverageType" });
+  const expectedAbv = useWatch({ control, name: "abv" });
+  const abvRequirement = evaluateRule(beverageType, "abv", {
+    expectedAbv: typeof expectedAbv === "number" ? expectedAbv : undefined,
+  });
+  const abvOptionalHint = abvRequirement === "optional";
 
   const submitHandler: SubmitHandler<ApplicationData> = async (data) => {
     // Guard against unexpected throws from the parent handler so the form
@@ -127,7 +141,12 @@ export function ExpectedDataForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
           id={`${formId}-abv`}
-          label="ABV (%)"
+          label={abvOptionalHint ? "ABV (% — Optional)" : "ABV (%)"}
+          hint={
+            abvOptionalHint
+              ? "Conditional under TTB rules — a missing on-label ABV won't strict-fail."
+              : undefined
+          }
           error={errors.abv?.message}
         >
           <Input
@@ -255,14 +274,18 @@ interface FieldProps {
   id: string;
   label: string;
   error?: string | undefined;
+  hint?: string | undefined;
   children: React.ReactNode;
 }
 
-function Field({ id, label, error, children }: FieldProps) {
+function Field({ id, label, error, hint, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
+      {hint && !error ? (
+        <p className="text-muted-foreground text-xs">{hint}</p>
+      ) : null}
       {error ? (
         <p
           role="alert"

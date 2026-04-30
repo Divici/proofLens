@@ -207,3 +207,77 @@ describe("runVerificationPipeline", () => {
     expect(gov?.status).toBe("not-required");
   });
 });
+
+describe("runVerificationPipeline — beverage-aware routing (slice 0004)", () => {
+  it("Other / Unknown beverage routes class/type/abv/bottler/country to not-required", async () => {
+    const result = await runVerificationPipeline({
+      extracted: passingExtraction(),
+      expected: { ...EXPECTED, beverageType: "unknown" },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const byField = (key: string) =>
+      result.fieldResults.find((f) => f.field === key);
+    expect(byField("classType")?.status).toBe("not-required");
+    expect(byField("abv")?.status).toBe("not-required");
+    expect(byField("bottlerName")?.status).toBe("not-required");
+    expect(byField("bottlerAddress")?.status).toBe("not-required");
+    expect(byField("countryOfOrigin")?.status).toBe("not-required");
+    // Universal fields still verified.
+    expect(byField("brand")?.status).toBe("pass");
+    expect(byField("netContents")?.status).toBe("pass");
+  });
+
+  it("wine ≤ 14% ABV missing on label is not a strict fail (Conditional → Optional)", async () => {
+    const e = passingExtraction();
+    // Wine label without an ABV statement — extraction returns null.
+    e.alcoholContentText = { value: null, evidenceQuote: null, confidence: 0.9 };
+    e.abvPercent = { value: null, evidenceQuote: null, confidence: 0.9 };
+
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: { ...EXPECTED, abv: 12, beverageType: "wine" },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const abv = result.fieldResults.find((f) => f.field === "abv");
+    // Optional + missing should NOT strict-fail; flagged as not-required.
+    expect(abv?.status).toBe("not-required");
+  });
+
+  it("image-quality flags demote a passing brand row to manual-review", async () => {
+    const result = await runVerificationPipeline({
+      extracted: passingExtraction(),
+      expected: EXPECTED,
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+      imageQuality: { poor: true, flags: ["blur"] },
+    });
+    const brand = result.fieldResults.find((f) => f.field === "brand");
+    expect(brand?.status).toBe("manual-review");
+    expect(brand?.suggestedAction).toMatch(/request better image/i);
+  });
+
+  it("image-quality flags do NOT salvage a strict ABV fail", async () => {
+    const e = passingExtraction();
+    e.alcoholContentText = {
+      value: "40% Alc./Vol.",
+      evidenceQuote: "40% Alc./Vol.",
+      confidence: 0.93,
+    };
+    e.abvPercent = { value: 40, evidenceQuote: "40%", confidence: 0.93 };
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: EXPECTED, // expects 45
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+      imageQuality: { poor: true, flags: ["blur", "glare"] },
+    });
+    const abv = result.fieldResults.find((f) => f.field === "abv");
+    expect(abv?.status).toBe("fail");
+  });
+});

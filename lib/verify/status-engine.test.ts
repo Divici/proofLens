@@ -150,3 +150,76 @@ describe("rollUpOverall", () => {
     ).toBe("pass");
   });
 });
+
+describe("image-quality override (slice 0004 R-011)", () => {
+  it("strict: quality flag + Pass cell → manual-review", () => {
+    expect(
+      resolveStrictStatus({
+        matchPassed: true,
+        aiConfidence: 0.95,
+        imageQualityPoor: true,
+      }),
+    ).toBe("manual-review");
+  });
+
+  it("strict: quality flag + Fail cell preserves Fail (strict-fails stay strict)", () => {
+    expect(
+      resolveStrictStatus({
+        matchPassed: false,
+        aiConfidence: 0.95,
+        imageQualityPoor: true,
+      }),
+    ).toBe("fail");
+  });
+
+  it("strict: quality flag + Missing cell preserves Missing", () => {
+    expect(
+      resolveStrictStatus({
+        matchPassed: false,
+        aiConfidence: 0,
+        extractedNull: true,
+        imageQualityPoor: true,
+      }),
+    ).toBe("missing");
+  });
+
+  it("strict: quality flag does not affect Pass when not poor", () => {
+    expect(
+      resolveStrictStatus({
+        matchPassed: true,
+        aiConfidence: 0.95,
+        imageQualityPoor: false,
+      }),
+    ).toBe("pass");
+  });
+
+  it("nuanced: quality flag + ladder=pass → manual-review", () => {
+    expect(
+      resolveNuancedStatus({
+        ladderKind: "pass",
+        aiConfidence: 0.95,
+        imageQualityPoor: true,
+      }),
+    ).toBe("manual-review");
+  });
+
+  it("nuanced: quality flag + ladder=likely-match → manual-review", () => {
+    expect(
+      resolveNuancedStatus({
+        ladderKind: "likely-match",
+        aiConfidence: 0.95,
+        imageQualityPoor: true,
+      }),
+    ).toBe("manual-review");
+  });
+
+  it("nuanced: quality flag + ladder=fail → fail (preserves strict signal)", () => {
+    expect(
+      resolveNuancedStatus({
+        ladderKind: "fail",
+        aiConfidence: 0.95,
+        imageQualityPoor: true,
+      }),
+    ).toBe("fail");
+  });
+});

@@ -10,6 +10,8 @@ import { tesseractExtract } from "@/lib/ocr/tesseract";
 import { runVerificationPipeline } from "@/lib/verify/pipeline";
 import type { FieldResult, OverallStatus } from "@/lib/verify/types";
 import { validateEnv } from "@/lib/env";
+import { analyzeImageQuality } from "@/lib/quality/heuristics";
+import type { ImageQualityFlag } from "@/lib/quality/types";
 
 /**
  * POST /api/extract-label — stateless single-label extraction +
@@ -47,6 +49,13 @@ interface ExtractLabelSuccessBody {
   ocrConfidence: number;
   imageWidth: number;
   imageHeight: number;
+  /**
+   * Image-quality flags (slice 0004 R-011). Empty when the image is
+   * clean — heuristic + LLM-notes combined.
+   */
+  imageQualityFlags: ImageQualityFlag[];
+  /** True when at least one image-quality flag fired. */
+  imageQualityPoor: boolean;
 }
 
 interface ZodIssueShape {
@@ -222,12 +231,43 @@ export async function POST(
     rawText: ocr.text,
   };
 
+  // Compute image-quality heuristics on the preprocessed buffer. Cheap
+  // enough to run synchronously after extraction since both Tesseract
+  // and the LLM call have already finished. We pass the LLM's
+  // `imageQualityNotes` so the regex parser merges with the heuristic
+  // signals.
+  let imageQualityResult: Awaited<ReturnType<typeof analyzeImageQuality>>;
+  try {
+    imageQualityResult = await analyzeImageQuality(
+      processedBuffer,
+      mergedExtracted.imageQualityNotes,
+    );
+  } catch (cause) {
+    // Quality analysis is non-fatal — we'd rather ship a verification
+    // without the override than 500 the whole request.
+    console.error("[extract-label] image-quality analysis failed", cause);
+    imageQualityResult = {
+      flags: [],
+      poor: false,
+      signals: {
+        laplacianVariance: null,
+        meanLuminance: null,
+        extremeBinShare: null,
+      },
+      sources: [],
+    };
+  }
+
   const verification = await runVerificationPipeline({
     extracted: mergedExtracted,
     expected: applicationParse.data,
     words: ocr.words,
     rawText: ocr.text,
     imageDims: { width: imageWidth, height: imageHeight },
+    imageQuality: {
+      poor: imageQualityResult.poor,
+      flags: imageQualityResult.flags,
+    },
     // Note: the LLM-judge endpoint at /api/judge-field exists but is NOT
     // YET called from this pipeline; gray-band cases route to
     // "manual-review" status until production wiring lands. See
@@ -248,6 +288,8 @@ export async function POST(
       ocrConfidence: ocr.confidence,
       imageWidth,
       imageHeight,
+      imageQualityFlags: imageQualityResult.flags,
+      imageQualityPoor: imageQualityResult.poor,
     },
     { status: 200 },
   );

@@ -28,6 +28,12 @@ import type {
   OverallStatus,
   RuleOutcome,
 } from "./types";
+import {
+  evaluateRule,
+  type BeverageField,
+  type ResolvedRequirement,
+} from "./beverage-rules";
+import type { ImageQualityFlag } from "@/lib/quality/types";
 
 /**
  * High-level verification orchestrator.
@@ -49,6 +55,13 @@ import type {
  * status until production wiring lands. See slice-3-detail.md track 5.
  */
 
+export interface PipelineImageQuality {
+  /** True when at least one heuristic or LLM flag fired. */
+  poor: boolean;
+  /** Detected flag list (empty when `poor` is false). */
+  flags: ReadonlyArray<ImageQualityFlag>;
+}
+
 export interface PipelineInput {
   extracted: ExtractedLabelData;
   expected: ApplicationData;
@@ -56,11 +69,14 @@ export interface PipelineInput {
   rawText: string;
   imageDims: { width: number; height: number };
   callJudge?: CallJudgeFn;
+  /** Image-quality signals (slice 0004 R-011). Defaults to "no flags". */
+  imageQuality?: PipelineImageQuality;
 }
 
 export interface PipelineOutput {
   fieldResults: FieldResult[];
   overall: OverallStatus;
+  imageQuality: PipelineImageQuality;
 }
 
 function bboxFor(
@@ -78,10 +94,12 @@ function bboxFor(
 function ladderToStatus(
   outcome: LadderOutcome,
   aiConfidence: number,
+  imageQualityPoor = false,
 ): { status: FieldStatus; ruleOutcome: RuleOutcome } {
   const status = resolveNuancedStatus({
     ladderKind: outcome.kind,
     aiConfidence,
+    imageQualityPoor,
   });
 
   let kind: RuleOutcome["kind"];
@@ -128,13 +146,17 @@ function buildFieldResult(args: {
   outcomes: RuleOutcome[];
   evidenceQuote: string | null;
   bbox: FieldResult["bbox"];
+  imageQualityPoor?: boolean;
 }): FieldResult {
   const primary = args.outcomes[0] ?? {
     kind: "field_missing" as const,
     detail: {},
   };
   const explanation = renderExplanation(primary);
-  const suggestedAction = suggestedActionFor(args.status);
+  const suggestedAction = suggestedActionFor(
+    args.status,
+    args.imageQualityPoor,
+  );
   return {
     field: args.field,
     label: args.label,
@@ -150,6 +172,34 @@ function buildFieldResult(args: {
   };
 }
 
+/**
+ * Build a per-field "not-required" row when the beverage-rules table
+ * resolves the field to `not-applicable` (Other / Unknown beverage type)
+ * or to `optional` with no value present.
+ */
+function notRequiredRow(args: {
+  field: string;
+  label: string;
+  expected: FieldResult["expected"];
+  reason: "not-applicable" | "optional-missing";
+  extractedValue?: ExtractedField["value"];
+  evidenceQuote?: string | null;
+  bbox?: FieldResult["bbox"];
+  aiConfidence?: number;
+}): FieldResult {
+  return buildFieldResult({
+    field: args.field,
+    label: args.label,
+    status: "not-required",
+    value: args.extractedValue ?? null,
+    expected: args.expected,
+    aiConfidence: args.aiConfidence ?? 1,
+    outcomes: [{ kind: "field_not_required", detail: { reason: args.reason } }],
+    evidenceQuote: args.evidenceQuote ?? null,
+    bbox: args.bbox ?? null,
+  });
+}
+
 export async function runVerificationPipeline({
   extracted,
   expected,
@@ -157,124 +207,198 @@ export async function runVerificationPipeline({
   rawText,
   imageDims,
   callJudge,
+  imageQuality,
 }: PipelineInput): Promise<PipelineOutput> {
   const fieldResults: FieldResult[] = [];
+  const imageQualityPoor = imageQuality?.poor ?? false;
+
+  /**
+   * Resolve the per-beverage requirement for a field. Same context for
+   * every field — the evaluators look up only the keys they need.
+   */
+  // TODO(slice-0009): thread isImported and addedFlavorsContributeAlcohol from
+  // the form once those UI flags ship; until then country-of-origin and malt
+  // ABV evaluators conservatively default to optional. See decisions/0002.
+  const ruleContext = { expectedAbv: expected.abv };
+  const requirement = (field: BeverageField): ResolvedRequirement =>
+    evaluateRule(expected.beverageType, field, ruleContext);
 
   // ── BRAND ────────────────────────────────────────────────────────
   {
-    const f = extracted.brand;
-    const ladder = await brandMatch({
-      extracted: typeof f.value === "string" ? f.value : null,
-      expected: expected.brand,
-      callJudge,
-    });
-    const { status, ruleOutcome } = ladderToStatus(ladder, f.confidence);
-    fieldResults.push(
-      buildFieldResult({
-        field: "brand",
-        label: "Brand name",
-        status,
-        value: f.value,
+    if (requirement("brand") === "not-applicable") {
+      fieldResults.push(
+        notRequiredRow({
+          field: "brand",
+          label: "Brand name",
+          expected: expected.brand,
+          reason: "not-applicable",
+        }),
+      );
+    } else {
+      const f = extracted.brand;
+      const ladder = await brandMatch({
+        extracted: typeof f.value === "string" ? f.value : null,
         expected: expected.brand,
-        aiConfidence: f.confidence,
-        outcomes: [ruleOutcome],
-        evidenceQuote: f.evidenceQuote,
-        bbox: bboxFor(f.evidenceQuote, words, imageDims),
-      }),
-    );
+        callJudge,
+      });
+      const { status, ruleOutcome } = ladderToStatus(
+        ladder,
+        f.confidence,
+        imageQualityPoor,
+      );
+      fieldResults.push(
+        buildFieldResult({
+          field: "brand",
+          label: "Brand name",
+          status,
+          value: f.value,
+          expected: expected.brand,
+          aiConfidence: f.confidence,
+          outcomes: [ruleOutcome],
+          evidenceQuote: f.evidenceQuote,
+          bbox: bboxFor(f.evidenceQuote, words, imageDims),
+          imageQualityPoor,
+        }),
+      );
+    }
   }
 
   // ── CLASS / TYPE ──────────────────────────────────────────────────
   {
-    const f = extracted.classType;
-    const ladder = await classTypeMatch({
-      extracted: typeof f.value === "string" ? f.value : null,
-      expected: expected.classType,
-      callJudge,
-    });
-    const { status, ruleOutcome } = ladderToStatus(ladder, f.confidence);
-    fieldResults.push(
-      buildFieldResult({
-        field: "classType",
-        label: "Class / type",
-        status,
-        value: f.value,
+    if (requirement("classType") === "not-applicable") {
+      fieldResults.push(
+        notRequiredRow({
+          field: "classType",
+          label: "Class / type",
+          expected: expected.classType,
+          reason: "not-applicable",
+        }),
+      );
+    } else {
+      const f = extracted.classType;
+      const ladder = await classTypeMatch({
+        extracted: typeof f.value === "string" ? f.value : null,
         expected: expected.classType,
-        aiConfidence: f.confidence,
-        outcomes: [ruleOutcome],
-        evidenceQuote: f.evidenceQuote,
-        bbox: bboxFor(f.evidenceQuote, words, imageDims),
-      }),
-    );
+        callJudge,
+      });
+      const { status, ruleOutcome } = ladderToStatus(
+        ladder,
+        f.confidence,
+        imageQualityPoor,
+      );
+      fieldResults.push(
+        buildFieldResult({
+          field: "classType",
+          label: "Class / type",
+          status,
+          value: f.value,
+          expected: expected.classType,
+          aiConfidence: f.confidence,
+          outcomes: [ruleOutcome],
+          evidenceQuote: f.evidenceQuote,
+          bbox: bboxFor(f.evidenceQuote, words, imageDims),
+          imageQualityPoor,
+        }),
+      );
+    }
   }
 
-  // ── ABV (strict) ──────────────────────────────────────────────────
+  // ── ABV (strict, beverage-aware) ──────────────────────────────────
   {
+    const abvReq = requirement("abv");
     const candidate =
       typeof extracted.alcoholContentText.value === "string"
         ? extracted.alcoholContentText.value
         : typeof extracted.abvPercent.value === "number"
           ? `${extracted.abvPercent.value}%`
           : null;
-    const aiConfidence = Math.max(
-      extracted.alcoholContentText.confidence,
-      extracted.abvPercent.confidence,
-    );
 
-    const outcome = abvMatch({
-      extracted: candidate,
-      expected: expected.abv,
-    });
-    const status = resolveStrictStatus({
-      matchPassed: outcome.status === "pass",
-      aiConfidence,
-      extractedNull: candidate === null,
-    });
-    const ruleOutcomes: RuleOutcome[] = [];
-    if (outcome.status === "pass") {
-      ruleOutcomes.push({
-        kind: "abv_pass",
-        detail: { found: outcome.found, expected: outcome.expected },
-      });
-    } else if (outcome.reason === "unparseable") {
-      ruleOutcomes.push({ kind: "abv_unparseable", detail: {} });
-    } else if (outcome.reason === "internal_inconsistency") {
-      ruleOutcomes.push({
-        kind: "abv_internal_inconsistency",
-        detail: { found: outcome.found },
-      });
+    if (abvReq === "not-applicable") {
+      fieldResults.push(
+        notRequiredRow({
+          field: "abv",
+          label: "Alcohol content (ABV)",
+          expected: expected.abv,
+          reason: "not-applicable",
+          extractedValue: candidate,
+        }),
+      );
+    } else if (abvReq === "optional" && candidate === null) {
+      // Wine ≤ 14% / malt without flavors-contributing-alcohol — Optional;
+      // a missing ABV statement isn't a defect.
+      fieldResults.push(
+        notRequiredRow({
+          field: "abv",
+          label: "Alcohol content (ABV)",
+          expected: expected.abv,
+          reason: "optional-missing",
+          extractedValue: null,
+        }),
+      );
     } else {
-      ruleOutcomes.push({
-        kind: "abv_out_of_tolerance",
-        detail: {
-          found: outcome.found,
-          expected: outcome.expected,
-          delta: outcome.delta,
-          tolerance: outcome.tolerance,
-        },
-      });
-    }
+      const aiConfidence = Math.max(
+        extracted.alcoholContentText.confidence,
+        extracted.abvPercent.confidence,
+      );
 
-    const evidenceQuote =
-      extracted.alcoholContentText.evidenceQuote ??
-      extracted.abvPercent.evidenceQuote;
-
-    fieldResults.push(
-      buildFieldResult({
-        field: "abv",
-        label: "Alcohol content (ABV)",
-        status,
-        value: candidate,
+      const outcome = abvMatch({
+        extracted: candidate,
         expected: expected.abv,
+        beverageType: expected.beverageType,
+      });
+      const status = resolveStrictStatus({
+        matchPassed: outcome.status === "pass",
         aiConfidence,
-        outcomes: ruleOutcomes,
-        evidenceQuote,
-        bbox: bboxFor(evidenceQuote, words, imageDims),
-      }),
-    );
+        extractedNull: candidate === null,
+        imageQualityPoor,
+      });
+      const ruleOutcomes: RuleOutcome[] = [];
+      if (outcome.status === "pass") {
+        ruleOutcomes.push({
+          kind: "abv_pass",
+          detail: { found: outcome.found, expected: outcome.expected },
+        });
+      } else if (outcome.reason === "unparseable") {
+        ruleOutcomes.push({ kind: "abv_unparseable", detail: {} });
+      } else if (outcome.reason === "internal_inconsistency") {
+        ruleOutcomes.push({
+          kind: "abv_internal_inconsistency",
+          detail: { found: outcome.found },
+        });
+      } else {
+        ruleOutcomes.push({
+          kind: "abv_out_of_tolerance",
+          detail: {
+            found: outcome.found,
+            expected: outcome.expected,
+            delta: outcome.delta,
+            tolerance: outcome.tolerance,
+          },
+        });
+      }
+
+      const evidenceQuote =
+        extracted.alcoholContentText.evidenceQuote ??
+        extracted.abvPercent.evidenceQuote;
+
+      fieldResults.push(
+        buildFieldResult({
+          field: "abv",
+          label: "Alcohol content (ABV)",
+          status,
+          value: candidate,
+          expected: expected.abv,
+          aiConfidence,
+          outcomes: ruleOutcomes,
+          evidenceQuote,
+          bbox: bboxFor(evidenceQuote, words, imageDims),
+          imageQualityPoor,
+        }),
+      );
+    }
   }
 
-  // ── NET CONTENTS (strict) ─────────────────────────────────────────
+  // ── NET CONTENTS (strict, universal) ──────────────────────────────
   {
     const f = extracted.netContents;
     const candidate = typeof f.value === "string" ? f.value : null;
@@ -286,6 +410,7 @@ export async function runVerificationPipeline({
       matchPassed: outcome.status === "pass",
       aiConfidence: f.confidence,
       extractedNull: candidate === null,
+      imageQualityPoor,
     });
     const ruleOutcomes: RuleOutcome[] = [];
     if (outcome.status === "pass") {
@@ -318,83 +443,132 @@ export async function runVerificationPipeline({
         outcomes: ruleOutcomes,
         evidenceQuote: f.evidenceQuote,
         bbox: bboxFor(f.evidenceQuote, words, imageDims),
+        imageQualityPoor,
       }),
     );
   }
 
   // ── BOTTLER NAME (nuanced) ────────────────────────────────────────
   {
-    const f = extracted.bottlerName;
-    const ladder = await bottlerMatch({
-      extracted: typeof f.value === "string" ? f.value : null,
-      expected: expected.bottlerName,
-      callJudge,
-    });
-    const { status, ruleOutcome } = ladderToStatus(ladder, f.confidence);
-    fieldResults.push(
-      buildFieldResult({
-        field: "bottlerName",
-        label: "Bottler / producer",
-        status,
-        value: f.value,
+    if (requirement("bottlerName") === "not-applicable") {
+      fieldResults.push(
+        notRequiredRow({
+          field: "bottlerName",
+          label: "Bottler / producer",
+          expected: expected.bottlerName,
+          reason: "not-applicable",
+        }),
+      );
+    } else {
+      const f = extracted.bottlerName;
+      const ladder = await bottlerMatch({
+        extracted: typeof f.value === "string" ? f.value : null,
         expected: expected.bottlerName,
-        aiConfidence: f.confidence,
-        outcomes: [ruleOutcome],
-        evidenceQuote: f.evidenceQuote,
-        bbox: bboxFor(f.evidenceQuote, words, imageDims),
-      }),
-    );
+        callJudge,
+      });
+      const { status, ruleOutcome } = ladderToStatus(
+        ladder,
+        f.confidence,
+        imageQualityPoor,
+      );
+      fieldResults.push(
+        buildFieldResult({
+          field: "bottlerName",
+          label: "Bottler / producer",
+          status,
+          value: f.value,
+          expected: expected.bottlerName,
+          aiConfidence: f.confidence,
+          outcomes: [ruleOutcome],
+          evidenceQuote: f.evidenceQuote,
+          bbox: bboxFor(f.evidenceQuote, words, imageDims),
+          imageQualityPoor,
+        }),
+      );
+    }
   }
 
   // ── BOTTLER ADDRESS (nuanced — token_set_ratio handles abbreviations) ─
   {
-    const f = extracted.bottlerAddress;
-    const ladder = await bottlerMatch({
-      extracted: typeof f.value === "string" ? f.value : null,
-      expected: expected.bottlerAddress,
-      callJudge,
-    });
-    const { status, ruleOutcome } = ladderToStatus(ladder, f.confidence);
-    fieldResults.push(
-      buildFieldResult({
-        field: "bottlerAddress",
-        label: "Bottler / producer address",
-        status,
-        value: f.value,
+    if (requirement("bottlerAddress") === "not-applicable") {
+      fieldResults.push(
+        notRequiredRow({
+          field: "bottlerAddress",
+          label: "Bottler / producer address",
+          expected: expected.bottlerAddress,
+          reason: "not-applicable",
+        }),
+      );
+    } else {
+      const f = extracted.bottlerAddress;
+      const ladder = await bottlerMatch({
+        extracted: typeof f.value === "string" ? f.value : null,
         expected: expected.bottlerAddress,
-        aiConfidence: f.confidence,
-        outcomes: [ruleOutcome],
-        evidenceQuote: f.evidenceQuote,
-        bbox: bboxFor(f.evidenceQuote, words, imageDims),
-      }),
-    );
+        callJudge,
+      });
+      const { status, ruleOutcome } = ladderToStatus(
+        ladder,
+        f.confidence,
+        imageQualityPoor,
+      );
+      fieldResults.push(
+        buildFieldResult({
+          field: "bottlerAddress",
+          label: "Bottler / producer address",
+          status,
+          value: f.value,
+          expected: expected.bottlerAddress,
+          aiConfidence: f.confidence,
+          outcomes: [ruleOutcome],
+          evidenceQuote: f.evidenceQuote,
+          bbox: bboxFor(f.evidenceQuote, words, imageDims),
+          imageQualityPoor,
+        }),
+      );
+    }
   }
 
   // ── COUNTRY OF ORIGIN (nuanced + alias table) ─────────────────────
   {
-    const f = extracted.countryOfOrigin;
-    const ladder = await countryMatch({
-      extracted: typeof f.value === "string" ? f.value : null,
-      expected: expected.countryOfOrigin,
-      callJudge,
-    });
-    const { status, ruleOutcome } = ladderToStatus(ladder, f.confidence);
-    fieldResults.push(
-      buildFieldResult({
-        field: "countryOfOrigin",
-        label: "Country of origin",
-        status,
-        value: f.value,
+    if (requirement("countryOfOrigin") === "not-applicable") {
+      fieldResults.push(
+        notRequiredRow({
+          field: "countryOfOrigin",
+          label: "Country of origin",
+          expected: expected.countryOfOrigin,
+          reason: "not-applicable",
+        }),
+      );
+    } else {
+      const f = extracted.countryOfOrigin;
+      const ladder = await countryMatch({
+        extracted: typeof f.value === "string" ? f.value : null,
         expected: expected.countryOfOrigin,
-        aiConfidence: f.confidence,
-        outcomes: [ruleOutcome],
-        evidenceQuote: f.evidenceQuote,
-        bbox: bboxFor(f.evidenceQuote, words, imageDims),
-      }),
-    );
+        callJudge,
+      });
+      const { status, ruleOutcome } = ladderToStatus(
+        ladder,
+        f.confidence,
+        imageQualityPoor,
+      );
+      fieldResults.push(
+        buildFieldResult({
+          field: "countryOfOrigin",
+          label: "Country of origin",
+          status,
+          value: f.value,
+          expected: expected.countryOfOrigin,
+          aiConfidence: f.confidence,
+          outcomes: [ruleOutcome],
+          evidenceQuote: f.evidenceQuote,
+          bbox: bboxFor(f.evidenceQuote, words, imageDims),
+          imageQualityPoor,
+        }),
+      );
+    }
   }
 
-  // ── GOVERNMENT WARNING (strict — Tesseract ground truth) ──────────
+  // ── GOVERNMENT WARNING (strict — Tesseract ground truth, universal) ──
   {
     if (!expected.govWarningRequired) {
       fieldResults.push(
@@ -446,6 +620,7 @@ export async function runVerificationPipeline({
         matchPassed: outcome.status === "pass",
         aiConfidence: extracted.governmentWarningText.confidence || 0.9,
         extractedNull: false,
+        imageQualityPoor,
       });
 
       // For the gov-warning bbox we want the warning *paragraph*, not just
@@ -474,13 +649,18 @@ export async function runVerificationPipeline({
           outcomes: ruleOutcomes,
           evidenceQuote: extracted.governmentWarningText.evidenceQuote,
           bbox,
+          imageQualityPoor,
         }),
       );
     }
   }
 
   const overall = rollUpOverall(fieldResults);
-  return { fieldResults, overall };
+  return {
+    fieldResults,
+    overall,
+    imageQuality: imageQuality ?? { poor: false, flags: [] },
+  };
 }
 
 /**

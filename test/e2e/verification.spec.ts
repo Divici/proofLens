@@ -1,13 +1,20 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * End-to-end coverage of the slice 0003 verification pipeline.
+ * End-to-end coverage of the verification pipeline (slices 0003-0004).
  *
  * Scenarios:
  *   - 01 (spirits-pass) — overall Pass with no field-level fails.
+ *   - 02 (stones-throw) — overall Pass-with-Warnings; brand row is a
+ *     Likely Match because the application uses mixed case while the
+ *     label is all-caps. (Slice 0004)
  *   - 03 (abv-mismatch) — overall Fail with the ABV row in Fail state.
  *   - 04 (gov-warn-lowercase) — overall Fail with the governmentWarning
  *     row in Fail state and a bbox highlight on the warning paragraph.
+ *   - 05 (warn-incomplete) — overall Fail (gov-warning truncated). (Slice 0004)
+ *   - 06 (glare-blur) — overall Manual Review; quality banner visible
+ *     and brand row demoted to Manual Review with the Request Better
+ *     Image action. (Slice 0004)
  *
  * The /api/extract-label call is route-stubbed at the network boundary
  * so the e2e doesn't depend on OpenRouter / Tesseract.
@@ -139,6 +146,125 @@ function buildResponse({
     ocrConfidence: 0.92,
     imageWidth: 1024,
     imageHeight: 1280,
+    imageQualityFlags: [],
+    imageQualityPoor: false,
+  };
+}
+
+/**
+ * Variant of `buildResponse` for slice 0004 scenarios with extra knobs:
+ * image-quality flags, beverage-type override, and a custom brand+expected
+ * pair so the nuanced ladder demo (Stone's Throw vs STONE'S THROW) and
+ * the incomplete-warning demo can drive the right field-row UX.
+ */
+function buildSliceFourResponse({
+  scenarioId,
+  overall,
+  brandValue,
+  brandExpected,
+  brandStatus,
+  govStatus,
+  imageQualityFlags = [],
+  imageQualityPoor = false,
+  beverageType = "distilled-spirits",
+}: {
+  scenarioId: string;
+  overall: "pass-with-warnings" | "fail" | "needs-manual-review" | "pass";
+  brandValue: string;
+  brandExpected: string;
+  brandStatus: "pass" | "likely-match" | "manual-review";
+  govStatus: "pass" | "fail" | "manual-review";
+  imageQualityFlags?: string[];
+  imageQualityPoor?: boolean;
+  beverageType?: string;
+}) {
+  const fieldResults = [
+    {
+      field: "brand",
+      label: "Brand name",
+      status: brandStatus,
+      value: brandValue,
+      expected: brandExpected,
+      confidence: 0.95,
+      explanation:
+        brandStatus === "pass"
+          ? "Value matches the expected entry exactly."
+          : brandStatus === "likely-match"
+            ? "Value matches after case + punctuation normalisation (similarity 100%)."
+            : "Image quality is too low for confident verification.",
+      suggestedAction:
+        brandStatus === "manual-review"
+          ? "Request Better Image — image quality is too low for confident verification."
+          : "No action needed.",
+      evidenceQuote: brandValue,
+      bbox: COMMON_BBOX,
+      outcomes: [],
+    },
+    {
+      field: "governmentWarning",
+      label: "Government warning",
+      status: govStatus,
+      value: "warning text",
+      expected: "27 CFR § 16.21 verbatim text",
+      confidence: 0.94,
+      explanation:
+        govStatus === "pass"
+          ? "Government warning text matches 27 CFR § 16.21 verbatim."
+          : govStatus === "fail"
+            ? "Warning text differs from the canonical 27 CFR § 16.21 statement."
+            : "Manual review required — see the explanation for context.",
+      suggestedAction:
+        govStatus === "fail"
+          ? "Reject the application or request a corrected label."
+          : "No action needed.",
+      evidenceQuote: "GOVERNMENT WARNING:",
+      bbox: COMMON_BBOX,
+      outcomes: [],
+    },
+  ];
+
+  return {
+    extracted: {
+      brand: { value: brandValue, evidenceQuote: brandValue, confidence: 0.95 },
+      classType: { value: "X", evidenceQuote: "X", confidence: 0.91 },
+      alcoholContentText: { value: "5.2%", evidenceQuote: "5.2%", confidence: 0.93 },
+      abvPercent: { value: 5.2, evidenceQuote: "5.2%", confidence: 0.93 },
+      proof: { value: null, evidenceQuote: null, confidence: 0.5 },
+      netContents: { value: "12 fl oz", evidenceQuote: "12 fl oz", confidence: 0.95 },
+      bottlerName: { value: "X Co.", evidenceQuote: "X Co.", confidence: 0.88 },
+      bottlerAddress: { value: "Bend, OR", evidenceQuote: "Bend, OR", confidence: 0.85 },
+      countryOfOrigin: { value: "United States", evidenceQuote: "U.S.A.", confidence: 0.87 },
+      governmentWarningText: {
+        value: "warning text",
+        evidenceQuote: "GOVERNMENT WARNING:",
+        confidence: 0.94,
+      },
+      rawText: "ANYTHING",
+      imageQualityNotes: [],
+      extractionConfidence: 0.91,
+    },
+    expected: {
+      brand: brandExpected,
+      classType: "X",
+      abv: 5.2,
+      netContents: "12 fl oz",
+      bottlerName: "X Co.",
+      bottlerAddress: "Bend, OR",
+      countryOfOrigin: "United States",
+      govWarningRequired: true,
+      applicationNotes: scenarioId,
+      beverageType,
+    },
+    rawText: "ANYTHING",
+    fieldResults,
+    overall,
+    processingTimeMs: 2400,
+    aiSpend: { primaryUsd: 0.0042 },
+    ocrConfidence: 0.92,
+    imageWidth: 1024,
+    imageHeight: 1280,
+    imageQualityFlags,
+    imageQualityPoor,
   };
 }
 
@@ -234,5 +360,116 @@ test.describe("verification pipeline e2e", () => {
     await govRow.click();
 
     await expect(page.locator("[data-testid='bbox-polygon']")).toBeVisible();
+  });
+
+  test("scenario 02 — Stone's Throw nuanced brand match yields Pass with Warnings (slice 0004)", async ({
+    page,
+  }) => {
+    await page.route("**/api/extract-label", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          buildSliceFourResponse({
+            scenarioId: "02-stones-throw-caps",
+            overall: "pass-with-warnings",
+            brandValue: "STONE'S THROW",
+            brandExpected: "Stone's Throw",
+            brandStatus: "likely-match",
+            govStatus: "pass",
+            beverageType: "malt-beverage",
+          }),
+        ),
+      });
+    });
+
+    await page.goto("/review");
+    await page
+      .locator("#demo-scenario")
+      .selectOption("02-stones-throw-caps");
+    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page.getByRole("button", { name: /load demo data/i }).click();
+    await page.getByRole("button", { name: /verify label/i }).click();
+
+    await expect(
+      page.getByLabel(/overall:\s*pass with warnings/i),
+    ).toBeVisible();
+    const brandRow = page.getByRole("button", { name: /brand name/i });
+    await expect(brandRow.getByText(/likely match/i)).toBeVisible();
+  });
+
+  test("scenario 05 — incomplete government warning yields strict Fail (slice 0004)", async ({
+    page,
+  }) => {
+    await page.route("**/api/extract-label", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          buildSliceFourResponse({
+            scenarioId: "05-warn-incomplete",
+            overall: "fail",
+            brandValue: "Riverfront Vineyards",
+            brandExpected: "Riverfront Vineyards",
+            brandStatus: "pass",
+            govStatus: "fail",
+            beverageType: "wine",
+          }),
+        ),
+      });
+    });
+
+    await page.goto("/review");
+    await page.locator("#demo-scenario").selectOption("05-warn-incomplete");
+    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page.getByRole("button", { name: /load demo data/i }).click();
+    await page.getByRole("button", { name: /verify label/i }).click();
+
+    await expect(page.getByLabel(/overall:\s*fail/i)).toBeVisible();
+    const govRow = page.getByRole("button", {
+      name: /government warning/i,
+    });
+    await expect(govRow.getByText(/^fail$/i)).toBeVisible();
+  });
+
+  test("scenario 06 — glare/blur image triggers Manual Review with quality banner (slice 0004 R-011)", async ({
+    page,
+  }) => {
+    await page.route("**/api/extract-label", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          buildSliceFourResponse({
+            scenarioId: "06-glare-blur",
+            overall: "needs-manual-review",
+            brandValue: "Old Tom Distillery",
+            brandExpected: "Old Tom Distillery",
+            brandStatus: "manual-review",
+            govStatus: "manual-review",
+            imageQualityFlags: ["blur", "glare"],
+            imageQualityPoor: true,
+            beverageType: "distilled-spirits",
+          }),
+        ),
+      });
+    });
+
+    await page.goto("/review");
+    await page.locator("#demo-scenario").selectOption("06-glare-blur");
+    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page.getByRole("button", { name: /load demo data/i }).click();
+    await page.getByRole("button", { name: /verify label/i }).click();
+
+    await expect(
+      page.getByLabel(/overall:\s*needs manual review/i),
+    ).toBeVisible();
+
+    // Quality banner is visible and lists the flags.
+    const banner = page.getByRole("alert", { name: /image quality/i });
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText(/blur/i);
+    await expect(banner).toContainText(/glare/i);
+    await expect(banner).toContainText(/request better image/i);
   });
 });

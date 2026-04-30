@@ -239,6 +239,10 @@ describe("POST /api/extract-label", () => {
     expect(typeof body.imageWidth).toBe("number");
     expect(typeof body.imageHeight).toBe("number");
 
+    // Slice 0004: image-quality flags are part of the success body.
+    expect(Array.isArray(body.imageQualityFlags)).toBe(true);
+    expect(typeof body.imageQualityPoor).toBe("boolean");
+
     // Every field result has a status drawn from the 8-state enum.
     const allowedStatuses = new Set([
       "pass",
