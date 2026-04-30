@@ -117,7 +117,7 @@ const SUCCESS_BODY = {
   fieldResults: FIELD_RESULTS,
   overall: "pass",
   processingTimeMs: 2400,
-  aiSpend: { primaryUsd: 0.0042 },
+  aiSpend: { primaryUsd: 0.0042, fallbackUsd: 0 },
   ocrConfidence: 0.92,
   imageWidth: 1024,
   imageHeight: 1280,

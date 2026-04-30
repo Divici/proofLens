@@ -228,6 +228,10 @@ describe("POST /api/extract-label", () => {
     expect(body.processingTimeMs).toBeGreaterThanOrEqual(0);
     expect(typeof body.aiSpend.primaryUsd).toBe("number");
     expect(body.aiSpend.primaryUsd).toBeGreaterThan(0);
+    // fallbackUsd is part of the response contract even when the fallback
+    // model wasn't invoked, so persisted Review records have a stable shape.
+    expect(typeof body.aiSpend.fallbackUsd).toBe("number");
+    expect(body.aiSpend.fallbackUsd).toBe(0);
 
     // Verification pipeline output is now part of the response.
     expect(Array.isArray(body.fieldResults)).toBe(true);

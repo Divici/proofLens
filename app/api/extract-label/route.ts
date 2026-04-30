@@ -45,7 +45,12 @@ interface ExtractLabelSuccessBody {
   fieldResults: FieldResult[];
   overall: OverallStatus;
   processingTimeMs: number;
-  aiSpend: { primaryUsd: number };
+  /**
+   * Per-model AI spend. `fallbackUsd` is 0 today because the route only
+   * calls the primary model — it's wired now so when the fallback path
+   * lands the History record / cost panels don't silently drop the spend.
+   */
+  aiSpend: { primaryUsd: number; fallbackUsd: number };
   ocrConfidence: number;
   imageWidth: number;
   imageHeight: number;
@@ -284,7 +289,10 @@ export async function POST(
       fieldResults: verification.fieldResults,
       overall: verification.overall,
       processingTimeMs,
-      aiSpend: { primaryUsd: extraction.costUsd },
+      // Fallback path isn't wired yet — see ExtractLabelSuccessBody.aiSpend
+      // doc-comment. We still emit `fallbackUsd: 0` so persisted Review
+      // records have a stable shape.
+      aiSpend: { primaryUsd: extraction.costUsd, fallbackUsd: 0 },
       ocrConfidence: ocr.confidence,
       imageWidth,
       imageHeight,

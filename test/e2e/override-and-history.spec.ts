@@ -80,7 +80,7 @@ function buildPassingResponse(scenarioId: string) {
     fieldResults,
     overall: "pass",
     processingTimeMs: 2400,
-    aiSpend: { primaryUsd: 0.0042 },
+    aiSpend: { primaryUsd: 0.0042, fallbackUsd: 0 },
     ocrConfidence: 0.92,
     imageWidth: 1024,
     imageHeight: 1280,
@@ -132,7 +132,14 @@ test.describe("slice 0005 — override + history e2e", () => {
     // Reviewer name is required first — type it in the final-decision panel.
     await page.getByLabel(/your name/i).fill("Jane Doe");
 
-    await overridePanel.getByLabel(/new status/i).selectOption("fail");
+    // Open the shadcn / base-ui Select popover and pick "Fail".
+    await overridePanel
+      .getByRole("combobox", { name: /new status/i })
+      .click();
+    await page
+      .getByRole("listbox")
+      .getByRole("option", { name: /^fail$/i })
+      .click();
     await overridePanel
       .getByLabel(/reason for override/i)
       .fill("Brand colour was wrong; reviewer caught it.");
