@@ -11,6 +11,9 @@ CONDUCTOR_STATE.md
 # Local Claude Code overrides
 .claude/settings.local.json
 
+# Git worktrees for isolated slice work
+.worktrees/
+
 # Environment / secrets
 .env
 .env.local
