@@ -10,6 +10,7 @@
 - Phase 4 (BOOTSTRAP) — `.claude/`, `memory-bank/`, `decisions/0001` (committed `fc072de`)
 - Phase 5 (BUILD) — slice 0001 merged. Scaffold + env validation + health route + Vitest/MSW/Playwright + CI + Vercel config. Vitest 10/10, Playwright 3/3, build green.
 - Phase 5 (BUILD) — slice 0002 merged. Zod schemas (`ApplicationData`, `ExtractedLabelData`); hand-rolled OpenRouter vision client (Haiku 4.5, strict tool-use with `anyOf` nullables); sharp image preprocessor; stateless `/api/extract-label`; uploader + expected-data form + extracted-data card; `/review` page; demo scenario 01. Vitest 63/63, Playwright 4/4, build green.
+- Phase 5 (BUILD) — **slice 0003 merged (AI tracer milestone)**. Tesseract.js wired in parallel with Claude Haiku; three-layer gov-warning matcher with CI mutation fuzz (100/100 rejected); ABV + net-contents strict matchers; nuanced ladder with `fuzzball` + gray-band routing; 8-state status engine with templated rule-sourced explanations; `/api/judge-field` endpoint (stateless, LRU-cached, NOT YET threaded into pipeline — gray band routes to Manual Review); bbox locator from Tesseract word positions; full UI overhaul (`VerificationDetail` replaces `ExtractedDataCard`, `LabelImagePreview` with SVG bbox overlay, `FieldRow` with click-to-highlight). Demo scenarios 03 (ABV mismatch) and 04 (gov-warning capitalization) added. Vitest 214/214, Playwright 7/7, build green. ADR 0002 captures architecture.
 
 ## Remaining (slice plan)
 
@@ -17,8 +18,8 @@
 |---|---|---|---|
 | 0001 | Scaffold + dev loop | **Done** (merged) | 3-4h |
 | 0002 | Single-label happy path (LLM only) | **Done** (merged) | 4-5h |
-| 0003 | Verification + Tesseract + bbox highlights | In-progress (milestone — pause after) | 8-10h |
-| 0004 | Beverage rules + image quality | Pending | 4-5h |
+| 0003 | Verification + Tesseract + bbox highlights | **Done** (merged) — milestone | 8-10h |
+| 0004 | Beverage rules + image quality | Pending (awaiting milestone resume) | 4-5h |
 | 0005 | Override + IndexedDB history | Pending | 5-6h |
 | 0006 | Live camera capture | Pending | 4-5h |
 | 0007 | Batch flow + Web Worker pool | Pending | 6-7h |
@@ -30,7 +31,7 @@ Phase 8 sweep + Phase 9 deploy.
 
 ## Tests
 
-- Test count: Vitest 63 / Playwright 4 (after slice 0002)
+- Test count: Vitest 214 / Playwright 7 (after slice 0003 — AI tracer milestone). Mutation fuzz at numRuns:100 with 0 slips.
 - Goal at end of build: every R-ID has at least one passing test;
   gov-warning mutation fuzz harness with ≥100 generated mutations all
   rejected; Lighthouse a11y ≥ 95 on every route; verdict accuracy

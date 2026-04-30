@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 5 — Build (autonomous per slice)** — slice 0001 (scaffold + dev
-loop) merged into main. Slice 0002 (single-label happy path, LLM only)
-queued for execution.
+**Phase 5 — Build — paused at AI tracer milestone (post-slice-0003).**
+Awaiting user "continue" to dispatch slice 0004. Per the per-milestone
+cadence, the conductor pauses at slices 0003, 0005, 0009.
 
 ## Just completed
 
