@@ -15,10 +15,13 @@ import type { FieldResult, FieldStatus, OverallStatus } from "./types";
  *   - AI confidence in [0.6, 0.85) softens a strict-fail into a warning
  *     (only on the nuanced side — strict fields stay strict).
  *
- * NOTE: Image-quality flag override (force any non-Pass to Manual Review
- * when the image is poor) is wired in slice 0004 alongside the Laplacian-
- * variance and exposure heuristics. The hook point is the
- * `imageQualityPoor` parameter on this function — currently always false.
+ * Image-quality override (R-011, slice 0004): when `imageQualityPoor` is
+ * true (any heuristic or LLM-flagged image-quality signal fired),
+ * any non-Fail / non-Missing cell is demoted to `manual-review` with the
+ * "Request Better Image" suggested action. Strict-fails are preserved
+ * because a clearly-non-compliant label cannot be saved by a better
+ * photo. Missing rows similarly stay Missing — re-shooting may help, but
+ * the field is still absent in the current frame.
  */
 
 export const AI_CONFIDENCE_HIGH = 0.85;
@@ -28,7 +31,6 @@ export interface ResolveStrictArgs {
   matchPassed: boolean;
   aiConfidence: number;
   extractedNull?: boolean;
-  // TODO(slice-0004): wire imageQualityPoor → manual-review override.
   imageQualityPoor?: boolean;
 }
 
@@ -36,28 +38,35 @@ export function resolveStrictStatus({
   matchPassed,
   aiConfidence,
   extractedNull = false,
+  imageQualityPoor = false,
 }: ResolveStrictArgs): FieldStatus {
   if (extractedNull) return "missing";
   if (aiConfidence < AI_CONFIDENCE_MID) return "low-confidence";
-  return matchPassed ? "pass" : "fail";
+  // Strict-fails take precedence over image-quality. A non-compliant
+  // label can't be salvaged by a better photo of the same artwork.
+  if (!matchPassed) return "fail";
+  // Pass cell + poor quality → demote to manual-review.
+  if (imageQualityPoor) return "manual-review";
+  return "pass";
 }
 
 export interface ResolveNuancedArgs {
   ladderKind: LadderKind;
   aiConfidence: number;
-  // TODO(slice-0004): wire image-quality override; see
-  // status-engine.ts:31 (matching strict-side hook point). Currently
-  // accepted but unused — caller-side ergonomics over a churn-y signature
-  // change when the override lands.
   imageQualityPoor?: boolean;
 }
 
 export function resolveNuancedStatus({
   ladderKind,
   aiConfidence,
+  imageQualityPoor = false,
 }: ResolveNuancedArgs): FieldStatus {
   if (ladderKind === "missing") return "missing";
   if (aiConfidence < AI_CONFIDENCE_MID) return "low-confidence";
+
+  // Image-quality override applies to every non-fail / non-missing cell.
+  // Demote to manual-review so the reviewer requests a better image.
+  if (imageQualityPoor && ladderKind !== "fail") return "manual-review";
 
   if (ladderKind === "pass") return "pass";
   if (ladderKind === "likely-match") return "likely-match";
