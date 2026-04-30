@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ReviewHistoryList } from "./ReviewHistoryList";
 import type { Review } from "@/lib/storage/types";
@@ -62,6 +62,9 @@ function makeReview(
     decision: undefined,
     processingTimeMs: 1000,
     aiSpend: { primaryUsd: 0.001, fallbackUsd: 0 },
+    ocrConfidence: 0.9,
+    imageWidth: 1200,
+    imageHeight: 900,
     brand: expected.brand,
     hasOverrides: i === 1,
     ...overrides,
@@ -158,6 +161,41 @@ describe("ReviewHistoryList", () => {
     render(<ReviewHistoryList reviews={[makeReview(1)]} />);
     const search = screen.getByLabelText(/search/i);
     await user.type(search, "zzz-no-match-zzz");
-    expect(screen.getByText(/no reviews match/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(/no reviews match/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("converges on the correct filter result after rapid typing (deferred search)", async () => {
+    // useDeferredValue may skip intermediate filter recomputes while the
+    // user is typing, but the *final* filtered result must still match
+    // the latest input. This protects the optimisation from drifting
+    // into a stale-state bug.
+    const user = userEvent.setup();
+    render(
+      <ReviewHistoryList
+        reviews={[
+          makeReview(1, {
+            brand: "Old Tom",
+            expectedData: makeExpected("Old Tom"),
+          }),
+          makeReview(2, {
+            brand: "Lakeside Gin",
+            expectedData: makeExpected("Lakeside Gin"),
+          }),
+          makeReview(3, {
+            brand: "Lakeside Vodka",
+            expectedData: makeExpected("Lakeside Vodka"),
+          }),
+        ]}
+      />,
+    );
+    const search = screen.getByLabelText(/search/i);
+    await user.type(search, "lakeside vodka");
+    await waitFor(() => {
+      const rows = screen.queryAllByTestId("review-history-row");
+      expect(rows).toHaveLength(1);
+    });
+    expect(screen.getByText("Lakeside Vodka")).toBeInTheDocument();
   });
 });

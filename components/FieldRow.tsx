@@ -224,6 +224,7 @@ export function FieldRow({
         <div className="px-4 pb-3">
           <HumanOverridePanel
             fieldLabel={result.label}
+            fieldKey={result.field}
             originalAiStatus={override?.originalAiStatus ?? result.status}
             reviewerName={reviewerName ?? ""}
             existingOverride={override}

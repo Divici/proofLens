@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -51,8 +51,13 @@ export function ReviewHistoryList({ reviews }: ReviewHistoryListProps) {
   const [beverage, setBeverage] = useState<ReviewBeverageType | "all">("all");
   const [onlyOverrides, setOnlyOverrides] = useState<boolean>(false);
 
+  // useDeferredValue keeps the input snappy while letting React skip
+  // intermediate filter recomputes on fast keystrokes — no debounce
+  // library needed. The input still updates synchronously.
+  const deferredSearch = useDeferredValue(search);
+
   const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    const needle = deferredSearch.trim().toLowerCase();
     return reviews.filter((r) => {
       if (overall !== "all" && r.overall !== overall) return false;
       if (beverage !== "all" && r.beverageType !== beverage) return false;
@@ -63,7 +68,7 @@ export function ReviewHistoryList({ reviews }: ReviewHistoryListProps) {
       }
       return true;
     });
-  }, [reviews, search, overall, beverage, onlyOverrides]);
+  }, [reviews, deferredSearch, overall, beverage, onlyOverrides]);
 
   if (reviews.length === 0) {
     return (
