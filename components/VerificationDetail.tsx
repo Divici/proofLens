@@ -183,9 +183,9 @@ export function VerificationDetail({
                       ))}
                     </ul>
                     <p className="text-xs">
-                      Suggested action: Request Better Image — verification
-                      cells that would have passed are demoted to manual
-                      review while strict-fail rows remain Fail.
+                      Suggested action: Request Better Image — we&apos;ve kept
+                      any clearly failing checks but flagged anything else for
+                      human review. Please request a clearer photo if you can.
                     </p>
                   </div>
                 </div>
@@ -194,7 +194,7 @@ export function VerificationDetail({
 
             {showUnknownBanner ? (
               <div
-                role="alert"
+                role="status"
                 aria-label="Beverage type unknown"
                 className="border-b border-violet-600/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-700 dark:text-violet-300"
               >

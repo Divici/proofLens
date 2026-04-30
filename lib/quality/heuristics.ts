@@ -35,7 +35,20 @@ const LLM_KEYWORD_MAP: Array<{ pattern: RegExp; flag: ImageQualityFlag }> = [
   { pattern: /\b(?:skew(?:ed)?|tilt(?:ed)?|perspective|angled?)\b/i, flag: "skew" },
   { pattern: /\b(?:crop(?:ped|ping)?|cut[- ]?off|truncated)\b/i, flag: "cropping" },
   { pattern: /\b(?:low[- ]?res(?:olution)?|pixelated|fuzzy)\b/i, flag: "low-resolution" },
-  { pattern: /\b(?:obstruct(?:ed|ion|ing)?|finger|hand|covered|blocked)\b/i, flag: "obstruction" },
+  // "obstruction" is matched in two complementary ways:
+  //   1. The explicit verb forms (obstruct/obstructed/obstruction/obstructing)
+  //      and finger-/hand-related coverings — but only when they co-occur
+  //      with an action verb. Bare `\bhand\b` falsely tripped on phrases
+  //      like "right-hand corner" or "handsome label", so we require a
+  //      following action verb (on/over/cover/block/partially/etc).
+  //   2. Generic "covered" / "blocked" / "occluded" mentions of the label.
+  { pattern: /\bobstruct(?:ed|ion|ing)?\b/i, flag: "obstruction" },
+  {
+    pattern:
+      /\b(?:hand(?:s)?|finger(?:s)?|thumb(?:s)?)\s+(?:on|over|across|covering|covers?|cover|block(?:ing|s)?|blocks?|obscur(?:ing|es?)|partially|partly)\b/i,
+    flag: "obstruction",
+  },
+  { pattern: /\b(?:covered|blocked|occluded|obscured)\b/i, flag: "obstruction" },
   { pattern: /\bmultiple labels?\b/i, flag: "multiple-labels" },
   { pattern: /\b(?:two|several) labels?\b/i, flag: "multiple-labels" },
 ];

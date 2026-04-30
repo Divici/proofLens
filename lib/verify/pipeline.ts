@@ -216,6 +216,9 @@ export async function runVerificationPipeline({
    * Resolve the per-beverage requirement for a field. Same context for
    * every field — the evaluators look up only the keys they need.
    */
+  // TODO(slice-0009): thread isImported and addedFlavorsContributeAlcohol from
+  // the form once those UI flags ship; until then country-of-origin and malt
+  // ABV evaluators conservatively default to optional. See decisions/0002.
   const ruleContext = { expectedAbv: expected.abv };
   const requirement = (field: BeverageField): ResolvedRequirement =>
     evaluateRule(expected.beverageType, field, ruleContext);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
@@ -71,12 +71,17 @@ export function ExpectedDataForm({
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     formState: { errors },
   } = form;
 
-  const beverageType = watch("beverageType");
-  const expectedAbv = watch("abv");
+  // `useWatch` is the React-Compiler-safe alternative to `form.watch()`.
+  // It subscribes to the underlying RHF store via a hook (so the compiler
+  // can memoize correctly) AND avoids re-rendering the entire form on every
+  // keystroke — only this component re-renders when these specific fields
+  // change.
+  const beverageType = useWatch({ control, name: "beverageType" });
+  const expectedAbv = useWatch({ control, name: "abv" });
   const abvRequirement = evaluateRule(beverageType, "abv", {
     expectedAbv: typeof expectedAbv === "number" ? expectedAbv : undefined,
   });

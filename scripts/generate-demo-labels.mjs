@@ -168,20 +168,62 @@ const SCENARIOS = [
       "OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
     ],
     accent: ["#f5e9c8", "#d9b676"],
-    // Marker — the generator applies a heavy blur post-render so the
-    // Laplacian-variance heuristic (lib/quality/laplacian.ts) drops below
-    // the LAPLACIAN_BLUR_THRESHOLD and triggers the override.
+    // Marker — the generator applies a bright glare overlay AND a heavy blur
+    // post-render so BOTH signals fire:
+    //   1. `glare` — the bright rectangle pushes the exposure histogram's
+    //      top-bin share above the GLARE_TOP_BIN threshold for that region.
+    //   2. `blur`  — the Gaussian blur drops Laplacian variance below the
+    //      LAPLACIAN_BLUR_THRESHOLD.
+    // When slice 0009 swaps the e2e fixtures over to real Tesseract +
+    // heuristics output, the demo will faithfully demonstrate "two flags
+    // can co-occur" rather than a single signal masquerading as both.
+    glareOverlay: true,
     blur: 12,
   },
 ];
 
 const outputDir = path.resolve(process.cwd(), "public/demo-labels");
 
+/**
+ * Build a fully-opaque white-rectangle SVG overlay sized for the canvas.
+ * Used by scenario 06 to inject a bright glare hot-spot region. Composited
+ * AFTER the blur step so blur doesn't wash the bright pixels back into
+ * the mid-tone band — the overlay stays at saturation (≥ 248) on enough
+ * of the frame to push `extremeBinShare` over EXPOSURE_EXTREME_BIN_SHARE.
+ *
+ * Sized so that area / totalPixels ≈ 0.45, comfortably above the 0.4
+ * threshold even after JPEG compression nudges some pixels off pure white.
+ */
+function buildGlareOverlaySvg() {
+  // Cover ~50% of the image area as a saturated white blob.
+  const x = Math.round(WIDTH * 0.05);
+  const y = Math.round(HEIGHT * 0.05);
+  const w = Math.round(WIDTH * 0.9);
+  const h = Math.round(HEIGHT * 0.5);
+  return `
+<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffffff"/>
+</svg>
+`;
+}
+
 for (const scenario of SCENARIOS) {
   const svg = buildSvg(scenario);
   let pipeline = sharp(Buffer.from(svg));
   if (typeof scenario.blur === "number" && scenario.blur > 0) {
     pipeline = pipeline.blur(scenario.blur);
+  }
+  if (scenario.glareOverlay) {
+    // Composite the glare overlay AFTER blur — blur softens hard edges so
+    // a pre-blur overlay loses its saturated pixels. Post-blur compositing
+    // keeps the bright region at full saturation, which is what a real
+    // camera flash hot-spot looks like in a final photo.
+    pipeline = sharp(
+      await pipeline
+        .composite([{ input: Buffer.from(buildGlareOverlaySvg()), top: 0, left: 0 }])
+        .png()
+        .toBuffer(),
+    );
   }
   const buffer = await pipeline.jpeg({ quality: 90 }).toBuffer();
   const out = path.join(outputDir, `${scenario.id}.jpg`);

@@ -86,6 +86,42 @@ describe("parseLlmQualityNotes — regex-extract structured flags from prose", (
     ).toContain("obstruction");
   });
 
+  it("flags obstruction when fingers/hands co-occur with an action verb", () => {
+    expect(
+      parseLlmQualityNotes(["A hand covers the bottom-left of the label."]),
+    ).toContain("obstruction");
+    expect(
+      parseLlmQualityNotes(["Fingers blocking the warning paragraph."]),
+    ).toContain("obstruction");
+    expect(
+      parseLlmQualityNotes(["Thumb partially over the brand name."]),
+    ).toContain("obstruction");
+  });
+
+  it("does NOT flag obstruction on benign 'hand' mentions (no action verb)", () => {
+    // Regression: the old `\bhand\b` regex tripped on phrases like
+    // "right-hand corner" / "handsome label" / "handwritten note". The
+    // tightened co-occurrence regex requires an action verb.
+    expect(
+      parseLlmQualityNotes(["Logo is in the right-hand corner of the label."]),
+    ).not.toContain("obstruction");
+    expect(
+      parseLlmQualityNotes(["A handsome amber label with serif type."]),
+    ).not.toContain("obstruction");
+    expect(
+      parseLlmQualityNotes(["Handwritten batch number in black ink."]),
+    ).not.toContain("obstruction");
+  });
+
+  it("flags obstruction on generic 'covered'/'blocked'/'obscured' mentions", () => {
+    expect(
+      parseLlmQualityNotes(["The bottom paragraph is covered by tape."]),
+    ).toContain("obstruction");
+    expect(
+      parseLlmQualityNotes(["Net contents text is obscured by a sticker."]),
+    ).toContain("obstruction");
+  });
+
   it("extracts multiple-labels", () => {
     expect(
       parseLlmQualityNotes(["The frame contains multiple labels."]),
