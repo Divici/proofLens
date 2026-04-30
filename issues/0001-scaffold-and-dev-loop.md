@@ -11,7 +11,7 @@
 - [ ] shadcn/ui initialized; `Button`, `Card`, `Input`, `Label`, `Select`, `Toast` components installed
 - [ ] Inter loaded via `next/font` and applied site-wide; `ui-monospace` system stack for raw-text excerpts
 - [ ] `lib/env.ts` validates `OPENROUTER_API_KEY`, `OPENROUTER_MODEL_PRIMARY`, `OPENROUTER_MODEL_FALLBACK`, `OPENROUTER_MODEL_JUDGE` via `zod` at server-startup; missing → fail-fast with descriptive error
-- [ ] `app/api/health/route.ts` returns provider reachability JSON (OpenRouter ping, Tesseract.js worker init check)
+- [ ] `app/api/health/route.ts` returns provider reachability JSON (OpenRouter ping). **Spec amendment 2026-04-30:** the original spec called for a Tesseract.js worker init check here. Tesseract.js runs in the browser per `CLAUDE.md`, so a server-side health probe is misplaced. The probe is dropped from this slice; if a Tesseract reachability indicator is wanted later, it belongs on the client side as part of the `/settings` page in slice 0009.
 - [ ] `app/about/page.tsx` server-rendered with project name + tagline + version
 - [ ] `app/page.tsx` placeholder shell ("New review / Batch / History" nav, empty content area)
 - [ ] Vitest configured with `jsdom` env, RTL, MSW; `pnpm test` runs a smoke test
