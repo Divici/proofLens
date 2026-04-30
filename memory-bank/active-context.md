@@ -2,9 +2,10 @@
 
 ## Current phase
 
-**Phase 5 — Build — paused at AI tracer milestone (post-slice-0003).**
-Awaiting user "continue" to dispatch slice 0004. Per the per-milestone
-cadence, the conductor pauses at slices 0003, 0005, 0009.
+**Phase 5 — Build — paused at reviewable milestone (post-slice-0005).**
+Awaiting user "continue" to dispatch slice 0006. Slices 0001-0005
+merged. Next milestone pause is after slice 0009 (the full polished
+demo).
 
 ## Just completed
 
