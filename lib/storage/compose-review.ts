@@ -37,6 +37,9 @@ export interface ComposeReviewArgs {
   rawText: string;
   processingTimeMs: number;
   aiSpend: { primaryUsd: number; fallbackUsd?: number };
+  ocrConfidence: number;
+  imageWidth: number;
+  imageHeight: number;
   decision?: HumanDecision;
 }
 
@@ -67,6 +70,9 @@ export function composeReview(args: ComposeReviewArgs): Review {
       primaryUsd: args.aiSpend.primaryUsd,
       fallbackUsd: args.aiSpend.fallbackUsd ?? 0,
     },
+    ocrConfidence: args.ocrConfidence,
+    imageWidth: args.imageWidth,
+    imageHeight: args.imageHeight,
     brand: args.expectedData.brand,
     hasOverrides,
   };

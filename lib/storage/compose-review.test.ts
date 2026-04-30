@@ -72,6 +72,9 @@ describe("composeReview", () => {
       rawText: "ANY",
       processingTimeMs: 1000,
       aiSpend: { primaryUsd: 0.001, fallbackUsd: 0 },
+      ocrConfidence: 0.92,
+      imageWidth: 1200,
+      imageHeight: 900,
     });
     expect(review.id).toBe("fixed-id");
     expect(review.brand).toBe("Brand X");
@@ -106,6 +109,9 @@ describe("composeReview", () => {
       rawText: "ANY",
       processingTimeMs: 1000,
       aiSpend: { primaryUsd: 0.001, fallbackUsd: 0 },
+      ocrConfidence: 0.92,
+      imageWidth: 1200,
+      imageHeight: 900,
     });
     expect(review.hasOverrides).toBe(true);
   });
@@ -136,9 +142,43 @@ describe("composeReview", () => {
       rawText: "ANY",
       processingTimeMs: 1000,
       aiSpend: { primaryUsd: 0.001, fallbackUsd: 0 },
+      ocrConfidence: 0.92,
+      imageWidth: 1200,
+      imageHeight: 900,
     });
     expect(review.bboxes.brand).toEqual([
       { x0: 1, y0: 2, x1: 3, y1: 4, imageWidth: 100, imageHeight: 100 },
     ]);
+  });
+
+  it("persists ocrConfidence and image dimensions on the Review record", () => {
+    const review = composeReview({
+      id: "x",
+      now: () => new Date(),
+      reviewerName: "Jane Doe",
+      expectedData: makeExpected(),
+      extracted: makeExtracted(),
+      fieldResults,
+      overall: "pass",
+      imageQualityFlags: [],
+      thumbnail: new Blob(["t"]),
+      rawText: "ANY",
+      processingTimeMs: 1000,
+      aiSpend: { primaryUsd: 0.001, fallbackUsd: 0.002 },
+      ocrConfidence: 0.87,
+      imageWidth: 1568,
+      imageHeight: 1176,
+    });
+    // These fields are what the reopen flow uses to render the OCR
+    // confidence pill and the bbox SVG overlay correctly. Without them
+    // the pill would lie ("0.9 default") and the overlay would render
+    // against a 0x0 viewBox.
+    expect(review.ocrConfidence).toBe(0.87);
+    expect(review.imageWidth).toBe(1568);
+    expect(review.imageHeight).toBe(1176);
+    // Fallback spend round-trips even when the fallback model wasn't
+    // invoked (fallbackUsd: 0). Here we pass a non-zero value to lock in
+    // that the helper doesn't silently zero it.
+    expect(review.aiSpend.fallbackUsd).toBe(0.002);
   });
 });

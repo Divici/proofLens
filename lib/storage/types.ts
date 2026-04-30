@@ -69,6 +69,19 @@ export interface Review {
   decision: HumanDecision | undefined;
   processingTimeMs: number;
   aiSpend: { primaryUsd: number; fallbackUsd: number };
+  /**
+   * OCR confidence reported by Tesseract.js for the original extraction.
+   * Persisted so the reopen flow can surface the real confidence pill
+   * rather than a fabricated default. Range: 0.0 – 1.0.
+   */
+  ocrConfidence: number;
+  /**
+   * Source image dimensions (after server-side preprocess). Persisted so
+   * the bbox SVG overlay can scale correctly on reopen — without these,
+   * the overlay would render against a 0×0 viewBox and be invisible.
+   */
+  imageWidth: number;
+  imageHeight: number;
   /** Display name for the History list (brand from expectedData). */
   brand: string;
   /** True iff at least one fieldResult carries a humanOverride. */

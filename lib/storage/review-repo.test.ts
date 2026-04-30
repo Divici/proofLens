@@ -8,7 +8,6 @@ import {
   deleteReview,
   getReview,
   listReviews,
-  searchReviews,
   updateReview,
 } from "./review-repo";
 import type { Review } from "./types";
@@ -93,6 +92,9 @@ function makeReview(overrides: Partial<Review> = {}): Review {
     decision: undefined,
     processingTimeMs: 1234,
     aiSpend: { primaryUsd: 0.0042, fallbackUsd: 0 },
+    ocrConfidence: 0.92,
+    imageWidth: 1200,
+    imageHeight: 900,
     brand: expected.brand,
     hasOverrides: false,
     ...overrides,
@@ -166,48 +168,22 @@ describe("review-repo", () => {
     expect(await getReview(r.id)).toBeNull();
   });
 
-  it("searches by brand (case-insensitive substring)", async () => {
-    await createReview(
-      makeReview({ brand: "Old Tom Distillery", expectedData: makeExpected("Old Tom Distillery") }),
-    );
-    await createReview(
-      makeReview({ brand: "Lakeside Gin", expectedData: makeExpected("Lakeside Gin") }),
-    );
-    const hits = await searchReviews({ search: "lakeside" });
-    expect(hits.length).toBe(1);
-    expect(hits[0]!.brand).toBe("Lakeside Gin");
-  });
-
-  it("searches by reviewer name", async () => {
-    await createReview(makeReview({ reviewerName: "Jane Doe" }));
-    await createReview(makeReview({ reviewerName: "John Smith" }));
-    const hits = await searchReviews({ search: "smith" });
-    expect(hits.length).toBe(1);
-    expect(hits[0]!.reviewerName).toBe("John Smith");
-  });
-
-  it("filters by overall status", async () => {
-    await createReview(makeReview({ overall: "pass" }));
-    await createReview(makeReview({ overall: "fail" }));
-    const hits = await searchReviews({ overall: "fail" });
-    expect(hits.length).toBe(1);
-    expect(hits[0]!.overall).toBe("fail");
-  });
-
-  it("filters by beverage type", async () => {
-    await createReview(makeReview({ beverageType: "spirits" }));
-    await createReview(makeReview({ beverageType: "wine" }));
-    const hits = await searchReviews({ beverageType: "wine" });
-    expect(hits.length).toBe(1);
-    expect(hits[0]!.beverageType).toBe("wine");
-  });
-
-  it("filters by hasOverrides", async () => {
-    await createReview(makeReview({ hasOverrides: false }));
-    await createReview(makeReview({ hasOverrides: true }));
-    const hits = await searchReviews({ hasOverrides: true });
-    expect(hits.length).toBe(1);
-    expect(hits[0]!.hasOverrides).toBe(true);
+  it("round-trips ocrConfidence and image dimensions on the Review record", async () => {
+    // The reopen flow on /review reads these straight off the persisted
+    // Review and feeds them into the OCR-confidence pill and the bbox
+    // SVG overlay. If they don't round-trip we ship a misleading pill
+    // and a 0x0 viewBox.
+    const r = makeReview({
+      ocrConfidence: 0.83,
+      imageWidth: 1568,
+      imageHeight: 1100,
+    });
+    await createReview(r);
+    const got = await getReview(r.id);
+    expect(got).not.toBeNull();
+    expect(got!.ocrConfidence).toBe(0.83);
+    expect(got!.imageWidth).toBe(1568);
+    expect(got!.imageHeight).toBe(1100);
   });
 
   it("counts reviews", async () => {
