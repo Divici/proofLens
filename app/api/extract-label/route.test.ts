@@ -4,6 +4,44 @@ import { http, HttpResponse } from "msw";
 import sharp from "sharp";
 import { server } from "@/test/msw/server";
 
+// Mock Tesseract.js to keep the route test deterministic + fast.
+// The verification pipeline still runs against a real word stream below.
+vi.mock("@/lib/ocr/tesseract", () => ({
+  tesseractExtract: vi.fn(async () => ({
+    text:
+      "OLD TOM DISTILLERY\nKentucky Straight Bourbon Whiskey\n45% Alc./Vol.\n750 mL\nGOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    words: [
+      {
+        text: "OLD",
+        confidence: 0.95,
+        bbox: { x0: 100, y0: 100, x1: 140, y1: 130 },
+      },
+      {
+        text: "TOM",
+        confidence: 0.94,
+        bbox: { x0: 150, y0: 100, x1: 200, y1: 130 },
+      },
+      {
+        text: "DISTILLERY",
+        confidence: 0.92,
+        bbox: { x0: 210, y0: 100, x1: 360, y1: 130 },
+      },
+      {
+        text: "GOVERNMENT",
+        confidence: 0.95,
+        bbox: { x0: 100, y0: 800, x1: 280, y1: 830 },
+      },
+      {
+        text: "WARNING",
+        confidence: 0.95,
+        bbox: { x0: 290, y0: 800, x1: 420, y1: 830 },
+      },
+    ],
+    confidence: 0.92,
+  })),
+  __resetWorkerForTests: vi.fn(async () => {}),
+}));
+
 const VALID_ENV: Record<string, string> = {
   OPENROUTER_API_KEY: "sk-test-fixture",
   OPENROUTER_MODEL_PRIMARY: "anthropic/claude-haiku-4.5",
@@ -159,7 +197,7 @@ describe("POST /api/extract-label", () => {
     restore();
   });
 
-  it("returns 200 with extracted data, processingTimeMs, and aiSpend on a happy path", async () => {
+  it("returns 200 with extracted data, fieldResults, overall, and telemetry on a happy path", async () => {
     let receivedAuth: string | null = null;
     server.use(
       http.post(
@@ -190,6 +228,33 @@ describe("POST /api/extract-label", () => {
     expect(body.processingTimeMs).toBeGreaterThanOrEqual(0);
     expect(typeof body.aiSpend.primaryUsd).toBe("number");
     expect(body.aiSpend.primaryUsd).toBeGreaterThan(0);
+
+    // Verification pipeline output is now part of the response.
+    expect(Array.isArray(body.fieldResults)).toBe(true);
+    expect(body.fieldResults.length).toBeGreaterThan(0);
+    expect(typeof body.overall).toBe("string");
+    expect(typeof body.rawText).toBe("string");
+    expect(body.rawText.length).toBeGreaterThan(0);
+    expect(typeof body.ocrConfidence).toBe("number");
+    expect(typeof body.imageWidth).toBe("number");
+    expect(typeof body.imageHeight).toBe("number");
+
+    // Every field result has a status drawn from the 8-state enum.
+    const allowedStatuses = new Set([
+      "pass",
+      "likely-match",
+      "warning",
+      "fail",
+      "missing",
+      "low-confidence",
+      "manual-review",
+      "not-required",
+    ]);
+    for (const fr of body.fieldResults) {
+      expect(allowedStatuses.has(fr.status)).toBe(true);
+      expect(typeof fr.explanation).toBe("string");
+      expect(fr.explanation.length).toBeGreaterThan(0);
+    }
 
     expect(receivedAuth).toBe("Bearer sk-test-fixture");
   });

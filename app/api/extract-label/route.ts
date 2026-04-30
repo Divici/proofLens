@@ -1,40 +1,52 @@
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 import { ApplicationDataSchema, type ApplicationData } from "@/lib/ai/schema";
 import {
   extractLabel,
   OpenRouterExtractionError,
 } from "@/lib/ai/openrouter";
 import { preprocess } from "@/lib/image/preprocess";
+import { tesseractExtract } from "@/lib/ocr/tesseract";
+import { runVerificationPipeline } from "@/lib/verify/pipeline";
+import type { FieldResult, OverallStatus } from "@/lib/verify/types";
 import { validateEnv } from "@/lib/env";
 
 /**
- * POST /api/extract-label — stateless single-label extraction.
+ * POST /api/extract-label — stateless single-label extraction +
+ * verification.
  *
  * Body: `multipart/form-data` with two parts —
  *   - `image`  : the label artwork (any sharp-readable format)
  *   - `expected`: JSON string conforming to `ApplicationData`
  *
- * The handler preprocesses the image in-memory, sends it through the
- * vision LLM (Claude Haiku 4.5 by default), and returns the raw
- * `ExtractedLabelData` plus latency + cost telemetry. No persistence —
- * per Marcus IT note, the original buffer is dropped at the end of the
- * request.
+ * Pipeline:
+ *   1. Preprocess the image (sharp) — autorotate + downscale to ≤ 2 MP.
+ *   2. Run Claude Haiku (LLM) and Tesseract.js (OCR) **in parallel**.
+ *   3. Run the verification pipeline (`lib/verify/pipeline.ts`) over the
+ *      merged result, locating bbox highlights via the OCR word stream.
+ *   4. Return `{ extracted, expected, rawText, fieldResults, overall,
+ *                processingTimeMs, aiSpend, ocrConfidence }`.
+ *
+ * No persistence — per Marcus IT note, the original buffer is dropped at
+ * the end of the request.
  */
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Vercel Hobby caps the request body at 4 MB for a serverless function — a
-// larger ceiling here would just produce an opaque platform-level 413 before
-// we ever get to validate the upload. Client-side preprocessing keeps real
-// label JPEGs comfortably under this cap (typically < 2 MB).
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB upload ceiling
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 interface ExtractLabelSuccessBody {
   extracted: import("@/lib/ai/schema").ExtractedLabelData;
   expected: ApplicationData;
+  rawText: string;
+  fieldResults: FieldResult[];
+  overall: OverallStatus;
   processingTimeMs: number;
   aiSpend: { primaryUsd: number };
+  ocrConfidence: number;
+  imageWidth: number;
+  imageHeight: number;
 }
 
 interface ZodIssueShape {
@@ -58,8 +70,6 @@ export async function POST(
   try {
     env = validateEnv();
   } catch (err) {
-    // Keep the real cause server-side so an operator can diagnose missing
-    // env vars from logs, but never leak internal config names to the client.
     console.error("[extract-label] env validation failed", err);
     return NextResponse.json<ExtractLabelErrorBody>(
       {
@@ -139,9 +149,15 @@ export async function POST(
   const inputBuffer = Buffer.from(arrayBuffer);
 
   let processedBuffer: Buffer;
+  let imageWidth = 0;
+  let imageHeight = 0;
   try {
     const preprocessed = await preprocess(inputBuffer);
     processedBuffer = preprocessed.buffer;
+    // sharp metadata gives us the rendered dimensions for the bbox overlay.
+    const meta = await sharp(processedBuffer).metadata();
+    imageWidth = meta.width ?? 0;
+    imageHeight = meta.height ?? 0;
   } catch (cause) {
     console.error("[extract-label] preprocess failed", cause);
     return NextResponse.json<ExtractLabelErrorBody>(
@@ -154,11 +170,12 @@ export async function POST(
   }
 
   let extraction: Awaited<ReturnType<typeof extractLabel>>;
+  let ocr: Awaited<ReturnType<typeof tesseractExtract>>;
   try {
-    extraction = await extractLabel(
-      processedBuffer,
-      env.OPENROUTER_MODEL_PRIMARY,
-    );
+    [extraction, ocr] = await Promise.all([
+      extractLabel(processedBuffer, env.OPENROUTER_MODEL_PRIMARY),
+      tesseractExtract(processedBuffer),
+    ]);
   } catch (cause) {
     if (cause instanceof OpenRouterExtractionError) {
       console.error("[extract-label] openrouter call failed", cause);
@@ -177,14 +194,39 @@ export async function POST(
     );
   }
 
+  // Merge Tesseract rawText into the extraction payload (the schema field
+  // exists since slice 0002).
+  const mergedExtracted = {
+    ...extraction.data,
+    rawText: ocr.text,
+  };
+
+  const verification = await runVerificationPipeline({
+    extracted: mergedExtracted,
+    expected: applicationParse.data,
+    words: ocr.words,
+    rawText: ocr.text,
+    imageDims: { width: imageWidth, height: imageHeight },
+    // Gray-band judge is wired in production via the /api/judge-field
+    // endpoint. The pipeline accepts an optional callback; not threading
+    // it here keeps the route stateless and avoids the function dialing
+    // back into itself. Slice 0009 polish moves to a server-action call.
+  });
+
   const processingTimeMs = Date.now() - start;
 
   return NextResponse.json<ExtractLabelSuccessBody>(
     {
-      extracted: extraction.data,
+      extracted: mergedExtracted,
       expected: applicationParse.data,
+      rawText: ocr.text,
+      fieldResults: verification.fieldResults,
+      overall: verification.overall,
       processingTimeMs,
       aiSpend: { primaryUsd: extraction.costUsd },
+      ocrConfidence: ocr.confidence,
+      imageWidth,
+      imageHeight,
     },
     { status: 200 },
   );
