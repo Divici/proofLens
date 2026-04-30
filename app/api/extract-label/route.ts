@@ -24,7 +24,11 @@ import { validateEnv } from "@/lib/env";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB upload ceiling
+// Vercel Hobby caps the request body at 4 MB for a serverless function — a
+// larger ceiling here would just produce an opaque platform-level 413 before
+// we ever get to validate the upload. Client-side preprocessing keeps real
+// label JPEGs comfortably under this cap (typically < 2 MB).
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB upload ceiling
 
 interface ExtractLabelSuccessBody {
   extracted: import("@/lib/ai/schema").ExtractedLabelData;
@@ -33,8 +37,14 @@ interface ExtractLabelSuccessBody {
   aiSpend: { primaryUsd: number };
 }
 
+interface ZodIssueShape {
+  path: string;
+  message: string;
+}
+
 interface ExtractLabelErrorBody {
   error: string;
+  issues?: ZodIssueShape[];
 }
 
 export async function POST(
@@ -47,9 +57,15 @@ export async function POST(
   let env;
   try {
     env = validateEnv();
-  } catch {
+  } catch (err) {
+    // Keep the real cause server-side so an operator can diagnose missing
+    // env vars from logs, but never leak internal config names to the client.
+    console.error("[extract-label] env validation failed", err);
     return NextResponse.json<ExtractLabelErrorBody>(
-      { error: "Server is misconfigured. Check OPENROUTER_* variables." },
+      {
+        error:
+          "The extraction service is temporarily unavailable. Please try again later.",
+      },
       { status: 500 },
     );
   }
@@ -81,7 +97,7 @@ export async function POST(
   }
   if (imageEntry.size > MAX_IMAGE_BYTES) {
     return NextResponse.json<ExtractLabelErrorBody>(
-      { error: "Image exceeds the 15 MB upload limit." },
+      { error: "Image exceeds the 4 MB upload limit." },
       { status: 413 },
     );
   }
@@ -105,11 +121,16 @@ export async function POST(
 
   const applicationParse = ApplicationDataSchema.safeParse(parsedExpected);
   if (!applicationParse.success) {
-    const detail = applicationParse.error.issues
-      .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
-      .join("; ");
+    const issues: ZodIssueShape[] = applicationParse.error.issues.map((i) => ({
+      path: i.path.join(".") || "(root)",
+      message: i.message,
+    }));
     return NextResponse.json<ExtractLabelErrorBody>(
-      { error: `\`expected\` payload failed validation: ${detail}` },
+      {
+        error:
+          "Some required fields in the expected application data are missing or invalid.",
+        issues,
+      },
       { status: 400 },
     );
   }

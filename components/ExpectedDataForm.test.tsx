@@ -4,6 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { ExpectedDataForm } from "./ExpectedDataForm";
 import { DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 
+// Capture toast.error calls so we can assert on the failure-path UX without
+// mounting the real Sonner portal in jsdom.
+const toastErrorMock = vi.fn();
+vi.mock("sonner", () => ({
+  toast: {
+    error: (...args: unknown[]) => toastErrorMock(...args),
+    success: vi.fn(),
+    message: vi.fn(),
+  },
+}));
+
 describe("ExpectedDataForm", () => {
   it("renders the PRD §13.1 fields with accessible labels", () => {
     render(<ExpectedDataForm onSubmit={() => {}} />);
@@ -99,5 +110,38 @@ describe("ExpectedDataForm", () => {
 
     const submit = screen.getByRole("button", { name: /verify label/i });
     expect(submit).toBeDisabled();
+  });
+
+  it("recovers gracefully and surfaces an error toast when the parent onSubmit throws", async () => {
+    toastErrorMock.mockClear();
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const onSubmit = vi.fn().mockRejectedValue(new Error("upstream boom"));
+    const user = userEvent.setup();
+
+    render(<ExpectedDataForm onSubmit={onSubmit} />);
+
+    await user.click(screen.getByRole("button", { name: /load demo data/i }));
+    await user.click(screen.getByRole("button", { name: /verify label/i }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+
+    // The thrown rejection must NOT leave the submit button stuck.
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /verify label/i }),
+      ).not.toBeDisabled();
+    });
+
+    // A generic toast surfaces — no internal error prose leaks.
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledOnce();
+    });
+    const toastArg = toastErrorMock.mock.calls[0]?.[0] as string;
+    expect(toastArg).toMatch(/something went wrong/i);
+    expect(toastArg).not.toMatch(/upstream boom/i);
+
+    consoleError.mockRestore();
   });
 });

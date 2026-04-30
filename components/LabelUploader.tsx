@@ -11,7 +11,10 @@ export interface LabelUploaderProps {
   className?: string;
 }
 
-const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp,image/heic,image/heif";
+// Limited to formats sharp ships with on Vercel functions out of the box.
+// HEIC/HEIF require a libheif build that isn't included, so we don't accept
+// them — keep this in sync with the user-facing copy below.
+const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp";
 
 /**
  * Drag-and-drop + click-to-upload label image picker. Validates that the

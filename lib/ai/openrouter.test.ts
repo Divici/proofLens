@@ -151,10 +151,39 @@ describe("extractLabel", () => {
 
     const tools = body.tools as Array<{
       type: string;
-      function: { name: string; strict: boolean };
+      function: {
+        name: string;
+        strict: boolean;
+        parameters: {
+          properties: Record<string, unknown>;
+        };
+      };
     }>;
     expect(tools[0]?.function.name).toBe("record_label_fields");
     expect(tools[0]?.function.strict).toBe(true);
+
+    // Strict mode rejects multi-type unions (`type: ["string", "null"]`).
+    // Verify the on-the-wire schema uses `anyOf` for nullable strings —
+    // both at the per-field `evidenceQuote` level and at the top-level
+    // `rawText` field.
+    const properties = tools[0]?.function.parameters.properties ?? {};
+    const brand = properties["brand"] as {
+      properties: { evidenceQuote: Record<string, unknown> };
+    };
+    expect(brand.properties.evidenceQuote).toEqual(
+      expect.objectContaining({
+        anyOf: [{ type: "string" }, { type: "null" }],
+      }),
+    );
+    expect("type" in brand.properties.evidenceQuote).toBe(false);
+
+    const rawText = properties["rawText"] as Record<string, unknown>;
+    expect(rawText).toEqual(
+      expect.objectContaining({
+        anyOf: [{ type: "string" }, { type: "null" }],
+      }),
+    );
+    expect("type" in rawText).toBe(false);
 
     const messages = body.messages as Array<{
       role: string;

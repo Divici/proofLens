@@ -3,9 +3,9 @@
 import { useId } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   ApplicationDataSchema,
-  BeverageTypeSchema,
   type ApplicationData,
 } from "@/lib/ai/schema";
 import { DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
@@ -71,7 +71,16 @@ export function ExpectedDataForm({
   } = form;
 
   const submitHandler: SubmitHandler<ApplicationData> = async (data) => {
-    await onSubmit(data);
+    // Guard against unexpected throws from the parent handler so the form
+    // never gets stuck in a "submitting" UI state. RHF clears `isSubmitting`
+    // automatically when this promise settles, so we just need to surface
+    // a generic toast and let the parent decide what to render.
+    try {
+      await onSubmit(data);
+    } catch (cause) {
+      console.error("[ExpectedDataForm] onSubmit threw", cause);
+      toast.error("Something went wrong, please try again.");
+    }
   };
 
   const handleLoadDemo = () => {
@@ -232,12 +241,6 @@ export function ExpectedDataForm({
           {isSubmitting ? "Verifying…" : "Verify label"}
         </Button>
       </div>
-
-      {/* Belt-and-suspenders: surface the beverage type enum to make the
-          a11y audit happy if a future linter checks the option list. */}
-      <span className="sr-only" aria-hidden="true">
-        {BeverageTypeSchema.options.join(", ")}
-      </span>
     </form>
   );
 }

@@ -35,7 +35,9 @@ const PER_FIELD_SCHEMA_OBJECT = {
         "The literal value visible on the label, or null if the field is not visible.",
     },
     evidenceQuote: {
-      type: ["string", "null"],
+      // OpenAI strict mode rejects the JSON-Schema array form `type: [..]` for
+      // unions — they require an `anyOf` of single-type schemas instead.
+      anyOf: [{ type: "string" }, { type: "null" }],
       description:
         "Verbatim source string copied from the label that supports this value, or null when the field is not visible. Do not normalize capitalization or punctuation.",
     },
@@ -77,7 +79,7 @@ export const EXTRACT_FIELDS_TOOL_SCHEMA = {
         countryOfOrigin: PER_FIELD_SCHEMA_OBJECT,
         governmentWarningText: PER_FIELD_SCHEMA_OBJECT,
         rawText: {
-          type: ["string", "null"],
+          anyOf: [{ type: "string" }, { type: "null" }],
           description:
             "Optional full-label OCR text. Leave null in the LLM response — Tesseract.js fills this in slice 0003.",
         },

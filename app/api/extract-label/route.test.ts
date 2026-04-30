@@ -230,7 +230,7 @@ describe("POST /api/extract-label", () => {
     expect(response.status).toBe(400);
   });
 
-  it("returns 400 when the expected payload fails ApplicationData validation", async () => {
+  it("returns 400 with a generic message and structured issues when ApplicationData validation fails", async () => {
     const blob = await makeJpegBlob();
     const request = await buildRequest(
       blob,
@@ -242,7 +242,68 @@ describe("POST /api/extract-label", () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error).toMatch(/expected/i);
+    // Generic, user-facing copy — must NOT leak internal Zod prose.
+    expect(body.error).toMatch(/missing or invalid/i);
+    expect(body.error).not.toMatch(/zod/i);
+    // Structured issues live in their own key, not concatenated into `error`.
+    expect(Array.isArray(body.issues)).toBe(true);
+    expect(body.issues.length).toBeGreaterThan(0);
+    expect(body.issues[0]).toEqual(
+      expect.objectContaining({
+        path: expect.any(String),
+        message: expect.any(String),
+      }),
+    );
+    expect(body.issues.some((i: { path: string }) => i.path === "abv")).toBe(
+      true,
+    );
+  });
+
+  it("returns 500 with a generic message (no env-var names leaked) when env validation fails", async () => {
+    // Wipe the env so validateEnv() throws.
+    restore();
+    const wipe = setEnv({});
+    for (const k of Object.keys(VALID_ENV)) delete process.env[k];
+
+    const blob = await makeJpegBlob();
+    const request = await buildRequest(
+      blob,
+      JSON.stringify(VALID_APPLICATION_DATA),
+    );
+
+    const { POST } = await import("./route");
+    const response = await POST(request);
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toMatch(/temporarily unavailable/i);
+    expect(body.error).not.toMatch(/openrouter/i);
+    expect(body.error).not.toMatch(/env/i);
+
+    wipe();
+  });
+
+  it("returns 413 when the image exceeds the 4 MB upload limit", async () => {
+    // Allocate a 5 MB buffer so the route's size guard fires. We don't need
+    // valid JPEG bytes — the size check runs before we hand the buffer to
+    // sharp/preprocess.
+    const oversize = new Uint8Array(5 * 1024 * 1024);
+    const blob = new Blob([oversize], { type: "image/jpeg" });
+
+    const formData = new FormData();
+    formData.set("image", blob, "label.jpg");
+    formData.set("expected", JSON.stringify(VALID_APPLICATION_DATA));
+    const request = new Request("http://localhost/api/extract-label", {
+      method: "POST",
+      body: formData,
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(request);
+
+    expect(response.status).toBe(413);
+    const body = await response.json();
+    expect(body.error).toMatch(/4 ?MB/i);
   });
 
   it("returns 502 when OpenRouter responds with an error", async () => {

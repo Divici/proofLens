@@ -69,6 +69,19 @@ describe("LabelUploader", () => {
     expect(onFileSelected.mock.calls[0]?.[0]).toBe(file);
   });
 
+  it("limits the accept attribute to formats sharp can decode (no HEIC/HEIF)", () => {
+    render(<LabelUploader onFileSelected={() => {}} />);
+    const input = screen.getByLabelText(/upload label image/i, {
+      selector: "input",
+    });
+    const accept = input.getAttribute("accept") ?? "";
+    expect(accept).toContain("image/jpeg");
+    expect(accept).toContain("image/png");
+    expect(accept).toContain("image/webp");
+    expect(accept).not.toContain("image/heic");
+    expect(accept).not.toContain("image/heif");
+  });
+
   it("renders an image preview when a previewUrl is provided", () => {
     render(
       <LabelUploader
