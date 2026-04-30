@@ -6,19 +6,26 @@ import { ArrowLeft, Sparkles, AlertTriangle, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
 import { LabelUploader } from "@/components/LabelUploader";
 import { ExpectedDataForm } from "@/components/ExpectedDataForm";
-import { ExtractedDataCard } from "@/components/ExtractedDataCard";
+import { VerificationDetail } from "@/components/VerificationDetail";
 import { Button } from "@/components/ui/button";
-import { DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
+import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 import type {
   ApplicationData,
   ExtractedLabelData,
 } from "@/lib/ai/schema";
+import type { FieldResult, OverallStatus } from "@/lib/verify/types";
 
 interface ExtractionResult {
   extracted: ExtractedLabelData;
   expected: ApplicationData;
+  rawText: string;
+  fieldResults: FieldResult[];
+  overall: OverallStatus;
   processingTimeMs: number;
   aiSpend: { primaryUsd: number };
+  ocrConfidence: number;
+  imageWidth: number;
+  imageHeight: number;
 }
 
 type ExtractionStatus =
@@ -31,16 +38,10 @@ export default function ReviewPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [status, setStatus] = useState<ExtractionStatus>({ kind: "idle" });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [demoScenarioId, setDemoScenarioId] = useState<string>(
+    DEMO_SCENARIO_01.id,
+  );
 
-  // Allocate the object URL inside an effect so we never run the side-effect
-  // during render (which can leak URLs under React strict mode + StrictEffects
-  // re-entry). The cleanup runs whenever the file changes or the page
-  // unmounts, revoking the previous URL deterministically.
-  //
-  // The lint rule `react-hooks/set-state-in-effect` flags the `setPreviewUrl`
-  // calls below — but `URL.createObjectURL` is an external-system side
-  // effect, and the React docs recommend exactly this pattern for resources
-  // that must be allocated/freed in lockstep with a prop or state value.
   useEffect(() => {
     if (!imageFile) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -55,10 +56,13 @@ export default function ReviewPage() {
   }, [imageFile]);
 
   const handleLoadDemoImage = async () => {
+    const scenario =
+      DEMO_SCENARIOS.find((s) => s.id === demoScenarioId) ??
+      DEMO_SCENARIO_01;
     try {
-      const response = await fetch(DEMO_SCENARIO_01.labelPath);
+      const response = await fetch(scenario.labelPath);
       const blob = await response.blob();
-      const file = new File([blob], "01-spirits-pass.jpg", {
+      const file = new File([blob], `${scenario.id}.jpg`, {
         type: blob.type || "image/jpeg",
       });
       setImageFile(file);
@@ -134,8 +138,8 @@ export default function ReviewPage() {
             </h1>
             <p className="text-muted-foreground text-sm">
               Upload one alcohol-label image, enter the expected application
-              data, and we will extract the visible fields. Verification logic
-              ships in the next slice.
+              data, and proofLens will extract the visible fields, run the
+              verification pipeline, and highlight evidence on the image.
             </p>
           </div>
         </div>
@@ -149,14 +153,31 @@ export default function ReviewPage() {
               <h2 className="text-foreground text-sm font-semibold">
                 Label image
               </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleLoadDemoImage}
-              >
-                <Sparkles className="size-3.5" /> Load demo image
-              </Button>
+              <div className="flex items-center gap-2">
+                <label htmlFor="demo-scenario" className="sr-only">
+                  Demo scenario
+                </label>
+                <select
+                  id="demo-scenario"
+                  className="border-border bg-background rounded-md border px-2 py-1 text-xs"
+                  value={demoScenarioId}
+                  onChange={(e) => setDemoScenarioId(e.target.value)}
+                >
+                  {DEMO_SCENARIOS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLoadDemoImage}
+                >
+                  <Sparkles className="size-3.5" /> Load demo image
+                </Button>
+              </div>
             </div>
             <LabelUploader
               onFileSelected={setImageFile}
@@ -170,6 +191,7 @@ export default function ReviewPage() {
             <ExpectedDataForm
               onSubmit={handleSubmit}
               isSubmitting={status.kind === "loading"}
+              demoScenarioId={demoScenarioId}
             />
           </section>
 
@@ -182,7 +204,7 @@ export default function ReviewPage() {
 
             {status.kind === "idle" ? (
               <div className="text-muted-foreground rounded-xl border border-dashed border-border bg-card/40 p-6 text-center text-sm">
-                Upload a label and submit the form to see the extracted fields
+                Upload a label and submit the form to see verification results
                 here.
               </div>
             ) : null}
@@ -197,7 +219,7 @@ export default function ReviewPage() {
                   aria-hidden="true"
                 />
                 <span className="text-muted-foreground">
-                  Extracting label fields with the vision model…
+                  Running OCR + vision-LLM extraction in parallel…
                 </span>
               </div>
             ) : null}
@@ -216,10 +238,13 @@ export default function ReviewPage() {
             ) : null}
 
             {status.kind === "success" ? (
-              <ExtractedDataCard
-                extracted={status.result.extracted}
+              <VerificationDetail
+                imageSrc={previewUrl}
+                fieldResults={status.result.fieldResults}
+                overall={status.result.overall}
                 processingTimeMs={status.result.processingTimeMs}
                 primaryUsd={status.result.aiSpend.primaryUsd}
+                ocrConfidence={status.result.ocrConfidence}
               />
             ) : null}
           </section>

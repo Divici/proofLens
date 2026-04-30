@@ -8,7 +8,7 @@ import {
   ApplicationDataSchema,
   type ApplicationData,
 } from "@/lib/ai/schema";
-import { DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
+import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,8 @@ export interface ExpectedDataFormProps {
   onSubmit: (data: ApplicationData) => void | Promise<void>;
   isSubmitting?: boolean;
   initialValues?: Partial<ApplicationData>;
+  /** Optional demo scenario id for the "Load demo data" button. */
+  demoScenarioId?: string;
 }
 
 const DEFAULT_FORM_VALUES: ApplicationData = {
@@ -55,6 +57,7 @@ export function ExpectedDataForm({
   onSubmit,
   isSubmitting = false,
   initialValues,
+  demoScenarioId,
 }: ExpectedDataFormProps) {
   const formId = useId();
   const form = useForm<ApplicationData>({
@@ -84,7 +87,10 @@ export function ExpectedDataForm({
   };
 
   const handleLoadDemo = () => {
-    reset(DEMO_SCENARIO_01.data);
+    const scenario =
+      DEMO_SCENARIOS.find((s) => s.id === demoScenarioId) ??
+      DEMO_SCENARIO_01;
+    reset(scenario.data);
   };
 
   return (
