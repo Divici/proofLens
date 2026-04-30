@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Camera } from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -25,8 +26,15 @@ export default function Home() {
             Start a review
           </Link>
           <Link
-            href="/history"
+            href="/review?source=camera"
             className={buttonVariants({ size: "lg", variant: "outline" })}
+          >
+            <Camera className="size-4" aria-hidden="true" />
+            Capture from camera
+          </Link>
+          <Link
+            href="/history"
+            className={buttonVariants({ size: "lg", variant: "ghost" })}
           >
             View history
           </Link>

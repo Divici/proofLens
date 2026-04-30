@@ -4,11 +4,18 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Sparkles,
+  AlertTriangle,
+  Loader2,
+  Camera,
+} from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
 import { LabelUploader } from "@/components/LabelUploader";
 import { ExpectedDataForm } from "@/components/ExpectedDataForm";
 import { VerificationDetail } from "@/components/VerificationDetail";
+import { CameraCapture } from "@/components/CameraCapture";
 import { Button } from "@/components/ui/button";
 import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 import type {
@@ -56,10 +63,12 @@ function ReviewPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reviewId = searchParams?.get("reviewId") ?? null;
+  const startInCameraMode = searchParams?.get("source") === "camera";
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [status, setStatus] = useState<ExtractionStatus>({ kind: "idle" });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState<boolean>(startInCameraMode);
   /**
    * When the page is opened with `?reviewId=`, we pull the persisted
    * thumbnail Blob from IndexedDB and stash it here. A dedicated effect
@@ -430,13 +439,41 @@ function ReviewPageInner() {
                 >
                   <Sparkles className="size-3.5" /> Load demo image
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCameraOpen((open) => !open)}
+                  aria-pressed={cameraOpen}
+                >
+                  <Camera className="size-3.5" />
+                  {cameraOpen ? "Close camera" : "Camera"}
+                </Button>
               </div>
             </div>
-            <LabelUploader
-              onFileSelected={setImageFile}
-              previewUrl={previewUrl}
-              previewAlt="Uploaded label preview"
-            />
+            {cameraOpen ? (
+              <div className="border-border bg-card/40 rounded-xl border p-4">
+                <CameraCapture
+                  onCapture={({ blob, width, height }) => {
+                    const file = new File([blob], `capture-${Date.now()}.jpg`, {
+                      type: blob.type || "image/jpeg",
+                    });
+                    setImageFile(file);
+                    setCameraOpen(false);
+                    toast.success(
+                      `Captured ${width}×${height} — review the photo, then submit for verification.`,
+                    );
+                  }}
+                  onCancel={() => setCameraOpen(false)}
+                />
+              </div>
+            ) : (
+              <LabelUploader
+                onFileSelected={setImageFile}
+                previewUrl={previewUrl}
+                previewAlt="Uploaded label preview"
+              />
+            )}
 
             <h2 className="text-foreground text-sm font-semibold pt-2">
               Expected application data

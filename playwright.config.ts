@@ -22,7 +22,29 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      testIgnore: "**/camera-capture.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+    },
+    {
+      // Dedicated project for camera capture e2e. The fake-media-stream
+      // flags are scoped here so they don't leak into other specs that
+      // might silently auto-grant getUserMedia they didn't intend to.
+      name: "camera",
+      testMatch: "**/camera-capture.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        // `--use-fake-ui-for-media-stream` auto-grants getUserMedia and
+        // `--use-fake-device-for-media-stream` pipes a synthetic colored
+        // frame in place of a real camera.
+        launchOptions: {
+          args: [
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+          ],
+        },
+      },
     },
   ],
   webServer: {
