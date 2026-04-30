@@ -22,7 +22,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // Allow our camera-capture e2e to drive a fake video stream
+        // without an OS-level prompt. `--use-fake-ui-for-media-stream`
+        // auto-grants getUserMedia and `--use-fake-device-for-media-stream`
+        // pipes a synthetic colored frame in place of a real camera.
+        launchOptions: {
+          args: [
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+          ],
+        },
+      },
     },
   ],
   webServer: {
