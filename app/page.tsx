@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { SiteNav } from "@/components/site-nav";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -18,6 +20,12 @@ export default function Home() {
           Upload a label, verify it against expected application data, and ship
           decisions faster — without losing the human in the loop.
         </p>
+        <Link
+          href="/review"
+          className={buttonVariants({ size: "lg" })}
+        >
+          Start a review
+        </Link>
       </main>
     </>
   );

@@ -1,10 +1,18 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
-const NAV_LINKS = [
+interface NavLink {
+  href: string;
+  label: string;
+  /** When true the link points to a route that has not shipped yet. */
+  comingSoon?: boolean;
+}
+
+const NAV_LINKS: ReadonlyArray<NavLink> = [
   { href: "/review", label: "New review" },
-  { href: "/batch", label: "Batch" },
-  { href: "/history", label: "History" },
-] as const;
+  { href: "/batch", label: "Batch", comingSoon: true },
+  { href: "/history", label: "History", comingSoon: true },
+];
 
 export function SiteNav() {
   return (
@@ -22,12 +30,30 @@ export function SiteNav() {
         <ul className="flex items-center gap-1 text-sm">
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
-              <Link
-                href={link.href}
-                className="text-muted-foreground hover:text-foreground hover:bg-accent/60 rounded-md px-3 py-2 transition-colors"
-              >
-                {link.label}
-              </Link>
+              {link.comingSoon ? (
+                <span
+                  role="link"
+                  aria-disabled="true"
+                  tabIndex={-1}
+                  title="Coming soon"
+                  data-testid={`nav-disabled-${link.href.replace(/^\//, "")}`}
+                  className={cn(
+                    "text-muted-foreground/60 inline-flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-2 select-none",
+                  )}
+                >
+                  {link.label}
+                  <span className="border-border/60 text-muted-foreground/80 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                    Soon
+                  </span>
+                </span>
+              ) : (
+                <Link
+                  href={link.href}
+                  className="text-muted-foreground hover:text-foreground hover:bg-accent/60 rounded-md px-3 py-2 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              )}
             </li>
           ))}
         </ul>
