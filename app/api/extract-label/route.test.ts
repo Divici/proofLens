@@ -127,7 +127,11 @@ async function makeJpegBlob(
   })
     .jpeg({ quality: 90 })
     .toBuffer();
-  return new Blob([buffer], { type: "image/jpeg" });
+  // Copy into a fresh ArrayBuffer-backed Uint8Array so the BlobPart type
+  // matches even under the strict `noUncheckedIndexedAccess`/SAB-aware lib.
+  const view = new Uint8Array(buffer.byteLength);
+  view.set(buffer);
+  return new Blob([view], { type: "image/jpeg" });
 }
 
 async function buildRequest(
