@@ -1,6 +1,12 @@
 # Personal study / reference material — not project documentation
 PRIOR_ART_garces.md
+SKILLS_AUDIT.md
+CONDUCTOR_DESIGN.md
 STUDY_GUIDE.md
+
+# Conductor working docs — not project documentation
+ALIGNMENT.md
+CONDUCTOR_STATE.md
 
 # Environment / secrets
 .env
