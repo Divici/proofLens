@@ -24,7 +24,8 @@ const EnvSchema = z.object({
     .min(1, "OPENROUTER_MODEL_JUDGE must not be empty"),
   OPENROUTER_BASE_URL: z
     .string({ required_error: "OPENROUTER_BASE_URL is required" })
-    .url("OPENROUTER_BASE_URL must be a valid URL"),
+    .url("OPENROUTER_BASE_URL must be a valid URL")
+    .transform((v) => v.replace(/\/$/, "")),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Use a non-default port so dev runs on a developer's machine (which
-// commonly has another :3000 server) don't collide with the e2e suite.
-const PORT = Number(process.env.PORT ?? 3210);
+// Use Next.js' default :3000. Override via `PORT=3210 pnpm test:e2e`
+// if you have a local dev server already on that port.
+const PORT = Number(process.env.PORT ?? 3000);
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({

@@ -33,14 +33,14 @@ The dev server runs on `http://localhost:3000` by default. Open
 pnpm typecheck     # strict TypeScript with noUncheckedIndexedAccess
 pnpm lint          # ESLint (next config)
 pnpm test          # Vitest (unit + integration, jsdom + MSW)
-pnpm test:e2e      # Playwright smoke (boots a dev server on :3210)
+pnpm test:e2e      # Playwright smoke (boots a dev server on :3000)
 pnpm format:check  # Prettier
 ```
 
 The e2e suite uses the `@playwright/test` runner and starts its own
-Next.js dev server on port `3210` so it doesn't collide with a local
-`pnpm dev`. To use a custom port set `PORT` before running, or point
-at a deployed URL with `PLAYWRIGHT_BASE_URL`.
+Next.js dev server on the Next.js default port `3000`. If port 3000 is
+occupied locally, run `PORT=3210 pnpm test:e2e` (or any free port). You
+can also point at a deployed URL with `PLAYWRIGHT_BASE_URL`.
 
 ## Deploy
 

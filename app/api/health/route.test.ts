@@ -86,4 +86,23 @@ describe("GET /api/health", () => {
     expect(body.ok).toBe(false);
     expect(body.providers.openrouter).toBe(false);
   });
+
+  it("returns 503 with the documented body shape when env validation fails", async () => {
+    // Override the beforeEach setup: drop OPENROUTER_API_KEY so validateEnv throws.
+    restore();
+    restore = setEnv({ ...VALID_ENV });
+    delete process.env.OPENROUTER_API_KEY;
+
+    const { GET } = await import("./route");
+    const response = await GET();
+
+    expect(response.status).toBe(503);
+    const body = await response.json();
+    expect(body).toEqual({
+      ok: false,
+      providers: { openrouter: false },
+      ts: expect.any(String),
+    });
+    expect(() => new Date(body.ts)).not.toThrow();
+  });
 });

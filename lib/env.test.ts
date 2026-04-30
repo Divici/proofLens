@@ -92,4 +92,16 @@ describe("validateEnv", () => {
 
     expect(() => validateEnv()).toThrowError(/OPENROUTER_BASE_URL/);
   });
+
+  it("strips a trailing slash from OPENROUTER_BASE_URL", async () => {
+    restore = withEnv({
+      ...VALID_ENV,
+      OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1/",
+    });
+    const { validateEnv } = await import("./env");
+
+    const config = validateEnv();
+
+    expect(config.OPENROUTER_BASE_URL).toBe("https://openrouter.ai/api/v1");
+  });
 });
