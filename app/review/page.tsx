@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, AlertTriangle, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
@@ -30,19 +30,29 @@ type ExtractionStatus =
 export default function ReviewPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [status, setStatus] = useState<ExtractionStatus>({ kind: "idle" });
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Derive the object URL so we never need to setState inside an effect.
-  // The companion effect just owns cleanup so we don't leak the URL when
-  // the file changes or the page unmounts.
-  const previewUrl = useMemo(
-    () => (imageFile ? URL.createObjectURL(imageFile) : null),
-    [imageFile],
-  );
-
+  // Allocate the object URL inside an effect so we never run the side-effect
+  // during render (which can leak URLs under React strict mode + StrictEffects
+  // re-entry). The cleanup runs whenever the file changes or the page
+  // unmounts, revoking the previous URL deterministically.
+  //
+  // The lint rule `react-hooks/set-state-in-effect` flags the `setPreviewUrl`
+  // calls below — but `URL.createObjectURL` is an external-system side
+  // effect, and the React docs recommend exactly this pattern for resources
+  // that must be allocated/freed in lockstep with a prop or state value.
   useEffect(() => {
-    if (!previewUrl) return;
-    return () => URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
+    if (!imageFile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [imageFile]);
 
   const handleLoadDemoImage = async () => {
     try {
