@@ -38,7 +38,7 @@ interface ExtractionResult {
   fieldResults: FieldResult[];
   overall: OverallStatus;
   processingTimeMs: number;
-  aiSpend: { primaryUsd: number };
+  aiSpend: { primaryUsd: number; fallbackUsd: number };
   ocrConfidence: number;
   imageWidth: number;
   imageHeight: number;
@@ -60,6 +60,14 @@ function ReviewPageInner() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [status, setStatus] = useState<ExtractionStatus>({ kind: "idle" });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  /**
+   * When the page is opened with `?reviewId=`, we pull the persisted
+   * thumbnail Blob from IndexedDB and stash it here. A dedicated effect
+   * (below) then allocates an object URL for it and revokes that URL on
+   * unmount or when the user navigates to a different review — fixing
+   * the per-visit memory leak the previous inline allocation caused.
+   */
+  const [reopenThumbnail, setReopenThumbnail] = useState<Blob | null>(null);
   const [demoScenarioId, setDemoScenarioId] = useState<string>(
     DEMO_SCENARIO_01.id,
   );
@@ -126,9 +134,9 @@ function ReviewPageInner() {
         setExistingDecision(review.decision);
         setReviewerNameState(review.reviewerName);
         setFieldResults(review.fieldResults);
-        // Use the stored thumbnail as the preview image.
-        const url = URL.createObjectURL(review.thumbnail);
-        setPreviewUrl(url);
+        // Hand the persisted thumbnail to the dedicated object-URL effect
+        // below so the URL is properly revoked on unmount / navigation.
+        setReopenThumbnail(review.thumbnail);
         setStatus({
           kind: "success",
           result: {
@@ -138,10 +146,13 @@ function ReviewPageInner() {
             fieldResults: review.fieldResults,
             overall: review.overall,
             processingTimeMs: review.processingTimeMs,
-            aiSpend: { primaryUsd: review.aiSpend.primaryUsd },
-            ocrConfidence: 0.9,
-            imageWidth: 0,
-            imageHeight: 0,
+            aiSpend: {
+              primaryUsd: review.aiSpend.primaryUsd,
+              fallbackUsd: review.aiSpend.fallbackUsd,
+            },
+            ocrConfidence: review.ocrConfidence,
+            imageWidth: review.imageWidth,
+            imageHeight: review.imageHeight,
             imageQualityFlags: review.imageQualityFlags,
             imageQualityPoor: review.imageQualityFlags.length > 0,
           },
@@ -171,6 +182,19 @@ function ReviewPageInner() {
       URL.revokeObjectURL(url);
     };
   }, [imageFile]);
+
+  // Mirror the upload-driven preview-URL pattern for the reopen path so
+  // the object URL is revoked on unmount / navigation. The previous
+  // inline allocation never revoked, leaking one Blob URL per visit.
+  useEffect(() => {
+    if (!reopenThumbnail) return;
+    const url = URL.createObjectURL(reopenThumbnail);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [reopenThumbnail]);
 
   // Mirror status.success.fieldResults into local state so overrides can mutate.
   useEffect(() => {
@@ -307,7 +331,13 @@ function ReviewPageInner() {
           thumbnail,
           rawText: result.rawText,
           processingTimeMs: result.processingTimeMs,
-          aiSpend: { primaryUsd: result.aiSpend.primaryUsd, fallbackUsd: 0 },
+          aiSpend: {
+            primaryUsd: result.aiSpend.primaryUsd,
+            fallbackUsd: result.aiSpend.fallbackUsd,
+          },
+          ocrConfidence: result.ocrConfidence,
+          imageWidth: result.imageWidth,
+          imageHeight: result.imageHeight,
           decision,
         });
 

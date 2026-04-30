@@ -4,6 +4,13 @@ import { useState } from "react";
 import { UserCog, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { FieldOverride, FieldStatus } from "@/lib/verify/types";
 import { cn } from "@/lib/utils";
@@ -41,7 +48,14 @@ const STATUS_LABEL: Record<FieldStatus, string> = STATUS_OPTIONS.reduce(
 );
 
 export interface HumanOverridePanelProps {
+  /** Human-readable label for this field (e.g. "Brand name"). */
   fieldLabel: string;
+  /**
+   * Stable field key used for `htmlFor` ids. Optional — when omitted we
+   * slugify `fieldLabel`. Either way the rendered id is space-free so
+   * the HTML stays valid even when reviewers add multi-word labels.
+   */
+  fieldKey?: string;
   originalAiStatus: FieldStatus;
   reviewerName: string;
   existingOverride?: FieldOverride;
@@ -50,8 +64,16 @@ export interface HumanOverridePanelProps {
   className?: string;
 }
 
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function HumanOverridePanel({
   fieldLabel,
+  fieldKey,
   originalAiStatus,
   reviewerName,
   existingOverride,
@@ -59,6 +81,10 @@ export function HumanOverridePanel({
   onClear,
   className,
 }: HumanOverridePanelProps) {
+  const idSlug = fieldKey?.trim() ? fieldKey : slugify(fieldLabel);
+  const statusInputId = `override-status-${idSlug}`;
+  const reasonInputId = `override-reason-${idSlug}`;
+  const counterId = `override-counter-${idSlug}`;
   const [humanStatus, setHumanStatus] = useState<FieldStatus>(
     existingOverride?.humanStatus ?? originalAiStatus,
   );
@@ -67,11 +93,14 @@ export function HumanOverridePanel({
   );
 
   const reviewerMissing = reviewerName.trim().length === 0;
-  const statusUnchanged = humanStatus === originalAiStatus;
   const reasonEmpty = reason.trim().length === 0;
   const reasonTooLong = reason.length > MAX_REASON_LENGTH;
-  const canSave =
-    !reviewerMissing && !statusUnchanged && !reasonEmpty && !reasonTooLong;
+  // Save is allowed whenever the reviewer wrote a reason — including
+  // when they kept the AI verdict (e.g. "Confirmed Pass after manual
+  // zoom"). Locking save behind a status change blocks legitimate
+  // re-affirmations and forces reviewers to invent a new status just to
+  // record their note.
+  const canSave = !reviewerMissing && !reasonEmpty && !reasonTooLong;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -104,36 +133,40 @@ export function HumanOverridePanel({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`override-status-${fieldLabel}`}>New status</Label>
-        <select
-          id={`override-status-${fieldLabel}`}
-          aria-label="New status"
+        <Label htmlFor={statusInputId}>New status</Label>
+        <Select
           value={humanStatus}
-          onChange={(e) => setHumanStatus(e.target.value as FieldStatus)}
-          className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+          onValueChange={(value) => setHumanStatus(value as FieldStatus)}
         >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            id={statusInputId}
+            aria-label="New status"
+            className="w-full"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`override-reason-${fieldLabel}`}>
-          Reason for override
-        </Label>
+        <Label htmlFor={reasonInputId}>Reason for override</Label>
         <Textarea
-          id={`override-reason-${fieldLabel}`}
+          id={reasonInputId}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           maxLength={MAX_REASON_LENGTH}
           placeholder="Why are you overriding the AI verdict?"
-          aria-describedby={`override-counter-${fieldLabel}`}
+          aria-describedby={counterId}
         />
         <div
-          id={`override-counter-${fieldLabel}`}
+          id={counterId}
           className="text-muted-foreground text-[11px]"
         >
           {reason.length} / {MAX_REASON_LENGTH}

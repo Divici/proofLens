@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HumanOverridePanel } from "./HumanOverridePanel";
 import type { FieldStatus } from "@/lib/verify/types";
@@ -15,6 +15,24 @@ const STATUSES: FieldStatus[] = [
   "not-required",
 ];
 
+/**
+ * Open the shadcn / base-ui Select popup, then click the option with the
+ * given visible label. The popup is portalled, so we query the whole
+ * document (`screen`) rather than the panel container.
+ */
+async function pickStatus(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+) {
+  const trigger = screen.getByRole("combobox", { name: /new status/i });
+  await user.click(trigger);
+  const listbox = await screen.findByRole("listbox");
+  await user.click(within(listbox).getByRole("option", { name: label }));
+  await waitFor(() =>
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+  );
+}
+
 describe("HumanOverridePanel", () => {
   it("renders the original AI status as a static label", () => {
     render(
@@ -29,7 +47,7 @@ describe("HumanOverridePanel", () => {
     expect(screen.getAllByText(/pass/i).length).toBeGreaterThan(0);
   });
 
-  it("disables save until a different status is selected", async () => {
+  it("enables save once a reason is typed (re-affirming the AI verdict is allowed)", async () => {
     const user = userEvent.setup();
     render(
       <HumanOverridePanel
@@ -41,13 +59,10 @@ describe("HumanOverridePanel", () => {
     );
     const save = screen.getByRole("button", { name: /save override/i });
     expect(save).toBeDisabled();
-    // Pick a different status (native select for testability).
-    const statusSelect = screen.getByLabelText(/new status/i);
-    await user.selectOptions(statusSelect, "fail");
-    // Reason still empty, save still disabled
-    expect(save).toBeDisabled();
+    // Reviewer wants to confirm the AI's "pass" with a note — no status
+    // change required. Save unlocks once the reason is non-empty.
     const reason = screen.getByLabelText(/reason for override/i);
-    await user.type(reason, "Brand colour was wrong; reviewer caught it.");
+    await user.type(reason, "Confirmed Pass after manual zoom.");
     expect(save).toBeEnabled();
   });
 
@@ -62,8 +77,7 @@ describe("HumanOverridePanel", () => {
         onSave={onSave}
       />,
     );
-    const statusSelect = screen.getByLabelText(/new status/i);
-    await user.selectOptions(statusSelect, "fail");
+    await pickStatus(user, "Fail");
     const reason = screen.getByLabelText(/reason for override/i);
     await user.type(reason, "Bad colour.");
     await user.click(screen.getByRole("button", { name: /save override/i }));
@@ -78,7 +92,30 @@ describe("HumanOverridePanel", () => {
     expect(new Date(payload.timestamp).getTime()).not.toBeNaN();
   });
 
-  it("offers all 8 status options", () => {
+  it("emits an audit record that re-affirms the AI verdict when status is unchanged", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <HumanOverridePanel
+        fieldLabel="Brand name"
+        originalAiStatus="pass"
+        reviewerName="Jane Doe"
+        onSave={onSave}
+      />,
+    );
+    const reason = screen.getByLabelText(/reason for override/i);
+    await user.type(reason, "Confirmed Pass after manual zoom.");
+    await user.click(screen.getByRole("button", { name: /save override/i }));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const payload = onSave.mock.calls[0]![0];
+    expect(payload.originalAiStatus).toBe("pass");
+    expect(payload.humanStatus).toBe("pass");
+    expect(payload.reason).toBe("Confirmed Pass after manual zoom.");
+  });
+
+  it("offers all 8 status options", async () => {
+    const user = userEvent.setup();
     render(
       <HumanOverridePanel
         fieldLabel="Brand name"
@@ -87,10 +124,24 @@ describe("HumanOverridePanel", () => {
         onSave={() => {}}
       />,
     );
-    const select = screen.getByLabelText(/new status/i) as HTMLSelectElement;
-    const optionValues = Array.from(select.options).map((o) => o.value);
+    const trigger = screen.getByRole("combobox", { name: /new status/i });
+    await user.click(trigger);
+    const listbox = await screen.findByRole("listbox");
+    const options = within(listbox).getAllByRole("option");
+    const optionTexts = options.map((o) => o.textContent?.trim() ?? "");
+    // Map enum values back to their labels exactly as STATUS_OPTIONS does.
+    const expectedLabels: Record<FieldStatus, string> = {
+      pass: "Pass",
+      "likely-match": "Likely match",
+      warning: "Warning",
+      fail: "Fail",
+      missing: "Missing",
+      "low-confidence": "Low confidence",
+      "manual-review": "Manual review",
+      "not-required": "Not required",
+    };
     for (const s of STATUSES) {
-      expect(optionValues).toContain(s);
+      expect(optionTexts).toContain(expectedLabels[s]);
     }
   });
 
@@ -104,8 +155,6 @@ describe("HumanOverridePanel", () => {
         onSave={() => {}}
       />,
     );
-    const select = screen.getByLabelText(/new status/i);
-    await user.selectOptions(select, "fail");
     const reason = screen.getByLabelText(/reason for override/i);
     await user.type(reason, "Bad colour.");
     expect(
@@ -146,5 +195,41 @@ describe("HumanOverridePanel", () => {
       />,
     );
     expect(screen.getByDisplayValue("Bad colour.")).toBeInTheDocument();
+  });
+
+  it("slugifies multi-word fieldLabel into space-free input ids (HTML validity)", () => {
+    const { container } = render(
+      <HumanOverridePanel
+        fieldLabel="Brand name"
+        originalAiStatus="pass"
+        reviewerName="Jane Doe"
+        onSave={() => {}}
+      />,
+    );
+    // The previous implementation produced ids like "override-status-Brand name"
+    // which is invalid HTML. After slugify the id should contain no spaces.
+    const inputsAndTriggers = container.querySelectorAll("[id^='override-']");
+    expect(inputsAndTriggers.length).toBeGreaterThan(0);
+    for (const node of inputsAndTriggers) {
+      expect(node.getAttribute("id")).not.toMatch(/\s/);
+    }
+  });
+
+  it("uses the explicit fieldKey for input ids when provided", () => {
+    const { container } = render(
+      <HumanOverridePanel
+        fieldLabel="Bottler address"
+        fieldKey="bottlerAddress"
+        originalAiStatus="pass"
+        reviewerName="Jane Doe"
+        onSave={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector("#override-status-bottlerAddress"),
+    ).not.toBeNull();
+    expect(
+      container.querySelector("#override-reason-bottlerAddress"),
+    ).not.toBeNull();
   });
 });
