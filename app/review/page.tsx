@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { ArrowLeft, Sparkles, AlertTriangle, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
 import { LabelUploader } from "@/components/LabelUploader";
@@ -13,8 +15,21 @@ import type {
   ApplicationData,
   ExtractedLabelData,
 } from "@/lib/ai/schema";
-import type { FieldResult, OverallStatus } from "@/lib/verify/types";
+import type { FieldOverride, FieldResult, OverallStatus } from "@/lib/verify/types";
 import type { ImageQualityFlag } from "@/lib/quality/types";
+import type { HumanDecision } from "@/lib/storage/types";
+import { composeReview } from "@/lib/storage/compose-review";
+import { generateThumbnail } from "@/lib/image/thumbnail";
+import {
+  createReview,
+  getReview,
+  updateReview,
+} from "@/lib/storage/review-repo";
+import {
+  getReviewerName,
+  setReviewerName as persistReviewerName,
+} from "@/lib/storage/settings-repo";
+import { getQuotaStatus, isQuotaWarning } from "@/lib/storage/quota";
 
 interface ExtractionResult {
   extracted: ExtractedLabelData;
@@ -37,13 +52,112 @@ type ExtractionStatus =
   | { kind: "error"; message: string }
   | { kind: "success"; result: ExtractionResult };
 
-export default function ReviewPage() {
+function ReviewPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const reviewId = searchParams?.get("reviewId") ?? null;
+
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [status, setStatus] = useState<ExtractionStatus>({ kind: "idle" });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [demoScenarioId, setDemoScenarioId] = useState<string>(
     DEMO_SCENARIO_01.id,
   );
+  const [reviewerName, setReviewerNameState] = useState<string>("");
+  const [fieldResults, setFieldResults] = useState<FieldResult[]>([]);
+  const [savedReviewId, setSavedReviewId] = useState<string | null>(null);
+  const [existingDecision, setExistingDecision] = useState<
+    HumanDecision | undefined
+  >(undefined);
+  const [saving, setSaving] = useState(false);
+  const [quotaWarning, setQuotaWarning] = useState<{
+    percentage: number;
+  } | null>(null);
+
+  // Pre-fill reviewer name from settings on mount.
+  useEffect(() => {
+    let cancelled = false;
+    getReviewerName()
+      .then((name) => {
+        if (!cancelled && name) setReviewerNameState(name);
+      })
+      .catch(() => {
+        // Storage read failure shouldn't block the page.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Compute quota status whenever results land.
+  useEffect(() => {
+    if (status.kind !== "success") return;
+    let cancelled = false;
+    getQuotaStatus()
+      .then((q) => {
+        if (cancelled) return;
+        setQuotaWarning(isQuotaWarning(q) ? { percentage: q.percentage } : null);
+      })
+      .catch(() => {
+        // Non-fatal — banner just won't render.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [status.kind]);
+
+  // Hydrate from saved review when ?reviewId is present.
+  useEffect(() => {
+    if (!reviewId) return;
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatus({ kind: "loading" });
+    getReview(reviewId)
+      .then((review) => {
+        if (cancelled) return;
+        if (!review) {
+          toast.error(
+            "We couldn't find that saved review — start a new one below.",
+          );
+          setStatus({ kind: "idle" });
+          return;
+        }
+        setSavedReviewId(review.id);
+        setExistingDecision(review.decision);
+        setReviewerNameState(review.reviewerName);
+        setFieldResults(review.fieldResults);
+        // Use the stored thumbnail as the preview image.
+        const url = URL.createObjectURL(review.thumbnail);
+        setPreviewUrl(url);
+        setStatus({
+          kind: "success",
+          result: {
+            extracted: review.extracted,
+            expected: review.expectedData,
+            rawText: review.rawText,
+            fieldResults: review.fieldResults,
+            overall: review.overall,
+            processingTimeMs: review.processingTimeMs,
+            aiSpend: { primaryUsd: review.aiSpend.primaryUsd },
+            ocrConfidence: 0.9,
+            imageWidth: 0,
+            imageHeight: 0,
+            imageQualityFlags: review.imageQualityFlags,
+            imageQualityPoor: review.imageQualityFlags.length > 0,
+          },
+        });
+      })
+      .catch((cause) => {
+        console.error("[review] failed to hydrate saved review", cause);
+        if (!cancelled) {
+          toast.error("We couldn't load that saved review.");
+          setStatus({ kind: "idle" });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewId]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -57,6 +171,14 @@ export default function ReviewPage() {
       URL.revokeObjectURL(url);
     };
   }, [imageFile]);
+
+  // Mirror status.success.fieldResults into local state so overrides can mutate.
+  useEffect(() => {
+    if (status.kind === "success") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFieldResults(status.result.fieldResults);
+    }
+  }, [status]);
 
   const handleLoadDemoImage = async () => {
     const scenario =
@@ -121,6 +243,104 @@ export default function ReviewPage() {
     }
   };
 
+  const handleOverrideSave = useCallback(
+    (field: string, override: FieldOverride) => {
+      setFieldResults((prev) =>
+        prev.map((fr) =>
+          fr.field === field ? { ...fr, humanOverride: override } : fr,
+        ),
+      );
+      toast.success(`Override saved for ${field}.`);
+    },
+    [],
+  );
+
+  const handleOverrideClear = useCallback((field: string) => {
+    setFieldResults((prev) =>
+      prev.map((fr) => {
+        if (fr.field !== field) return fr;
+        const next: FieldResult = { ...fr };
+        delete next.humanOverride;
+        return next;
+      }),
+    );
+    toast.message(`Override removed for ${field}.`);
+  }, []);
+
+  const handleReviewerNameChange = useCallback((name: string) => {
+    setReviewerNameState(name);
+  }, []);
+
+  const handleSaveDecision = useCallback(
+    async (decision: HumanDecision) => {
+      if (status.kind !== "success") return;
+      const file = imageFile;
+      const result = status.result;
+
+      setSaving(true);
+      try {
+        let thumbnail: Blob;
+        if (file) {
+          thumbnail = await generateThumbnail(file);
+        } else {
+          // Reopen flow — we already have the previous thumbnail.
+          if (savedReviewId) {
+            const existing = await getReview(savedReviewId);
+            if (!existing)
+              throw new Error("Saved review vanished — please start over.");
+            thumbnail = existing.thumbnail;
+          } else {
+            throw new Error("Upload a label image before saving.");
+          }
+        }
+
+        const id = savedReviewId ?? crypto.randomUUID();
+        const review = composeReview({
+          id,
+          now: () => new Date(),
+          reviewerName: decision.reviewerName,
+          expectedData: result.expected,
+          extracted: result.extracted,
+          fieldResults,
+          overall: result.overall,
+          imageQualityFlags: result.imageQualityFlags ?? [],
+          thumbnail,
+          rawText: result.rawText,
+          processingTimeMs: result.processingTimeMs,
+          aiSpend: { primaryUsd: result.aiSpend.primaryUsd, fallbackUsd: 0 },
+          decision,
+        });
+
+        if (savedReviewId) {
+          await updateReview(review);
+        } else {
+          await createReview(review);
+        }
+        await persistReviewerName(decision.reviewerName);
+        setSavedReviewId(id);
+        setExistingDecision(decision);
+        toast.success("Review saved to your browser history.");
+        // Also update the URL so a refresh keeps us in reopen mode.
+        router.replace(`/review?reviewId=${id}`);
+      } catch (cause) {
+        console.error("[review] save failed", cause);
+        const message =
+          cause instanceof Error
+            ? cause.message
+            : "We couldn't save the review. Please try again.";
+        toast.error(message);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fieldResults, imageFile, router, savedReviewId, status],
+  );
+
+  const successResult = useMemo(
+    () => (status.kind === "success" ? status.result : null),
+    [status],
+  );
+
   return (
     <>
       <SiteNav />
@@ -137,12 +357,12 @@ export default function ReviewPage() {
           </Link>
           <div className="flex flex-col gap-1">
             <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-              New review
+              {savedReviewId ? "Reopened review" : "New review"}
             </h1>
             <p className="text-muted-foreground text-sm">
-              Upload one alcohol-label image, enter the expected application
-              data, and proofLens will extract the visible fields, run the
-              verification pipeline, and highlight evidence on the image.
+              {savedReviewId
+                ? "Editing a previously saved review. Saving again updates the existing record."
+                : "Upload one alcohol-label image, enter the expected application data, and proofLens will extract the visible fields, run the verification pipeline, and highlight evidence on the image."}
             </p>
           </div>
         </div>
@@ -240,21 +460,46 @@ export default function ReviewPage() {
               </div>
             ) : null}
 
-            {status.kind === "success" ? (
+            {successResult ? (
               <VerificationDetail
                 imageSrc={previewUrl}
-                fieldResults={status.result.fieldResults}
-                overall={status.result.overall}
-                processingTimeMs={status.result.processingTimeMs}
-                primaryUsd={status.result.aiSpend.primaryUsd}
-                ocrConfidence={status.result.ocrConfidence}
-                imageQualityFlags={status.result.imageQualityFlags ?? []}
-                beverageType={status.result.expected.beverageType}
+                fieldResults={fieldResults}
+                overall={successResult.overall}
+                processingTimeMs={successResult.processingTimeMs}
+                primaryUsd={successResult.aiSpend.primaryUsd}
+                ocrConfidence={successResult.ocrConfidence}
+                imageQualityFlags={successResult.imageQualityFlags ?? []}
+                beverageType={successResult.expected.beverageType}
+                reviewerName={reviewerName}
+                onOverrideSave={handleOverrideSave}
+                onOverrideClear={handleOverrideClear}
+                onReviewerNameChange={handleReviewerNameChange}
+                onSaveDecision={handleSaveDecision}
+                existingDecision={existingDecision}
+                saving={saving}
+                quotaWarning={quotaWarning}
               />
             ) : null}
           </section>
         </div>
       </main>
     </>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <SiteNav />
+          <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+            <div className="text-muted-foreground text-sm">Loading review…</div>
+          </main>
+        </>
+      }
+    >
+      <ReviewPageInner />
+    </Suspense>
   );
 }

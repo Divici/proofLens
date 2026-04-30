@@ -81,7 +81,6 @@ export function openDb(): Promise<ProofLensDB> {
       blocked() {
         // Another tab is holding an older version open; nothing we can do
         // beyond surfacing a warning. The page reload usually fixes it.
-        // eslint-disable-next-line no-console
         console.warn(
           "[prooflens-db] another tab is blocking an upgrade; close other tabs.",
         );

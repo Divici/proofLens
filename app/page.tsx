@@ -20,12 +20,17 @@ export default function Home() {
           Upload a label, verify it against expected application data, and ship
           decisions faster — without losing the human in the loop.
         </p>
-        <Link
-          href="/review"
-          className={buttonVariants({ size: "lg" })}
-        >
-          Start a review
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link href="/review" className={buttonVariants({ size: "lg" })}>
+            Start a review
+          </Link>
+          <Link
+            href="/history"
+            className={buttonVariants({ size: "lg", variant: "outline" })}
+          >
+            View history
+          </Link>
+        </div>
       </main>
     </>
   );
