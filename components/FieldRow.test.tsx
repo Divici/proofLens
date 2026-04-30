@@ -100,4 +100,56 @@ describe("FieldRow", () => {
       "true",
     );
   });
+
+  it("renders the human-override badge and uses the human status when overridden", () => {
+    render(
+      <FieldRow
+        result={makeField({
+          status: "pass",
+          humanOverride: {
+            originalAiStatus: "pass",
+            humanStatus: "fail",
+            reason: "Bad colour.",
+            timestamp: "2026-04-29T12:00:00Z",
+            reviewerName: "Jane Doe",
+          },
+        })}
+        onSelect={() => {}}
+        selected={false}
+      />,
+    );
+    // Human badge appears
+    expect(screen.getByTestId("override-indicator")).toBeInTheDocument();
+    // Status badge should now be Fail (the human verdict)
+    expect(screen.getByTestId("status-icon-fail")).toBeInTheDocument();
+    expect(screen.getByText(/override note/i)).toBeInTheDocument();
+  });
+
+  it("shows the inline override panel when expanded with onOverrideSave", () => {
+    render(
+      <FieldRow
+        result={makeField()}
+        onSelect={() => {}}
+        selected={true}
+        reviewerName="Jane Doe"
+        onOverrideSave={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("human-override-panel")).toBeInTheDocument();
+  });
+
+  it("does not render the override panel when collapsed", () => {
+    render(
+      <FieldRow
+        result={makeField()}
+        onSelect={() => {}}
+        selected={false}
+        reviewerName="Jane Doe"
+        onOverrideSave={() => {}}
+      />,
+    );
+    expect(
+      screen.queryByTestId("human-override-panel"),
+    ).not.toBeInTheDocument();
+  });
 });
