@@ -11,16 +11,16 @@ import type { FieldResult } from "@/lib/verify/types";
  */
 
 export const PER_FIELD_HEADERS = [
-  "review_id",
-  "filename",
-  "field_name",
-  "expected",
-  "extracted",
-  "status",
-  "confidence",
-  "ai_status",
-  "human_status",
-  "override_reason",
+  "Review ID",
+  "Filename",
+  "Field name",
+  "Expected",
+  "Extracted",
+  "Status",
+  "Confidence",
+  "AI status",
+  "Human status",
+  "Override reason",
 ] as const;
 
 function brandSlug(brand: string): string {
@@ -44,31 +44,20 @@ function fmtCellValue(value: string | number | boolean | null): string {
   return String(value);
 }
 
-interface PerFieldRow {
-  review_id: string;
-  filename: string;
-  field_name: string;
-  expected: string;
-  extracted: string;
-  status: string;
-  confidence: string;
-  ai_status: string;
-  human_status: string;
-  override_reason: string;
-}
+type PerFieldRow = Record<(typeof PER_FIELD_HEADERS)[number], string>;
 
 function rowFor(review: Review, fr: FieldResult): PerFieldRow {
   return {
-    review_id: review.id,
-    filename: syntheticFilename(review),
-    field_name: fr.field,
-    expected: fmtCellValue(fr.expected),
-    extracted: fmtCellValue(fr.value),
-    status: fr.status,
-    confidence: fr.confidence.toFixed(2),
-    ai_status: fr.humanOverride?.originalAiStatus ?? "",
-    human_status: fr.humanOverride?.humanStatus ?? "",
-    override_reason: fr.humanOverride?.reason ?? "",
+    "Review ID": review.id,
+    Filename: syntheticFilename(review),
+    "Field name": fr.field,
+    Expected: fmtCellValue(fr.expected),
+    Extracted: fmtCellValue(fr.value),
+    Status: fr.status,
+    Confidence: fr.confidence.toFixed(2),
+    "AI status": fr.humanOverride?.originalAiStatus ?? "",
+    "Human status": fr.humanOverride?.humanStatus ?? "",
+    "Override reason": fr.humanOverride?.reason ?? "",
   };
 }
 

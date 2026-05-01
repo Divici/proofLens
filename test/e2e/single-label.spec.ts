@@ -124,6 +124,19 @@ const SUCCESS_BODY = {
 };
 
 test.describe("single-label review flow", () => {
+  // Per-test IndexedDB cleanup — see verification.spec.ts for rationale.
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        const req = indexedDB.deleteDatabase("prooflens");
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve();
+        req.onblocked = () => resolve();
+      });
+    });
+  });
+
   test("loads demo data, submits, and shows verification detail screen", async ({
     page,
   }) => {

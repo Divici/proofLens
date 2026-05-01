@@ -269,6 +269,21 @@ function buildSliceFourResponse({
 }
 
 test.describe("verification pipeline e2e", () => {
+  // Per-test IndexedDB cleanup so saved-review state from one test cannot
+  // contaminate the next under fullyParallel + reuseExistingServer. This
+  // mirrors the cleanup in override-and-history.spec.ts and export.spec.ts.
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        const req = indexedDB.deleteDatabase("prooflens");
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve();
+        req.onblocked = () => resolve();
+      });
+    });
+  });
+
   test("scenario 01 — happy-path Pass", async ({ page }) => {
     await page.route("**/api/extract-label", async (route) => {
       await route.fulfill({
@@ -289,6 +304,12 @@ test.describe("verification pipeline e2e", () => {
 
     await page.goto("/review");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    // Wait for the demo-image fetch + state propagation to land before
+    // we click verify — otherwise the submit handler errors with
+    // "Upload a label image before verifying."
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 
@@ -317,6 +338,9 @@ test.describe("verification pipeline e2e", () => {
     // Pick scenario 03 from the demo dropdown.
     await page.locator("#demo-scenario").selectOption("03-abv-mismatch");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 
@@ -350,6 +374,9 @@ test.describe("verification pipeline e2e", () => {
     await page.goto("/review");
     await page.locator("#demo-scenario").selectOption("04-gov-warn-lowercase");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 
@@ -388,6 +415,9 @@ test.describe("verification pipeline e2e", () => {
       .locator("#demo-scenario")
       .selectOption("02-stones-throw-caps");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 
@@ -422,6 +452,9 @@ test.describe("verification pipeline e2e", () => {
     await page.goto("/review");
     await page.locator("#demo-scenario").selectOption("05-warn-incomplete");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 
@@ -458,6 +491,9 @@ test.describe("verification pipeline e2e", () => {
     await page.goto("/review");
     await page.locator("#demo-scenario").selectOption("06-glare-blur");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 

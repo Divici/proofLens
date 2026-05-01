@@ -32,4 +32,12 @@ describe("SiteNav", () => {
     render(<SiteNav />);
     expect(screen.queryAllByText(/^soon$/i).length).toBe(0);
   });
+
+  it("renders the /settings link as a real anchor (slice 0009)", () => {
+    render(<SiteNav />);
+    const settings = screen.getByRole("link", { name: /^settings$/i });
+    expect(settings).toBeInTheDocument();
+    expect(settings).toHaveAttribute("href", "/settings");
+    expect(settings).not.toHaveAttribute("aria-disabled", "true");
+  });
 });

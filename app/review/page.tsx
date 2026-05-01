@@ -17,6 +17,7 @@ import { ExpectedDataForm } from "@/components/ExpectedDataForm";
 import { VerificationDetail } from "@/components/VerificationDetail";
 import { CameraCapture } from "@/components/CameraCapture";
 import { ExportMenu } from "@/components/ExportMenu";
+import { ProviderHealthBanner } from "@/components/ProviderHealthBanner";
 import { Button } from "@/components/ui/button";
 import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 import type {
@@ -422,12 +423,13 @@ function ReviewPageInner() {
         id="main"
         className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6"
       >
+        <ProviderHealthBanner />
         <div className="flex flex-col gap-3">
           <Link
             href="/"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
           >
-            <ArrowLeft className="size-3.5" /> Back to home
+            <ArrowLeft className="size-3.5" aria-hidden="true" /> Back to home
           </Link>
           <div className="flex flex-col gap-1">
             <h1 className="text-foreground text-2xl font-semibold tracking-tight">

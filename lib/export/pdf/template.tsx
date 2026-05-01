@@ -33,8 +33,27 @@ import type {
   OverallStatus,
 } from "@/lib/verify/types";
 
-const SECTION_16_21_FOOTER =
-  "Government warning text was checked against 27 CFR § 16.21 (verified 2026-04-30).";
+/**
+ * Builds the § 16.21 footer line. We thread `rulesVersion` from the
+ * persisted Review (default `ttb-2026-04-30`) instead of hard-coding a
+ * date so the audit footer always reflects the ruleset the review was
+ * verified against — handy when later deployments revise the canonical
+ * text. The version slug carries the verification date already.
+ */
+function buildRulesFooter(rulesVersion: string): string {
+  // ttb-2026-04-30 → Apr 30, 2026
+  const dateMatch = /^ttb-(\d{4})-(\d{2})-(\d{2})$/.exec(rulesVersion);
+  if (!dateMatch) {
+    return `Government warning text was checked against 27 CFR § 16.21 (rules ${rulesVersion}).`;
+  }
+  const [, year, month, day] = dateMatch as unknown as [
+    string,
+    string,
+    string,
+    string,
+  ];
+  return `Government warning text was checked against 27 CFR § 16.21 (verified ${year}-${month}-${day}).`;
+}
 
 const THUMBNAIL_FOOTER_NOTE =
   "Image is the 256px thumbnail; originals are not retained per the data-handling policy.";
@@ -403,7 +422,7 @@ export function ReviewReport({
 
         {/* Footer (fixed) */}
         <View style={styles.footer} fixed>
-          <Text>{SECTION_16_21_FOOTER}</Text>
+          <Text>{buildRulesFooter(review.rulesVersion)}</Text>
           <Text>{THUMBNAIL_FOOTER_NOTE}</Text>
         </View>
       </Page>

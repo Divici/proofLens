@@ -12,6 +12,8 @@ import type { FieldResult, OverallStatus } from "@/lib/verify/types";
 import { validateEnv } from "@/lib/env";
 import { analyzeImageQuality } from "@/lib/quality/heuristics";
 import type { ImageQualityFlag } from "@/lib/quality/types";
+import { callJudgeUpstream } from "@/lib/ai/judge-call";
+import type { CallJudgeFn } from "@/lib/verify/nuanced/ladder";
 
 /**
  * POST /api/extract-label — stateless single-label extraction +
@@ -263,6 +265,36 @@ export async function POST(
     };
   }
 
+  // Per-request judge memoization. The pipeline may invoke the judge for
+  // multiple gray-band fields (brand, classType, bottlerName, country),
+  // and a single label often has the same brand text driving more than
+  // one comparison. This memoization keeps a single failed judge call
+  // from blocking the rest of the pipeline.
+  const judgeCache = new Map<
+    string,
+    Awaited<ReturnType<typeof callJudgeUpstream>>
+  >();
+  const callJudge: CallJudgeFn = async ({ extracted, expected, fieldName }) => {
+    const key = JSON.stringify({ e: extracted, x: expected, f: fieldName ?? "" });
+    let result = judgeCache.get(key);
+    if (!judgeCache.has(key)) {
+      result = await callJudgeUpstream(
+        { extracted, expected, fieldName },
+        env,
+      );
+      judgeCache.set(key, result);
+    }
+    if (!result) {
+      // Surface as an "uncertain" verdict so the ladder routes to
+      // manual-review without throwing.
+      return {
+        verdict: "uncertain",
+        reasoning: "Judge upstream unavailable; routing to manual review.",
+      };
+    }
+    return { verdict: result.verdict, reasoning: result.reasoning };
+  };
+
   const verification = await runVerificationPipeline({
     extracted: mergedExtracted,
     expected: applicationParse.data,
@@ -273,10 +305,10 @@ export async function POST(
       poor: imageQualityResult.poor,
       flags: imageQualityResult.flags,
     },
-    // Note: the LLM-judge endpoint at /api/judge-field exists but is NOT
-    // YET called from this pipeline; gray-band cases route to
-    // "manual-review" status until production wiring lands. See
-    // slice-3-detail.md track 5.
+    // Slice 0009 — gray-band judge wiring. Strict fields cannot reach
+    // here; only the nuanced ladder dispatches when 0.78 ≤ similarity <
+    // 0.92.
+    callJudge,
   });
 
   const processingTimeMs = Date.now() - start;

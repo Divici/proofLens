@@ -15,15 +15,15 @@ import type { Batch, Review } from "@/lib/storage/types";
  */
 
 export const SUMMARY_HEADERS = [
-  "id",
-  "filename",
-  "brand",
-  "beverage",
-  "overall_status",
-  "completed_at",
-  "reviewer",
-  "has_overrides",
-  "processing_time_ms",
+  "ID",
+  "Filename",
+  "Brand",
+  "Beverage",
+  "Overall status",
+  "Completed at",
+  "Reviewer",
+  "Has overrides",
+  "Processing time (ms)",
 ] as const;
 
 function brandSlug(brand: string): string {
@@ -41,32 +41,22 @@ function syntheticFilename(review: Review): string {
   return `${slug}-${review.id.slice(0, 8)}.jpg`;
 }
 
-interface SummaryRow {
-  id: string;
-  filename: string;
-  brand: string;
-  beverage: string;
-  overall_status: string;
-  completed_at: string;
-  reviewer: string;
-  has_overrides: string;
-  processing_time_ms: string;
-}
+type SummaryRow = Record<(typeof SUMMARY_HEADERS)[number], string>;
 
 export function renderBatchSummaryCsv(
   _batch: Batch,
   reviews: ReadonlyArray<Review>,
 ): string {
   const rows: SummaryRow[] = reviews.map((r) => ({
-    id: r.id,
-    filename: syntheticFilename(r),
-    brand: r.brand,
-    beverage: r.beverageType,
-    overall_status: r.overall,
-    completed_at: r.createdAt,
-    reviewer: r.reviewerName,
-    has_overrides: r.hasOverrides ? "true" : "false",
-    processing_time_ms: String(r.processingTimeMs),
+    ID: r.id,
+    Filename: syntheticFilename(r),
+    Brand: r.brand,
+    Beverage: r.beverageType,
+    "Overall status": r.overall,
+    "Completed at": r.createdAt,
+    Reviewer: r.reviewerName,
+    "Has overrides": r.hasOverrides ? "true" : "false",
+    "Processing time (ms)": String(r.processingTimeMs),
   }));
 
   return Papa.unparse(
