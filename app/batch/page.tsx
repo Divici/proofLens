@@ -404,22 +404,41 @@ export default function BatchPage() {
   );
 
   /**
+   * Stable id for the in-flight (unsaved) batch envelope. Lazy-init via
+   * `useState` keeps the synthesized id stable across re-renders without
+   * tripping the `react-hooks/refs` rule.
+   */
+  const [inflightBatchId] = useState<string>(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? `inflight-${crypto.randomUUID()}`
+      : `inflight-local`,
+  );
+
+  /**
    * Synthesize a Batch + Review[] from the in-memory items so CSV / JSON
    * summaries are exportable mid-batch (slice 0009 — slice 0008 deferral).
    * Thumbnails are placeholder zero-byte Blobs because the export paths
    * exposed by this snapshot — Summary CSV and Per-field CSV — never read
    * the thumbnail. PDF / ZIP rows are gated via `disablePdfExport`.
+   *
+   * `composeReview` accepts a `now` thunk so we can stay pure: the
+   * envelope's `createdAt` is captured once when the user starts the
+   * batch and pinned via `batchStartedAt`.
    */
   const inFlightExport = useMemo(() => {
     const completed = items.filter(
       (i) => i.status === "complete" && i.response,
     );
     if (completed.length === 0) return null;
+    const startedIso =
+      batchStartedAt !== null
+        ? new Date(performance.timeOrigin + batchStartedAt).toISOString()
+        : "1970-01-01T00:00:00.000Z";
     const reviews: Review[] = completed.map((it) => {
       const r = it.response!;
       return composeReview({
         id: it.id,
-        now: () => new Date(),
+        now: () => new Date(startedIso),
         extracted: r.extracted,
         expectedData: r.expected,
         rawText: r.rawText,
@@ -439,8 +458,8 @@ export default function BatchPage() {
     });
     const first = completed[0];
     const batch: Batch = {
-      id: `inflight-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+      id: inflightBatchId,
+      createdAt: startedIso,
       reviewerName: reviewerName || "—",
       reviewIds: reviews.map((r) => r.id),
       status: running ? "processing" : "complete",
@@ -452,7 +471,7 @@ export default function BatchPage() {
       }),
     };
     return { batch, reviews };
-  }, [items, reviewerName, running, summary]);
+  }, [items, reviewerName, running, summary, batchStartedAt, inflightBatchId]);
 
   // Persist reviewer name on change (debounced via effect).
   useEffect(() => {
