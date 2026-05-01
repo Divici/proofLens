@@ -12,6 +12,7 @@ const NAV_LINKS: ReadonlyArray<NavLink> = [
   { href: "/review", label: "New review" },
   { href: "/batch", label: "Batch" },
   { href: "/history", label: "History" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function SiteNav() {

@@ -9,6 +9,7 @@ import { BatchQueue, type BatchQueueItem } from "@/components/BatchQueue";
 import { BatchSummaryPanel } from "@/components/BatchSummaryPanel";
 import { BatchDetailModal } from "@/components/BatchDetailModal";
 import { ExportMenu } from "@/components/ExportMenu";
+import { ProviderHealthBanner } from "@/components/ProviderHealthBanner";
 import { Button } from "@/components/ui/button";
 import {
   pairLabelsToExpected,
@@ -416,6 +417,7 @@ export default function BatchPage() {
         id="main"
         className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6"
       >
+        <ProviderHealthBanner />
         <header className="flex flex-col gap-1">
           <p className="text-muted-foreground text-xs uppercase tracking-wider">
             Batch verification
