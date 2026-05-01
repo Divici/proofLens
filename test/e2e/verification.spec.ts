@@ -269,6 +269,21 @@ function buildSliceFourResponse({
 }
 
 test.describe("verification pipeline e2e", () => {
+  // Per-test IndexedDB cleanup so saved-review state from one test cannot
+  // contaminate the next under fullyParallel + reuseExistingServer. This
+  // mirrors the cleanup in override-and-history.spec.ts and export.spec.ts.
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        const req = indexedDB.deleteDatabase("prooflens");
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve();
+        req.onblocked = () => resolve();
+      });
+    });
+  });
+
   test("scenario 01 — happy-path Pass", async ({ page }) => {
     await page.route("**/api/extract-label", async (route) => {
       await route.fulfill({

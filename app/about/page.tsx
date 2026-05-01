@@ -13,7 +13,10 @@ export default function AboutPage() {
   return (
     <>
       <SiteNav />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-16 sm:px-6">
+      <main
+        id="main"
+        className="mx-auto w-full max-w-3xl flex-1 px-4 py-16 sm:px-6"
+      >
         <article className="space-y-6">
           <header className="space-y-2">
             <p className="text-muted-foreground text-sm tracking-wider uppercase">

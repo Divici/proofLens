@@ -105,6 +105,19 @@ const SUCCESS_BODY = {
 };
 
 test.describe("camera capture flow", () => {
+  // Per-test IndexedDB cleanup — see verification.spec.ts for rationale.
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        const req = indexedDB.deleteDatabase("prooflens");
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve();
+        req.onblocked = () => resolve();
+      });
+    });
+  });
+
   test("captures a frame from the fake media stream and submits to extract-label", async ({
     page,
     context,
