@@ -72,6 +72,14 @@ interface GoldenCase {
   };
   mockExtraction: ExtractedLabelData;
   mockOcr: { rawText: string };
+  /**
+   * When set, the runner skips this case at Layer 2 (live API) because the
+   * case's `expectedData` doesn't align with the on-disk fixture image —
+   * usually because we want a real bottle photo for that scenario rather
+   * than a programmatic placeholder. Layer 1 still runs (it ignores the
+   * image entirely).
+   */
+  skipLayer2?: { reason: string };
   expected: {
     overall: OverallStatus | { oneOf: OverallStatus[] };
     fieldExpectations: FieldExpectation[];
@@ -106,6 +114,9 @@ interface CaseResult {
   latencyMs?: number;
   costUsd?: number;
   govWarningFailReached?: boolean;
+  /** Set when the case opts out of Layer 2 via skipLayer2. */
+  skipped?: boolean;
+  skipReason?: string;
 }
 
 // ── Layer 1 — deterministic ─────────────────────────────────────────────────
@@ -227,6 +238,21 @@ async function runLayer2(cases: GoldenCase[]): Promise<CaseResult[]> {
     let latencyMs: number | undefined;
     let costUsd: number | undefined;
     let govWarningFailReached: boolean | undefined;
+
+    if (c.skipLayer2) {
+      results.push({
+        id: c.id,
+        name: c.name,
+        tags: c.tags,
+        ok: true,
+        skipped: true,
+        skipReason: c.skipLayer2.reason,
+        failures,
+        expectedOverall: c.expected.overall,
+        fieldFailures,
+      });
+      continue;
+    }
 
     const imagePath = join(REPO_ROOT, c.input.labelImagePath);
     if (!existsSync(imagePath)) {
@@ -353,6 +379,8 @@ interface LayerSummary {
   total: number;
   passed: number;
   failed: number;
+  skipped: number;
+  /** Verdict accuracy on cases that actually ran (excludes skipped). */
   accuracy: number;
   p50LatencyMs?: number;
   p95LatencyMs?: number;
@@ -364,18 +392,20 @@ interface LayerSummary {
 
 function summarise(layerNum: 1 | 2, results: CaseResult[]): LayerSummary {
   const total = results.length;
-  const passed = results.filter((r) => r.ok).length;
-  const failed = total - passed;
-  const accuracy = total > 0 ? passed / total : 0;
+  const skipped = results.filter((r) => r.skipped).length;
+  const ran = results.filter((r) => !r.skipped);
+  const passed = ran.filter((r) => r.ok).length;
+  const failed = ran.length - passed;
+  const accuracy = ran.length > 0 ? passed / ran.length : 0;
 
-  const latencies = results
+  const latencies = ran
     .filter((r) => typeof r.latencyMs === "number")
     .map((r) => r.latencyMs as number);
-  const costs = results
+  const costs = ran
     .filter((r) => typeof r.costUsd === "number")
     .map((r) => r.costUsd as number);
 
-  const recallCases = results.filter(
+  const recallCases = ran.filter(
     (r) => typeof r.govWarningFailReached === "boolean",
   );
   const recallPassed = recallCases.filter(
@@ -387,6 +417,7 @@ function summarise(layerNum: 1 | 2, results: CaseResult[]): LayerSummary {
     total,
     passed,
     failed,
+    skipped,
     accuracy,
     p50LatencyMs: latencies.length > 0 ? quantile(latencies, 0.5) : undefined,
     p95LatencyMs: latencies.length > 0 ? quantile(latencies, 0.95) : undefined,
@@ -481,12 +512,17 @@ function renderResults(
   }
 
   if (layer2) {
+    const ran = layer2.total - layer2.skipped;
     lines.push("## Layer 2 — Golden Set (live `/api/extract-label`)");
+    lines.push("");
+    lines.push(
+      `Ran ${ran} of ${layer2.total} cases (${layer2.skipped} skipped — see "Skipped" section below).`,
+    );
     lines.push("");
     lines.push("| Metric | Value | Target |");
     lines.push("|---|---|---|");
     lines.push(
-      `| Verdict accuracy | ${layer2.passed}/${layer2.total} (${(layer2.accuracy * 100).toFixed(1)}%) | ≥ 95% |`,
+      `| Verdict accuracy | ${layer2.passed}/${ran} (${(layer2.accuracy * 100).toFixed(1)}%) | ≥ 95% |`,
     );
     lines.push(
       `| p50 latency | ${layer2.p50LatencyMs?.toFixed(0) ?? "—"} ms | ≤ 5000 ms |`,
@@ -509,6 +545,12 @@ function renderResults(
     lines.push("| ID | Name | Latency (ms) | Cost ($) | Expected → Actual | Status |");
     lines.push("|---|---|---|---|---|---|");
     for (const r of layer2.results) {
+      if (r.skipped) {
+        lines.push(
+          `| ${r.id} | ${r.name} | — | — | (skipped) | SKIP |`,
+        );
+        continue;
+      }
       const exp =
         typeof r.expectedOverall === "string"
           ? r.expectedOverall
@@ -518,10 +560,22 @@ function renderResults(
       );
     }
     lines.push("");
+    if (layer2.skipped > 0) {
+      lines.push("### Skipped — needs real bottle photo");
+      lines.push("");
+      lines.push(
+        "These cases run at Layer 1 but opt out of Layer 2 because the case's `expectedData` doesn't align with any current programmatic placeholder image. Drop a real bottle photo into `public/demo-labels/` and update `eval/generate-golden.mjs` to remove `skipLayer2` once you have one.",
+      );
+      lines.push("");
+      for (const r of layer2.results.filter((x) => x.skipped)) {
+        lines.push(`- **${r.id} ${r.name}** — ${r.skipReason}`);
+      }
+      lines.push("");
+    }
     if (layer2.failed > 0) {
       lines.push("### Layer 2 failures");
       lines.push("");
-      for (const r of layer2.results.filter((x) => !x.ok)) {
+      for (const r of layer2.results.filter((x) => !x.ok && !x.skipped)) {
         lines.push(`- **${r.id} ${r.name}**`);
         for (const f of r.failures) {
           lines.push(`  - ${f}`);
@@ -546,8 +600,13 @@ function renderResults(
 }
 
 function printConsole(summary: LayerSummary): void {
+  const ran = summary.total - summary.skipped;
+  const skippedSuffix =
+    summary.skipped > 0 ? `, ${summary.skipped} skipped` : "";
   console.log("");
-  console.log(`Layer ${summary.layer} — ${summary.passed}/${summary.total} passed (${(summary.accuracy * 100).toFixed(1)}%)`);
+  console.log(
+    `Layer ${summary.layer} — ${summary.passed}/${ran} passed (${(summary.accuracy * 100).toFixed(1)}%${skippedSuffix})`,
+  );
   if (summary.govWarningRecall.total > 0) {
     console.log(
       `  Gov-warning recall: ${summary.govWarningRecall.passed}/${summary.govWarningRecall.total} (${(summary.govWarningRecall.pct * 100).toFixed(1)}%)`,
@@ -566,7 +625,7 @@ function printConsole(summary: LayerSummary): void {
   if (summary.failed > 0) {
     console.log("");
     console.log(`  Failures (${summary.failed}):`);
-    for (const r of summary.results.filter((x) => !x.ok)) {
+    for (const r of summary.results.filter((x) => !x.ok && !x.skipped)) {
       console.log(`    - ${r.id} ${r.name}`);
       for (const f of r.failures) {
         console.log(`        ${f}`);

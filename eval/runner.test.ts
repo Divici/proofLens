@@ -31,6 +31,14 @@ interface GoldenCase {
   input: { labelImagePath: string; expectedData: unknown };
   mockExtraction: unknown;
   mockOcr: { rawText: string };
+  /**
+   * When set, the runner skips this case at Layer 2 (live API) because the
+   * case's `expectedData` doesn't align with the on-disk fixture image —
+   * usually because we want a real bottle photo for that scenario rather
+   * than a programmatic placeholder. Layer 1 still runs (it ignores the
+   * image entirely).
+   */
+  skipLayer2?: { reason: string };
   expected: {
     overall: string | { oneOf: string[] };
     fieldExpectations: Array<{
@@ -100,6 +108,48 @@ describe("eval golden set — case coverage", () => {
     const cases = loadGolden();
     const bev = cases.filter((c) => c.tags.includes("beverage-aware"));
     expect(bev.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("flags cases that need a real bottle photo with skipLayer2.reason", () => {
+    const cases = loadGolden();
+    const skipped = cases.filter((c) => c.skipLayer2);
+    // We expect at least the four happy-path-other / wine cases, the wine
+    // and malt ABV variants, and the beverage-aware edges to be flagged.
+    expect(skipped.length).toBeGreaterThanOrEqual(10);
+    for (const c of skipped) {
+      expect(
+        c.skipLayer2?.reason && c.skipLayer2.reason.length > 0,
+        `${c.id} ${c.name}: skipLayer2 must carry a non-empty reason`,
+      ).toBe(true);
+    }
+  });
+
+  it("every gov-warning mutation case (005-013) points at its own image", () => {
+    const cases = loadGolden();
+    // Restrict to the 005-013 mutation series. Demo-scenario cases (032-037)
+    // also carry gov-warning/strict-fail tags but are intentionally pinned
+    // to specific demo fixtures, so they don't participate in the
+    // one-image-per-mutation invariant.
+    const mutations = cases.filter(
+      (c) => c.id >= "005" && c.id <= "013",
+    );
+    expect(mutations.length).toBe(9);
+    const seenPaths = new Set<string>();
+    for (const c of mutations) {
+      const p = c.input.labelImagePath;
+      // Case 006 (lowercased-prefix) reuses the original
+      // 04-gov-warn-lowercase fixture; the other eight mutations must each
+      // have a unique mutation-specific image so the live LLM extracts the
+      // case's exact mutation from the photo, not some other case's.
+      const exempt = c.name.includes("lowercased-prefix");
+      if (!exempt) {
+        expect(
+          seenPaths.has(p),
+          `${c.id} ${c.name}: image ${p} reused by another mutation case`,
+        ).toBe(false);
+      }
+      seenPaths.add(p);
+    }
   });
 });
 

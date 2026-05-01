@@ -219,6 +219,10 @@ push({
   id: "002",
   name: "happy-path-wine-clean-chardonnay-low-abv",
   tags: ["happy-path", "wine", "27-cfr-4"],
+  skipLayer2: {
+    reason:
+      "needs real bottle photo: a clean Riverfront-Vineyards-style Chardonnay label. Current placeholder reuses the warn-incomplete fixture, which has a deliberately truncated gov-warning.",
+  },
   input: {
     labelImagePath: "public/demo-labels/05-warn-incomplete.jpg",
     expectedData: { ...APP_RIVERFRONT, abv: 12.5 },
@@ -270,6 +274,10 @@ push({
   id: "004",
   name: "happy-path-other-universal-only",
   tags: ["happy-path", "other-unknown", "universal-only"],
+  skipLayer2: {
+    reason:
+      "needs real bottle photo: an 'other-unknown' beverage label that exercises only the universal fields (brand, netContents, gov-warning). Current placeholder reuses the spirits image which extracts class/abv/bottler that the case wants 'not-required'.",
+  },
   input: {
     labelImagePath: "public/demo-labels/01-spirits-pass.jpg",
     expectedData: { ...APP_OLD_TOM, beverageType: "unknown" },
@@ -307,6 +315,7 @@ const govFailCases = [
     id: "005",
     name: "strict-fail-govwarning-missing-prefix",
     description: "Body present but `GOVERNMENT WARNING:` prefix absent.",
+    image: "public/demo-labels/gw-005-missing-prefix.jpg",
     rawText: GOV_WARNING_CANONICAL.replace(
       "GOVERNMENT WARNING: ",
       "",
@@ -316,6 +325,7 @@ const govFailCases = [
     id: "006",
     name: "strict-fail-govwarning-lowercased-prefix",
     description: "Prefix is title-cased instead of all-caps.",
+    image: "public/demo-labels/04-gov-warn-lowercase.jpg",
     rawText: GOV_WARNING_CANONICAL.replace(
       "GOVERNMENT WARNING:",
       "Government Warning:",
@@ -325,6 +335,7 @@ const govFailCases = [
     id: "007",
     name: "strict-fail-govwarning-missing-comma-after-surgeon-general",
     description: "Comma after `Surgeon General` removed.",
+    image: "public/demo-labels/gw-007-missing-comma-surgeon.jpg",
     rawText: GOV_WARNING_CANONICAL.replace(
       "Surgeon General,",
       "Surgeon General",
@@ -334,6 +345,7 @@ const govFailCases = [
     id: "008",
     name: "strict-fail-govwarning-missing-comma-after-operate-machinery",
     description: "Clausal comma before `and may cause` removed.",
+    image: "public/demo-labels/gw-008-missing-comma-machinery.jpg",
     rawText: GOV_WARNING_CANONICAL.replace(
       "operate machinery,",
       "operate machinery",
@@ -343,12 +355,14 @@ const govFailCases = [
     id: "009",
     name: "strict-fail-govwarning-word-substitution",
     description: "`women` swapped for `people` in the body.",
+    image: "public/demo-labels/gw-009-word-substitution.jpg",
     rawText: GOV_WARNING_CANONICAL.replace("women", "people"),
   },
   {
     id: "010",
     name: "strict-fail-govwarning-sentence-reorder",
     description: "Sentence (2) printed before sentence (1).",
+    image: "public/demo-labels/gw-010-sentence-reorder.jpg",
     rawText:
       "GOVERNMENT WARNING: (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems. (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects.",
   },
@@ -357,6 +371,7 @@ const govFailCases = [
     name: "strict-fail-govwarning-smart-quote-with-comma-drop",
     description:
       "Smart-quote characters AROUND `Surgeon General` AND the comma is dropped — Layer 2 typographic fold neutralises the smart quotes, so the dropped comma is what actually drives the fail. Demonstrates the fold doesn't accidentally let mutations slip through.",
+    image: "public/demo-labels/gw-011-smart-quote-comma-drop.jpg",
     rawText: GOV_WARNING_CANONICAL.replace(
       "Surgeon General,",
       "“Surgeon General”",
@@ -367,12 +382,14 @@ const govFailCases = [
     name: "strict-fail-govwarning-trailing-extras",
     description:
       "Extra marketing tagline appended after `health problems.` — wording mismatch.",
+    image: "public/demo-labels/gw-012-trailing-extras.jpg",
     rawText: `${GOV_WARNING_CANONICAL} PLEASE DRINK RESPONSIBLY.`,
   },
   {
     id: "013",
     name: "strict-fail-govwarning-truncated-mid-sentence",
     description: "Body truncated mid first sentence.",
+    image: "public/demo-labels/gw-013-truncated.jpg",
     rawText:
       "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
   },
@@ -389,7 +406,7 @@ for (const variant of govFailCases) {
     name: variant.name,
     tags: ["strict-fail", "gov-warning", "100-percent-recall"],
     input: {
-      labelImagePath: "public/demo-labels/04-gov-warn-lowercase.jpg",
+      labelImagePath: variant.image,
       expectedData: app,
     },
     mockExtraction: cleanExtractionFor(app, {
@@ -467,12 +484,27 @@ for (const variant of abvCases) {
       : variant.beverage === "malt-beverage"
         ? { ...APP_STONES_THROW, abv: variant.expectedAbv }
         : { ...APP_CEDAR_RIDGE, abv: variant.expectedAbv };
+  // Only case 014 (vodka 38% on label vs expected 40%) actually aligns
+  // with the existing 03-abv-mismatch fixture. Wine/malt variants and
+  // inside-tolerance variants need their own bottle photos.
+  const skipLayer2 =
+    variant.id === "014"
+      ? undefined
+      : {
+          reason:
+            variant.beverage === "wine"
+              ? `needs real bottle photo: a wine label with ABV ${variant.extractedAbv}% (expected ${variant.expectedAbv}%). Current placeholder reuses the vodka mismatch image.`
+              : variant.pass
+                ? `needs real bottle photo: a spirits label with ABV exactly ${variant.extractedAbv}% to test the inside-tolerance band against expected ${variant.expectedAbv}%.`
+                : `needs real bottle photo: a ${variant.beverage} label with the case-specific ABV.`,
+        };
   push({
     id: variant.id,
     name: variant.name,
     tags: variant.pass
       ? ["happy-path", "abv-tolerance", variant.beverage]
       : ["strict-fail", "abv", variant.beverage],
+    ...(skipLayer2 ? { skipLayer2 } : {}),
     input: {
       labelImagePath: "public/demo-labels/03-abv-mismatch.jpg",
       expectedData: app,
@@ -607,6 +639,12 @@ for (const variant of imageQualityCases) {
     id: variant.id,
     name: variant.name,
     tags: ["image-quality", ...(variant.flags.length ? variant.flags : ["clean"])],
+    skipLayer2: {
+      reason:
+        variant.flags.length === 0
+          ? "needs real bottle photo: a clean, in-focus label. The current placeholder is the deliberately blurred + glared 06 fixture, which would mis-flag a 'clean' case."
+          : `needs real bottle photo: a label with ONLY the '${variant.flags.join(", ")}' quality issue. The 06 fixture combines blur AND glare, so single-flag cases can't isolate.`,
+    },
     input: {
       labelImagePath: "public/demo-labels/06-glare-blur.jpg",
       expectedData: app,
@@ -641,6 +679,10 @@ push({
   id: "028",
   name: "beverage-spirits-abv-required",
   tags: ["beverage-aware", "spirits", "abv-required"],
+  skipLayer2: {
+    reason:
+      "needs real bottle photo: a spirits label with ABV intentionally MISSING from the artwork. Current placeholder reuses 01-spirits-pass which prominently shows '45% Alc./Vol.'.",
+  },
   input: {
     labelImagePath: "public/demo-labels/01-spirits-pass.jpg",
     expectedData: APP_OLD_TOM,
@@ -666,6 +708,10 @@ push({
   id: "029",
   name: "beverage-wine-high-abv-required",
   tags: ["beverage-aware", "wine", "abv-required"],
+  skipLayer2: {
+    reason:
+      "needs real bottle photo: a high-ABV wine label (>14%) with ABV missing from the artwork. Current placeholder reuses 05-warn-incomplete which has 13.5% printed and a truncated gov-warning.",
+  },
   input: {
     labelImagePath: "public/demo-labels/05-warn-incomplete.jpg",
     expectedData: { ...APP_RIVERFRONT, abv: 15.5 },
@@ -692,6 +738,10 @@ push({
   id: "030",
   name: "beverage-beer-abv-not-required-when-missing",
   tags: ["beverage-aware", "malt-beverage", "abv-not-required"],
+  skipLayer2: {
+    reason:
+      "needs real bottle photo: a malt-beverage label with ABV missing from the artwork. Current placeholder reuses 02-stones-throw-caps which prints '5.2% Alc./Vol.'.",
+  },
   input: {
     labelImagePath: "public/demo-labels/02-stones-throw-caps.jpg",
     expectedData: APP_STONES_THROW,
@@ -717,6 +767,10 @@ push({
   id: "031",
   name: "beverage-other-only-universal-fields",
   tags: ["beverage-aware", "other-unknown", "universal-only"],
+  skipLayer2: {
+    reason:
+      "needs real bottle photo: an 'other-unknown' beverage label so class/abv/bottler/country can route to 'not-required'. Current placeholder reuses the spirits image which extracts those fields.",
+  },
   input: {
     labelImagePath: "public/demo-labels/01-spirits-pass.jpg",
     expectedData: { ...APP_OLD_TOM, beverageType: "unknown" },

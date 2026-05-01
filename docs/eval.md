@@ -145,6 +145,57 @@ To add a case:
   above plus the field tag (`gov-warning`, `abv`, `brand`) and the
   beverage tag (`spirits`, `wine`, `malt-beverage`, `other-unknown`).
 
+## `skipLayer2`: opting cases out of the live run
+
+Cases can carry an optional `skipLayer2: { reason: string }` flag. When
+set, the runner:
+
+- still runs the case at Layer 1 (the deterministic pipeline ignores the
+  image entirely; its drives the pipeline from `mockExtraction` + `mockOcr`);
+- skips the live `/api/extract-label` POST at Layer 2;
+- reports the case in a "Skipped — needs real bottle photo" section in
+  `eval-results.md`;
+- excludes the case from the verdict-accuracy denominator
+  (`accuracy = passed / (total - skipped)`).
+
+Use `skipLayer2` when the case's `expectedData` doesn't align with the
+on-disk fixture image — for example, the case describes a Chardonnay but
+the fixture is a bourbon image, or the case asserts a specific image
+quality flag that the placeholder doesn't carry. As real bottle photos
+arrive in `public/demo-labels/`, drop the `skipLayer2` flag for those
+cases in `eval/generate-golden.mjs` and re-run `pnpm eval:generate`.
+
+## Programmatic mutation labels (cases 005-013)
+
+Cases 005-013 each carry a unique mutation in the gov-warning text.
+`scripts/generate-demo-labels.mjs` renders a 1:1 SVG-rasterised label per
+mutation (Lakeside Gin, with one specific mutation in the warning region):
+`gw-005-missing-prefix.jpg` through `gw-013-truncated.jpg`. Case 006
+(lowercased prefix) reuses the existing `04-gov-warn-lowercase.jpg`.
+
+These programmatic labels double as **manual-QA fixtures** — drop one
+into the proofLens uploader to demonstrate "what does the system say
+when the warning has THIS specific mutation?".
+
+## Known Phase-7 findings (track in Phase 8 sweep)
+
+- **Schema-coercion 502s on synthetic labels.** The live vision LLM
+  occasionally returns bare strings for `brand` / `classType` /
+  `alcoholContentText` instead of the structured `{value, evidenceQuote,
+  confidence}` object the schema demands. `lib/ai/openrouter.ts:208`
+  rejects the payload and the route returns HTTP 502. Hardening should
+  either accept-and-coerce in the schema or tighten the tool-use prompt
+  to ensure structured output.
+- **Layer 2 verdict expectations calibrated to mockExtraction.** The
+  current `expected.fieldExpectations` reflect Layer 1's
+  mockExtraction-driven flow. When the live LLM extracts from an image
+  whose text differs from the case's mockExtraction (e.g. the live LLM
+  reads `STONE'S THROW` from the caps image while the mock had
+  `Stone's Throw`), Layer 2 reports a verdict mismatch even though the
+  pipeline behaved correctly. Resolution: split Layer 2 expectations,
+  use `oneOf`, or back every Layer 2 case with a real bottle photo whose
+  text matches `expectedData` literally.
+
 ## Reproducibility
 
 - Provider pinning is enforced inside `lib/ai/openrouter.ts`

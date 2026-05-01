@@ -6,6 +6,9 @@
     "spirits",
     "abv-required"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a spirits label with ABV intentionally MISSING from the artwork. Current placeholder reuses 01-spirits-pass which prominently shows '45% Alc./Vol.'."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/01-spirits-pass.jpg",
     "expectedData": {

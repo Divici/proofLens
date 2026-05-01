@@ -5,6 +5,9 @@
     "image-quality",
     "glare"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a label with ONLY the 'glare' quality issue. The 06 fixture combines blur AND glare, so single-flag cases can't isolate."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/06-glare-blur.jpg",
     "expectedData": {

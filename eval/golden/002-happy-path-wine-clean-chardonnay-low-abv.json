@@ -6,6 +6,9 @@
     "wine",
     "27-cfr-4"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a clean Riverfront-Vineyards-style Chardonnay label. Current placeholder reuses the warn-incomplete fixture, which has a deliberately truncated gov-warning."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/05-warn-incomplete.jpg",
     "expectedData": {

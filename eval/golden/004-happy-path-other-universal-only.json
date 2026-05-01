@@ -6,6 +6,9 @@
     "other-unknown",
     "universal-only"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: an 'other-unknown' beverage label that exercises only the universal fields (brand, netContents, gov-warning). Current placeholder reuses the spirits image which extracts class/abv/bottler that the case wants 'not-required'."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/01-spirits-pass.jpg",
     "expectedData": {

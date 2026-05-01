@@ -6,6 +6,9 @@
     "malt-beverage",
     "abv-not-required"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a malt-beverage label with ABV missing from the artwork. Current placeholder reuses 02-stones-throw-caps which prints '5.2% Alc./Vol.'."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/02-stones-throw-caps.jpg",
     "expectedData": {

@@ -6,6 +6,9 @@
     "abv-tolerance",
     "wine"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a wine label with ABV 14.7% (expected 14.5%). Current placeholder reuses the vodka mismatch image."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/03-abv-mismatch.jpg",
     "expectedData": {

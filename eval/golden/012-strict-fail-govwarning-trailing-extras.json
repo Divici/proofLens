@@ -7,7 +7,7 @@
     "100-percent-recall"
   ],
   "input": {
-    "labelImagePath": "public/demo-labels/04-gov-warn-lowercase.jpg",
+    "labelImagePath": "public/demo-labels/gw-012-trailing-extras.jpg",
     "expectedData": {
       "brand": "Lakeside Gin",
       "classType": "London Dry Gin",

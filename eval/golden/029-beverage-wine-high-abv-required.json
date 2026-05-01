@@ -6,6 +6,9 @@
     "wine",
     "abv-required"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a high-ABV wine label (>14%) with ABV missing from the artwork. Current placeholder reuses 05-warn-incomplete which has 13.5% printed and a truncated gov-warning."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/05-warn-incomplete.jpg",
     "expectedData": {

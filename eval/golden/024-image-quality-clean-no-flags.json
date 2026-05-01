@@ -5,6 +5,9 @@
     "image-quality",
     "clean"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a clean, in-focus label. The current placeholder is the deliberately blurred + glared 06 fixture, which would mis-flag a 'clean' case."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/06-glare-blur.jpg",
     "expectedData": {

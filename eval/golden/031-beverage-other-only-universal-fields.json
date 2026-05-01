@@ -6,6 +6,9 @@
     "other-unknown",
     "universal-only"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: an 'other-unknown' beverage label so class/abv/bottler/country can route to 'not-required'. Current placeholder reuses the spirits image which extracts those fields."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/01-spirits-pass.jpg",
     "expectedData": {

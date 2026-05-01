@@ -180,6 +180,165 @@ const SCENARIOS = [
     glareOverlay: true,
     blur: 12,
   },
+
+  // ── Phase-7 eval: per-mutation gov-warning labels (cases 005, 007-013) ────
+  // Case 006 (lowercased-prefix) reuses 04-gov-warn-lowercase above.
+  // Each label otherwise looks like Lakeside Gin (matches APP_LAKESIDE in
+  // eval/generate-golden.mjs) but renders ONE specific mutation in its
+  // gov-warning region. The runner POSTs each case's image to
+  // /api/extract-label, the LLM extracts the mutated text, the strict
+  // matcher fails — proving 100 % gov-warning recall against real images.
+  {
+    id: "gw-005-missing-prefix",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // Body present but `GOVERNMENT WARNING:` prefix entirely absent.
+    govWarningLines: [
+      "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN",
+      "SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING",
+      "PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS.",
+      "(2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS",
+      "YOUR ABILITY TO DRIVE A CAR OR OPERATE",
+      "MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
+  {
+    id: "gw-007-missing-comma-surgeon",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // Comma after `Surgeon General` removed.
+    govWarningLines: [
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON",
+      "GENERAL WOMEN SHOULD NOT DRINK ALCOHOLIC",
+      "BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK",
+      "OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC",
+      "BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR",
+      "OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
+  {
+    id: "gw-008-missing-comma-machinery",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // Clausal comma before `and may cause` removed.
+    govWarningLines: [
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON",
+      "GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC",
+      "BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK",
+      "OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC",
+      "BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR",
+      "OPERATE MACHINERY AND MAY CAUSE HEALTH PROBLEMS.",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
+  {
+    id: "gw-009-word-substitution",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // `women` swapped for `people`.
+    govWarningLines: [
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON",
+      "GENERAL, PEOPLE SHOULD NOT DRINK ALCOHOLIC",
+      "BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK",
+      "OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC",
+      "BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR",
+      "OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
+  {
+    id: "gw-010-sentence-reorder",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // Sentence (2) printed before sentence (1).
+    govWarningLines: [
+      "GOVERNMENT WARNING: (2) CONSUMPTION OF ALCOHOLIC",
+      "BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR",
+      "OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+      "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN",
+      "SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING",
+      "PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS.",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
+  {
+    id: "gw-011-smart-quote-comma-drop",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // Smart quotes around Surgeon General + comma dropped. Typographic
+    // fold neutralises the smart quotes; the dropped comma drives the fail.
+    govWarningLines: [
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE “SURGEON",
+      "GENERAL” WOMEN SHOULD NOT DRINK ALCOHOLIC",
+      "BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK",
+      "OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC",
+      "BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR",
+      "OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
+  {
+    id: "gw-012-trailing-extras",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // Marketing tagline appended after `health problems.`.
+    govWarningLines: [
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON",
+      "GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC",
+      "BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK",
+      "OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC",
+      "BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR",
+      "OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+      "PLEASE DRINK RESPONSIBLY.",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
+  {
+    id: "gw-013-truncated",
+    heading: "LAKESIDE GIN",
+    subheading: "LONDON DRY GIN",
+    abvLine: "47% Alc./Vol. (94 Proof)",
+    volume: "750 mL",
+    bottler: "BOTTLED BY LAKESIDE SPIRITS, LLC",
+    addressLines: ["TRAVERSE CITY, MICHIGAN", "PRODUCT OF U.S.A."],
+    // Body truncated mid first sentence.
+    govWarningLines: [
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON",
+      "GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC",
+      "BEVERAGES DURING PREGNANCY",
+    ],
+    accent: ["#e6f4ec", "#a8d3b5"],
+  },
 ];
 
 const outputDir = path.resolve(process.cwd(), "public/demo-labels");

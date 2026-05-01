@@ -6,6 +6,9 @@
     "abv-tolerance",
     "distilled-spirits"
   ],
+  "skipLayer2": {
+    "reason": "needs real bottle photo: a spirits label with ABV exactly 40.2% to test the inside-tolerance band against expected 40%."
+  },
   "input": {
     "labelImagePath": "public/demo-labels/03-abv-mismatch.jpg",
     "expectedData": {
