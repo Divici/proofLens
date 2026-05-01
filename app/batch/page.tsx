@@ -8,6 +8,7 @@ import { BatchDropzone } from "@/components/BatchDropzone";
 import { BatchQueue, type BatchQueueItem } from "@/components/BatchQueue";
 import { BatchSummaryPanel } from "@/components/BatchSummaryPanel";
 import { BatchDetailModal } from "@/components/BatchDetailModal";
+import { ExportMenu } from "@/components/ExportMenu";
 import { Button } from "@/components/ui/button";
 import {
   pairLabelsToExpected,
@@ -31,7 +32,11 @@ import {
 } from "@/lib/workers/extract-worker";
 import { composeReview } from "@/lib/storage/compose-review";
 import { generateThumbnail } from "@/lib/image/thumbnail";
-import { saveBatchWithReviews } from "@/lib/storage/batch-repo";
+import {
+  saveBatchWithReviews,
+  hydrateBatch,
+  type HydratedBatch,
+} from "@/lib/storage/batch-repo";
 import {
   getReviewerName,
   setReviewerName as persistReviewerName,
@@ -59,6 +64,13 @@ export default function BatchPage() {
   const [tickMs, setTickMs] = useState<number>(0);
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
   const [savedBatchId, setSavedBatchId] = useState<string | null>(null);
+  /**
+   * Once the batch is persisted we hydrate the stored Batch + Review[]
+   * pair so the export menu has the canonical IDB records (with
+   * thumbnails) — using the in-memory `items` array would force the
+   * export pipeline to re-run thumbnail generation and stitching.
+   */
+  const [hydrated, setHydrated] = useState<HydratedBatch | null>(null);
 
   // Refs sync via effect so we don't violate the
   // react-hooks/refs rule (refs must not be written during render).
@@ -125,8 +137,27 @@ export default function BatchPage() {
     setBatchStartedAt(null);
     setTickMs(0);
     setSavedBatchId(null);
+    setHydrated(null);
     setRunning(false);
   }, []);
+
+  // Hydrate the persisted batch + reviews once the saved id lands so the
+  // export menu has the canonical IDB records (with thumbnails) instead
+  // of the in-memory queue items.
+  useEffect(() => {
+    if (!savedBatchId) return;
+    let cancelled = false;
+    hydrateBatch(savedBatchId)
+      .then((h) => {
+        if (!cancelled && h) setHydrated(h);
+      })
+      .catch((cause) => {
+        console.error("[batch] hydrate failed", cause);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [savedBatchId]);
 
   const handleLoadDemo = useCallback(async () => {
     try {
@@ -412,16 +443,24 @@ export default function BatchPage() {
               />
             </label>
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled
-                aria-disabled="true"
-                title="Exports ship in slice 0008"
-              >
-                Export
-              </Button>
+              {hydrated ? (
+                <ExportMenu
+                  mode="batch"
+                  batch={hydrated.batch}
+                  reviews={hydrated.reviews}
+                />
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  aria-disabled="true"
+                  title="Run a batch and let it save before exporting."
+                >
+                  Export
+                </Button>
+              )}
               {savedBatchId ? (
                 <span className="text-xs text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1">
                   <Sparkles className="size-3.5" aria-hidden="true" />
