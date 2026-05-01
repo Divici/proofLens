@@ -88,21 +88,38 @@ export interface Review {
   hasOverrides: boolean;
 }
 
-/** Slice 0007 placeholder — typed up-front so the schema is stable. */
+/** Per-batch aggregate counters surfaced in the batch summary panel. */
+export interface BatchSummary {
+  total: number;
+  pass: number;
+  fail: number;
+  needsManualReview: number;
+  requestBetterImage: number;
+  passWithWarnings: number;
+  /** Number of files that failed extraction (network / 5xx / abort). */
+  failures: number;
+  /** Number of files where at least one quality flag fired. */
+  qualityIssues: number;
+  /** Average per-file processing time, ms. 0 when total is 0. */
+  avgProcessingTimeMs: number;
+  /** Wall-clock duration of the entire batch run, ms. */
+  totalDurationMs: number;
+}
+
+/**
+ * Slice 0007 — batch record. Each batch run lands here with the list of
+ * per-file review ids it produced. Reviews live in their own store
+ * (`db.review`) so the History page sees them too.
+ */
 export interface Batch {
   id: string;
   createdAt: ISO8601;
   reviewerName: string;
   reviewIds: string[];
   status: "queued" | "processing" | "complete" | "partial-failed";
-  summary: {
-    total: number;
-    pass: number;
-    fail: number;
-    needsManualReview: number;
-    requestBetterImage: number;
-    passWithWarnings: number;
-  };
+  summary: BatchSummary;
+  /** Display-friendly title (count + first brand or filename). */
+  title: string;
 }
 
 /** Free-form string-keyed settings store. */
