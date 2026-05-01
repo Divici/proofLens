@@ -22,8 +22,8 @@
 | 0004 | Beverage rules + image quality | **Done** (merged) | 4-5h |
 | 0005 | Override + IndexedDB history | **Done** (merged) — milestone | 5-6h |
 | 0006 | Live camera capture | **Done** (merged) | 4-5h |
-| 0007 | Batch flow + Web Worker pool | In-progress | 6-7h |
-| 0008 | Exports (PDF + CSV + JSON) | Pending | 4-5h |
+| 0007 | Batch flow + Web Worker pool | **Done** (merged) | 6-7h |
+| 0008 | Exports (PDF + CSV + JSON) | In-progress | 4-5h |
 | 0009 | Polish: demo + a11y + restricted-network + docs | Pending | 5-6h |
 
 Total estimate: 43-53h of slice work + Phase 6 audit + Phase 7 eval +
@@ -31,7 +31,7 @@ Phase 8 sweep + Phase 9 deploy.
 
 ## Tests
 
-- Test count: Vitest 386 / Playwright 14 (after slice 0006). Mutation fuzz at numRuns:100 with 0 slips. Lint warnings: 0.
+- Test count: Vitest 473 / Playwright 17 (after slice 0007). Mutation fuzz at numRuns:100 with 0 slips. Lint warnings: 0.
 - Goal at end of build: every R-ID has at least one passing test;
   gov-warning mutation fuzz harness with ≥100 generated mutations all
   rejected; Lighthouse a11y ≥ 95 on every route; verdict accuracy
