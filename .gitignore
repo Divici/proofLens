@@ -40,6 +40,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+vitest.log
+playwright.log
+
+# Local crash dumps
+*.stackdump
 
 # Test / coverage
 coverage/

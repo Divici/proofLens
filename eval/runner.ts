@@ -26,7 +26,8 @@
  */
 import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname, resolve as pathResolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
 import { runVerificationPipeline } from "../lib/verify/pipeline.ts";
 import {
   ApplicationDataSchema,
@@ -404,7 +405,6 @@ function summarise(layerNum: 1 | 2, results: CaseResult[]): LayerSummary {
 
 function getGitSha(): string {
   try {
-    const { execSync } = require("node:child_process");
     return execSync("git rev-parse HEAD", { cwd: REPO_ROOT })
       .toString()
       .trim();

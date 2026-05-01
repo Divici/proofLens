@@ -5,6 +5,47 @@ import {
   normaliseForLadder,
 } from "./ladder";
 
+interface NuancedMatchInput {
+  extracted: string | null;
+  expected: string;
+  callJudge?: CallJudgeFn;
+}
+
+/**
+ * Brand-name nuanced match. Brand strings are short and identity-bearing
+ * (e.g. "Stone's Throw" vs "Stones Throw") so we use the standard ladder
+ * with the default thresholds.
+ */
+export function brandMatch(input: NuancedMatchInput): Promise<LadderOutcome> {
+  return runLadder({ ...input, fieldName: "brand" });
+}
+
+/**
+ * Class / type designation nuanced match.
+ *
+ * E.g. "Kentucky Straight Bourbon Whiskey" vs "Kentucky Straight Bourbon
+ * Whisky" (one letter off). Token-set ratio handles "Bourbon Whiskey, Aged
+ * 10 Years" vs "Bourbon Whiskey".
+ */
+export function classTypeMatch(
+  input: NuancedMatchInput,
+): Promise<LadderOutcome> {
+  return runLadder({ ...input, fieldName: "classType" });
+}
+
+/**
+ * Bottler / producer name nuanced match.
+ *
+ * Bottler strings often carry corporate suffixes ("LLC", "Inc.", "Co.")
+ * that the OCR may or may not capture. token_set_ratio handles those
+ * extra/missing tokens gracefully.
+ */
+export function bottlerMatch(
+  input: NuancedMatchInput,
+): Promise<LadderOutcome> {
+  return runLadder({ ...input, fieldName: "bottlerName" });
+}
+
 /**
  * Country-of-origin nuanced match.
  *
@@ -42,11 +83,9 @@ function stripLeading(text: string): string {
   return out.trim();
 }
 
-export async function countryMatch(input: {
-  extracted: string | null;
-  expected: string;
-  callJudge?: CallJudgeFn;
-}): Promise<LadderOutcome> {
+export async function countryMatch(
+  input: NuancedMatchInput,
+): Promise<LadderOutcome> {
   const cleanedExtracted =
     typeof input.extracted === "string"
       ? stripLeading(input.extracted)

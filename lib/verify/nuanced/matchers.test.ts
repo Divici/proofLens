@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { brandMatch } from "./brand";
-import { classTypeMatch } from "./class-type";
-import { bottlerMatch } from "./bottler";
-import { countryMatch } from "./country";
+import {
+  brandMatch,
+  classTypeMatch,
+  bottlerMatch,
+  countryMatch,
+} from "./matchers";
 
 describe("brandMatch", () => {
   it("passes byte-equal brands", async () => {
@@ -38,7 +40,6 @@ describe("bottlerMatch", () => {
       extracted: "Old Tom Distillery",
       expected: "Old Tom Distillery, LLC",
     });
-    // token_set_ratio handles missing trailing tokens — should be ≥ 0.92.
     expect(["pass", "likely-match"]).toContain(r.kind);
   });
 });

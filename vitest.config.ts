@@ -18,8 +18,9 @@ export default defineConfig({
     setupFiles: ["./test/setup.ts"],
     include: ["**/*.{test,spec}.{ts,tsx}"],
     exclude: [
-      "node_modules/**",
+      "**/node_modules/**",
       ".next/**",
+      ".worktrees/**",
       "test/e2e/**",
       "playwright.config.ts",
     ],

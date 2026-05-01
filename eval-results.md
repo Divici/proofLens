@@ -1,7 +1,7 @@
 # Eval Results — 2026-05-01
 
-**Git SHA:** `60955ad7a6ed77962c4c0a6f9a46bbd4c6dc2ed0`
-**Timestamp:** 2026-05-01T03:39:24.584Z
+**Git SHA:** `906c13d5498e388974cf90e96b5c606542bb7dd3`
+**Timestamp:** 2026-05-01T04:05:18.004Z
 **Conductor version:** Phase 7 eval (golden-set v1)
 **Total run cost:** $0.0000 (Layer 1 only)
 

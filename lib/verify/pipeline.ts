@@ -7,10 +7,12 @@ import type { TesseractWord } from "@/lib/ocr/tesseract";
 import { govWarningMatch } from "./strict/gov-warning";
 import { abvMatch } from "./strict/abv";
 import { netContentsMatch } from "./strict/net-contents";
-import { brandMatch } from "./nuanced/brand";
-import { classTypeMatch } from "./nuanced/class-type";
-import { bottlerMatch } from "./nuanced/bottler";
-import { countryMatch } from "./nuanced/country";
+import {
+  brandMatch,
+  classTypeMatch,
+  bottlerMatch,
+  countryMatch,
+} from "./nuanced/matchers";
 import {
   resolveStrictStatus,
   resolveNuancedStatus,
