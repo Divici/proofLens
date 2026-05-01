@@ -17,12 +17,11 @@
  * with Vitest. This module is the thin browser glue that calls them and
  * downloads the result via an anchor + object URL.
  *
- * NB: ZIP generation in the browser uses native `archiver`-incompatible
- * primitives (no Node streams), so the client builds ZIPs by collecting
- * each entry's bytes and assembling a minimal ZIP envelope via
- * @react-pdf and a tiny in-house helper. To keep the surface small and
- * the test footprint tight, browser-side ZIP is delegated to a dynamic
- * import of a tiny ZIP helper. See `lib/export/zip/browser.ts`.
+ * NB: ZIP generation in the browser uses an in-house minimal ZIP
+ * helper (no Node streams) — see `lib/export/zip/browser.ts`. The client
+ * collects each entry's bytes and assembles a stored (level-0) ZIP
+ * envelope. The helper is dynamically imported so it only ships when a
+ * batch export actually runs.
  */
 
 import type { Batch, Review } from "@/lib/storage/types";
