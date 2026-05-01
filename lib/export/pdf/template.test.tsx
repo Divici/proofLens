@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { renderToBuffer, pdf } from "@react-pdf/renderer";
-import { isValidElement, type ReactElement } from "react";
+import { isValidElement } from "react";
 import { ReviewReport } from "./template";
 import {
   makeReviewFixture,

@@ -11,14 +11,22 @@ import type { FieldResult } from "@/lib/verify/types";
 import type { Review, Batch } from "@/lib/storage/types";
 import { CURRENT_RULES_VERSION } from "@/lib/storage/types";
 
-const TINY_JPEG_BYTES = Uint8Array.from([
-  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
-  0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9,
-]);
+/**
+ * 8×8 grey JPEG, real valid bytes (built once via `sharp(...).jpeg()`).
+ * Used by export tests so `react-pdf`'s JPEG decoder doesn't throw.
+ */
+const TINY_JPEG_BASE64 =
+  "/9j/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAAIAAgDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AKwAH//Z";
+
+const TINY_JPEG_BYTES = Uint8Array.from(
+  Buffer.from(TINY_JPEG_BASE64, "base64"),
+);
 
 export function makeThumbnailBlob(): Blob {
   return new Blob([TINY_JPEG_BYTES], { type: "image/jpeg" });
 }
+
+export const TINY_JPEG_BASE64_FIXTURE = TINY_JPEG_BASE64;
 
 export function makeExpected(): ApplicationData {
   return {

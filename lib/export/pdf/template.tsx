@@ -242,8 +242,11 @@ export function ReviewReport({
           </View>
         </View>
 
-        {/* 3. Thumbnail */}
+        {/* 3. Thumbnail.
+            `@react-pdf/renderer` <Image> doesn't support an alt prop —
+            jsx-a11y is a DOM-side rule and we suppress it here. */}
         {thumbnailDataUrl ? (
+          // eslint-disable-next-line jsx-a11y/alt-text
           <Image src={thumbnailDataUrl} style={styles.thumbnail} />
         ) : null}
 
