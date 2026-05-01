@@ -16,6 +16,7 @@ import { LabelUploader } from "@/components/LabelUploader";
 import { ExpectedDataForm } from "@/components/ExpectedDataForm";
 import { VerificationDetail } from "@/components/VerificationDetail";
 import { CameraCapture } from "@/components/CameraCapture";
+import { ExportMenu } from "@/components/ExportMenu";
 import { Button } from "@/components/ui/button";
 import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 import type {
@@ -37,6 +38,40 @@ import {
   setReviewerName as persistReviewerName,
 } from "@/lib/storage/settings-repo";
 import { getQuotaStatus, isQuotaWarning } from "@/lib/storage/quota";
+
+/**
+ * Inline helper component — given a saved review id, fetches the IDB
+ * record and renders an `<ExportMenu mode="single">`. We isolate this
+ * here so the menu can read the persisted Review (which carries the
+ * thumbnail Blob and the canonical FieldResults the PDF/JSON exporters
+ * expect) instead of stitching state together from page-level pieces.
+ */
+function SavedReviewExport({ reviewId }: { reviewId: string }) {
+  const [review, setReview] = useState<
+    import("@/lib/storage/types").Review | null
+  >(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getReview(reviewId)
+      .then((r) => {
+        if (!cancelled && r) setReview(r);
+      })
+      .catch(() => {
+        // Non-fatal — export menu just won't appear.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewId]);
+
+  if (!review) return null;
+  return (
+    <div className="flex justify-end">
+      <ExportMenu mode="single" review={review} />
+    </div>
+  );
+}
 
 interface ExtractionResult {
   extracted: ExtractedLabelData;
@@ -528,24 +563,35 @@ function ReviewPageInner() {
             ) : null}
 
             {successResult ? (
-              <VerificationDetail
-                imageSrc={previewUrl}
-                fieldResults={fieldResults}
-                overall={successResult.overall}
-                processingTimeMs={successResult.processingTimeMs}
-                primaryUsd={successResult.aiSpend.primaryUsd}
-                ocrConfidence={successResult.ocrConfidence}
-                imageQualityFlags={successResult.imageQualityFlags ?? []}
-                beverageType={successResult.expected.beverageType}
-                reviewerName={reviewerName}
-                onOverrideSave={handleOverrideSave}
-                onOverrideClear={handleOverrideClear}
-                onReviewerNameChange={handleReviewerNameChange}
-                onSaveDecision={handleSaveDecision}
-                existingDecision={existingDecision}
-                saving={saving}
-                quotaWarning={quotaWarning}
-              />
+              <>
+                <VerificationDetail
+                  imageSrc={previewUrl}
+                  fieldResults={fieldResults}
+                  overall={successResult.overall}
+                  processingTimeMs={successResult.processingTimeMs}
+                  primaryUsd={successResult.aiSpend.primaryUsd}
+                  ocrConfidence={successResult.ocrConfidence}
+                  imageQualityFlags={successResult.imageQualityFlags ?? []}
+                  beverageType={successResult.expected.beverageType}
+                  reviewerName={reviewerName}
+                  onOverrideSave={handleOverrideSave}
+                  onOverrideClear={handleOverrideClear}
+                  onReviewerNameChange={handleReviewerNameChange}
+                  onSaveDecision={handleSaveDecision}
+                  existingDecision={existingDecision}
+                  saving={saving}
+                  quotaWarning={quotaWarning}
+                />
+                {/* Export menu — only available after the review has been
+                    saved (the export packs the IndexedDB Review record). */}
+                {savedReviewId ? (
+                  <SavedReviewExport reviewId={savedReviewId} />
+                ) : (
+                  <p className="text-muted-foreground text-xs">
+                    Save the review to enable PDF / JSON export.
+                  </p>
+                )}
+              </>
             ) : null}
           </section>
         </div>
