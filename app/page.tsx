@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Camera } from "lucide-react";
+import { Camera, Layers } from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -24,6 +24,13 @@ export default function Home() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link href="/review" className={buttonVariants({ size: "lg" })}>
             Start a review
+          </Link>
+          <Link
+            href="/batch"
+            className={buttonVariants({ size: "lg", variant: "outline" })}
+          >
+            <Layers className="size-4" aria-hidden="true" />
+            Batch verify
           </Link>
           <Link
             href="/review?source=camera"

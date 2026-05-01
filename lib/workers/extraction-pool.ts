@@ -20,7 +20,7 @@
  *     events into the queue table without polling.
  */
 
-export interface ExtractionJob<TPayload, _TResult> {
+export interface ExtractionJob<TPayload> {
   /** Stable id for cross-referencing UI rows. */
   id: string;
   payload: TPayload;
@@ -31,7 +31,7 @@ export type ExtractionResult<TResult> =
   | { ok: false; id: string; error: string; durationMs: number };
 
 export type JobRunner<TPayload, TResult> = (
-  job: ExtractionJob<TPayload, TResult>,
+  job: ExtractionJob<TPayload>,
   signal: AbortSignal,
 ) => Promise<TResult>;
 
@@ -61,7 +61,7 @@ export interface ExtractionPoolOptions<TPayload, TResult> {
 
 export interface ExtractionPool<TPayload, TResult> {
   runAll(
-    jobs: ReadonlyArray<ExtractionJob<TPayload, TResult>>,
+    jobs: ReadonlyArray<ExtractionJob<TPayload>>,
   ): Promise<ExtractionResult<TResult>[]>;
   abort(): void;
   subscribe(handler: (evt: PoolEvent<TResult>) => void): () => void;

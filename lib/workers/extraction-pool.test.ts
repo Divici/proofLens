@@ -12,7 +12,7 @@ interface TestJobShape {
   durationMs?: number;
 }
 
-function buildJob(shape: TestJobShape): ExtractionJob<TestJobShape, string> {
+function buildJob(shape: TestJobShape): ExtractionJob<TestJobShape> {
   return { id: shape.id, payload: shape };
 }
 
@@ -24,7 +24,7 @@ function makeRunner(
   tracker: { running: number; maxRunning: number },
 ): JobRunner<TestJobShape, string> {
   return async (
-    job: ExtractionJob<TestJobShape, string>,
+    job: ExtractionJob<TestJobShape>,
     signal: AbortSignal,
   ) => {
     tracker.running += 1;

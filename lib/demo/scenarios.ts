@@ -148,3 +148,47 @@ export const DEMO_SCENARIOS: ReadonlyArray<DemoScenario> = [
   DEMO_SCENARIO_05,
   DEMO_SCENARIO_06,
 ];
+
+/**
+ * Slice 0007 — bundled demo batch (Scenario 07).
+ *
+ * The "Load demo batch" button on `/batch` fetches the manifest at
+ * `/demo-batch/manifest.json`, reads each entry's image, and pairs it
+ * to the embedded `expected` row. Reviewers can then click Start and
+ * watch a 6-file batch run end-to-end without picking files manually.
+ */
+export interface DemoBatchEntry {
+  /** Filename used for queue display + pairing key. */
+  filename: string;
+  /** Public path under /public — fetched at runtime. */
+  labelPath: string;
+  expected: ApplicationData;
+}
+
+export interface DemoBatchPayload {
+  scenarioId: "07-demo-batch";
+  entries: DemoBatchEntry[];
+}
+
+export const DEMO_BATCH_SCENARIO_ID = "07-demo-batch" as const;
+export const DEMO_BATCH_MANIFEST_URL = "/demo-batch/manifest.json";
+
+/**
+ * Fetch + validate the bundled demo batch manifest. Throws on any
+ * shape mismatch so the page can surface a single toast.
+ */
+export async function loadDemoBatchManifest(): Promise<DemoBatchPayload> {
+  const res = await fetch(DEMO_BATCH_MANIFEST_URL);
+  if (!res.ok) {
+    throw new Error(`demo manifest fetch failed (HTTP ${res.status})`);
+  }
+  const json = (await res.json()) as DemoBatchPayload;
+  if (
+    !json ||
+    json.scenarioId !== DEMO_BATCH_SCENARIO_ID ||
+    !Array.isArray(json.entries)
+  ) {
+    throw new Error("demo manifest is malformed");
+  }
+  return json;
+}
