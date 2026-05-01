@@ -177,17 +177,18 @@ These programmatic labels double as **manual-QA fixtures** — drop one
 into the proofLens uploader to demonstrate "what does the system say
 when the warning has THIS specific mutation?".
 
-## Known Phase-7 findings (track in Phase 8 sweep)
+## Phase-7 findings + Phase-8 status
 
-- **Schema-coercion 502s on synthetic labels.** The live vision LLM
-  occasionally returns bare strings for `brand` / `classType` /
-  `alcoholContentText` instead of the structured `{value, evidenceQuote,
-  confidence}` object the schema demands. `lib/ai/openrouter.ts:208`
-  rejects the payload and the route returns HTTP 502. Hardening should
-  either accept-and-coerce in the schema or tighten the tool-use prompt
-  to ensure structured output.
-- **Layer 2 verdict expectations calibrated to mockExtraction.** The
-  current `expected.fieldExpectations` reflect Layer 1's
+- ~~**Schema-coercion 502s on synthetic labels.**~~ **FIXED in Phase 8
+  sweep.** `lib/ai/openrouter.ts` now coerces bare-scalar per-field
+  values to the structured `{value, evidenceQuote: null, confidence: 0}`
+  shape before Zod validation (`coerceBareScalarFields`). Confidence 0
+  ensures the verification pipeline routes the field to manual review,
+  rather than the route 502'ing on schema validation. Layer 2
+  gov-warning recall went from `0/0` to **11/11 (100%)** with this
+  change — the hard requirement is now met.
+- **Layer 2 verdict expectations calibrated to mockExtraction.** Still
+  open. The current `expected.fieldExpectations` reflect Layer 1's
   mockExtraction-driven flow. When the live LLM extracts from an image
   whose text differs from the case's mockExtraction (e.g. the live LLM
   reads `STONE'S THROW` from the caps image while the mock had

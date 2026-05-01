@@ -298,4 +298,128 @@ describe("extractLabel", () => {
       extractLabel(Buffer.from("img"), "anthropic/claude-haiku-4.5"),
     ).rejects.toBeInstanceOf(OpenRouterExtractionError);
   });
+
+  /**
+   * Regression: Anthropic vision occasionally emits a bare scalar for a
+   * per-field property — e.g. `brand: "OLD TOM"` instead of the full
+   * `{ value, evidenceQuote, confidence }` object — even with strict
+   * tool-use enabled. Phase-7 Layer-2 surfaced this on text-heavy
+   * synthetic labels. We coerce bare scalars to the structured shape
+   * with `confidence: 0` so the verification pipeline routes the field
+   * to manual review, rather than 502'ing the whole request.
+   */
+  it("coerces bare-scalar per-field values to the structured shape", async () => {
+    const partial = {
+      ...TOOL_PAYLOAD,
+      // The three fields that Phase-7 surfaced as bare strings in prod.
+      brand: "OLD TOM DISTILLERY",
+      classType: "Kentucky Straight Bourbon Whiskey",
+      alcoholContentText: "45% Alc./Vol.",
+    };
+    const body = {
+      ...SUCCESS_BODY,
+      choices: [
+        {
+          ...SUCCESS_BODY.choices[0]!,
+          message: {
+            ...SUCCESS_BODY.choices[0]!.message,
+            tool_calls: [
+              {
+                id: "call_partial",
+                type: "function",
+                function: {
+                  name: "record_label_fields",
+                  arguments: JSON.stringify(partial),
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    server.use(
+      http.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        () => HttpResponse.json(body, { status: 200 }),
+      ),
+    );
+
+    const result = await extractLabel(
+      Buffer.from("img"),
+      "anthropic/claude-haiku-4.5",
+    );
+
+    // Bare-string fields are wrapped as `{ value, evidenceQuote: null,
+    // confidence: 0 }`. Confidence 0 ensures the matcher demotes the row.
+    expect(result.data.brand).toEqual({
+      value: "OLD TOM DISTILLERY",
+      evidenceQuote: null,
+      confidence: 0,
+    });
+    expect(result.data.classType).toEqual({
+      value: "Kentucky Straight Bourbon Whiskey",
+      evidenceQuote: null,
+      confidence: 0,
+    });
+    expect(result.data.alcoholContentText).toEqual({
+      value: "45% Alc./Vol.",
+      evidenceQuote: null,
+      confidence: 0,
+    });
+    // Properly-shaped fields pass through unchanged.
+    expect(result.data.abvPercent).toEqual(TOOL_PAYLOAD.abvPercent);
+  });
+
+  it("coerces a bare numeric scalar to the structured shape", async () => {
+    const partial = {
+      ...TOOL_PAYLOAD,
+      abvPercent: 45,
+      proof: 90,
+    };
+    const body = {
+      ...SUCCESS_BODY,
+      choices: [
+        {
+          ...SUCCESS_BODY.choices[0]!,
+          message: {
+            ...SUCCESS_BODY.choices[0]!.message,
+            tool_calls: [
+              {
+                id: "call_num",
+                type: "function",
+                function: {
+                  name: "record_label_fields",
+                  arguments: JSON.stringify(partial),
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    server.use(
+      http.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        () => HttpResponse.json(body, { status: 200 }),
+      ),
+    );
+
+    const result = await extractLabel(
+      Buffer.from("img"),
+      "anthropic/claude-haiku-4.5",
+    );
+
+    expect(result.data.abvPercent).toEqual({
+      value: 45,
+      evidenceQuote: null,
+      confidence: 0,
+    });
+    expect(result.data.proof).toEqual({
+      value: 90,
+      evidenceQuote: null,
+      confidence: 0,
+    });
+  });
 });

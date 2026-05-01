@@ -39,6 +39,45 @@ export class OpenRouterExtractionError extends Error {
   }
 }
 
+/**
+ * Per-field keys that the strict tool schema declares as structured
+ * `{ value, evidenceQuote, confidence }` objects. Anthropic vision
+ * occasionally collapses one of these to a bare scalar even with strict
+ * tool-use enabled (Phase-7 Layer-2 surfaced this on text-heavy synthetic
+ * labels). We coerce the bare scalar to the structured shape with
+ * `confidence: 0` so the verification pipeline routes the field to manual
+ * review rather than the route 502'ing on schema validation.
+ */
+const PER_FIELD_KEYS = [
+  "brand",
+  "classType",
+  "alcoholContentText",
+  "abvPercent",
+  "proof",
+  "netContents",
+  "bottlerName",
+  "bottlerAddress",
+  "countryOfOrigin",
+  "governmentWarningText",
+] as const;
+
+function coerceBareScalarFields(payload: unknown): unknown {
+  if (typeof payload !== "object" || payload === null) return payload;
+  const obj = payload as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...obj };
+  for (const key of PER_FIELD_KEYS) {
+    const v = out[key];
+    if (
+      typeof v === "string" ||
+      typeof v === "number" ||
+      typeof v === "boolean"
+    ) {
+      out[key] = { value: v, evidenceQuote: null, confidence: 0 };
+    }
+  }
+  return out;
+}
+
 export interface ExtractLabelResult {
   data: ExtractedLabelData;
   costUsd: number;
@@ -202,6 +241,8 @@ export async function extractLabel(
       cause,
     );
   }
+
+  parsedArguments = coerceBareScalarFields(parsedArguments);
 
   const validation = ExtractedLabelDataSchema.safeParse(parsedArguments);
   if (!validation.success) {
