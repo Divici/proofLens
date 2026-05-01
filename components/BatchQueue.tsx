@@ -156,6 +156,11 @@ export function BatchQueue({
   }, [items, statusFilter, beverageFilter]);
 
   const failedCount = items.filter((i) => i.status === "failed").length;
+  const filtersDirty = statusFilter !== "all" || beverageFilter !== "all";
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setBeverageFilter("all");
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -197,6 +202,17 @@ export function BatchQueue({
             <option value="malt-beverage">malt-beverage</option>
             <option value="unknown">unknown</option>
           </select>
+          {filtersDirty ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              aria-label="Reset filters"
+            >
+              Reset filters
+            </Button>
+          ) : null}
         </div>
         <Button
           type="button"

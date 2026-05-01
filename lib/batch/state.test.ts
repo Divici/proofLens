@@ -130,4 +130,63 @@ describe("constants", () => {
     expect(SOFT_WARN_THRESHOLD).toBe(50);
     expect(HARD_CAP).toBe(250);
   });
+
+  it("exports POOL_CONCURRENCY (single source of truth for the worker pool)", async () => {
+    const mod = await import("./state");
+    expect(mod.POOL_CONCURRENCY).toBe(10);
+  });
+});
+
+describe("composeBatchTitle", () => {
+  it("uses 'N labels — <brand>' when the first row has a brand", async () => {
+    const { composeBatchTitle } = await import("./state");
+    expect(
+      composeBatchTitle({
+        count: 3,
+        firstBrand: "Old Tom",
+        firstFilename: "a.jpg",
+      }),
+    ).toBe("3 labels — Old Tom");
+  });
+
+  it("falls back to the filename when the first brand is empty", async () => {
+    const { composeBatchTitle } = await import("./state");
+    expect(
+      composeBatchTitle({
+        count: 5,
+        firstBrand: "",
+        firstFilename: "first.jpg",
+      }),
+    ).toBe("5 labels — first.jpg");
+  });
+
+  it("falls back to the filename when the first brand is whitespace-only", async () => {
+    const { composeBatchTitle } = await import("./state");
+    expect(
+      composeBatchTitle({
+        count: 5,
+        firstBrand: "   ",
+        firstFilename: "first.jpg",
+      }),
+    ).toBe("5 labels — first.jpg");
+  });
+
+  it("returns just the count when neither brand nor filename are usable", async () => {
+    const { composeBatchTitle } = await import("./state");
+    expect(
+      composeBatchTitle({ count: 7, firstBrand: "", firstFilename: "" }),
+    ).toBe("7 labels");
+  });
+
+  it("caps the result at 80 characters", async () => {
+    const { composeBatchTitle } = await import("./state");
+    const longBrand = "X".repeat(200);
+    const result = composeBatchTitle({
+      count: 9,
+      firstBrand: longBrand,
+      firstFilename: "ignored.jpg",
+    });
+    expect(result.length).toBeLessThanOrEqual(80);
+    expect(result.startsWith("9 labels — ")).toBe(true);
+  });
 });

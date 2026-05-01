@@ -17,6 +17,8 @@ import { parseExpectedDataCsv } from "@/lib/batch/csv";
 import { parseExpectedDataJson } from "@/lib/batch/json";
 import {
   buildBatchSummary,
+  composeBatchTitle,
+  POOL_CONCURRENCY,
   type SummaryItem,
 } from "@/lib/batch/state";
 import {
@@ -43,7 +45,6 @@ interface PendingItem extends BatchQueueItem {
   file: File;
 }
 
-const POOL_CONCURRENCY = 10;
 // 100 req/min default per provider — keep slightly under so we don't
 // hit a 429 before the rate-limit returns.
 const RATE_LIMIT_MIN_INTERVAL_MS = 600;
@@ -291,7 +292,15 @@ export default function BatchPage() {
   // Save the batch + reviews once everything finishes.
   useEffect(() => {
     if (!allDone || running || savedBatchId !== null) return;
-    if (!reviewerName.trim()) return;
+    // Defensive: Start is gated on a non-empty reviewer name, so this
+    // branch should never fire — but if it does, surface a toast so
+    // reviewers don't lose their work silently.
+    if (!reviewerName.trim()) {
+      toast.error(
+        "Add a reviewer name to save this batch — refresh will lose results.",
+      );
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {
@@ -327,6 +336,7 @@ export default function BatchPage() {
           });
           reviews.push(review);
         }
+        const firstItem = itemsRef.current[0];
         const batch: Batch = {
           id: batchId,
           createdAt: new Date().toISOString(),
@@ -334,7 +344,11 @@ export default function BatchPage() {
           reviewIds: reviews.map((r) => r.id),
           status: summary.failures > 0 ? "partial-failed" : "complete",
           summary,
-          title: `${reviews.length} labels`,
+          title: composeBatchTitle({
+            count: reviews.length,
+            firstBrand: firstItem?.expected.brand ?? "",
+            firstFilename: firstItem?.filename ?? "",
+          }),
         };
         await saveBatchWithReviews(batch, reviews);
         if (cancelled) return;
@@ -363,11 +377,6 @@ export default function BatchPage() {
     void persistReviewerName(reviewerName.trim());
   }, [reviewerName]);
 
-  const exportToast = useCallback(() => {
-    toast(
-      "Export coming in slice 0008 — batch ZIP + per-review PDF lands next.",
-    );
-  }, []);
 
   return (
     <>
@@ -407,8 +416,9 @@ export default function BatchPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={exportToast}
-                disabled={items.length === 0}
+                disabled
+                aria-disabled="true"
+                title="Exports ship in slice 0008"
               >
                 Export
               </Button>
@@ -431,6 +441,11 @@ export default function BatchPage() {
             onStart={startBatch}
             starting={running}
             onLoadDemo={handleLoadDemo}
+            startDisabledReason={
+              reviewerName.trim()
+                ? null
+                : "Enter a reviewer name above to start the batch."
+            }
           />
 
           {pairing.unpairedLabels.length > 0 ? (

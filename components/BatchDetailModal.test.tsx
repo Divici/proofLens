@@ -101,6 +101,14 @@ describe("BatchDetailModal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("shows a batch-context image fallback message instead of 'No image uploaded yet.'", () => {
+    render(<BatchDetailModal item={completedItem} onClose={() => {}} />);
+    expect(
+      screen.getByText(/image not retained for batch view/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no image uploaded yet/i)).not.toBeInTheDocument();
+  });
+
   it("falls back to a placeholder for incomplete items", () => {
     const queued = { ...completedItem, status: "queued" as const, response: null };
     render(<BatchDetailModal item={queued} onClose={() => {}} />);

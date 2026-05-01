@@ -49,6 +49,30 @@ describe("LabelImagePreview", () => {
     expect(polygon).toBeNull();
   });
 
+  it("renders the default fallback when src is null", () => {
+    render(<LabelImagePreview src={null} alt="None" bbox={null} />);
+    expect(screen.getByText(/no image uploaded yet/i)).toBeInTheDocument();
+  });
+
+  it("renders a custom emptyMessage when supplied and src is null", () => {
+    render(
+      <LabelImagePreview
+        src={null}
+        alt="None"
+        bbox={null}
+        emptyMessage="Image not retained for batch view — open this review from /history to see the original."
+      />,
+    );
+    expect(
+      screen.getByText(
+        /image not retained for batch view — open this review from \/history/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no image uploaded yet/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("uses the bbox's imageWidth/imageHeight as the SVG viewBox", () => {
     const { container } = render(
       <LabelImagePreview

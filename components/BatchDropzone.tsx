@@ -9,6 +9,7 @@ import {
   estimateDurationMs,
   formatEta,
   HARD_CAP,
+  POOL_CONCURRENCY,
   SOFT_WARN_THRESHOLD,
 } from "@/lib/batch/state";
 import type { ExpectedRow } from "@/lib/batch/pair";
@@ -25,6 +26,12 @@ export interface BatchDropzoneProps {
   starting: boolean;
   /** Used by the "Load demo batch" affordance on /batch (track 6). */
   onLoadDemo?: () => void;
+  /**
+   * When non-null, disables the Start button and surfaces this string as a
+   * native tooltip. Used by the parent to gate the run on prerequisites
+   * the dropzone doesn't own (e.g. reviewer name).
+   */
+  startDisabledReason?: string | null;
 }
 
 /**
@@ -46,6 +53,7 @@ export function BatchDropzone({
   onStart,
   starting,
   onLoadDemo,
+  startDisabledReason = null,
 }: BatchDropzoneProps) {
   const labelsInputId = useId();
   const pairedInputId = useId();
@@ -246,7 +254,7 @@ export function BatchDropzone({
               ${estimateCostUsd(labels.length).toFixed(2)}
             </span>
             {", "}
-            {formatEta(estimateDurationMs(labels.length, 10))} ETA
+            {formatEta(estimateDurationMs(labels.length, POOL_CONCURRENCY))} ETA
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -274,7 +282,13 @@ export function BatchDropzone({
             type="button"
             size="sm"
             onClick={handleStartClick}
-            disabled={labels.length === 0 || pairedRows.length === 0 || starting}
+            disabled={
+              labels.length === 0 ||
+              pairedRows.length === 0 ||
+              starting ||
+              startDisabledReason !== null
+            }
+            title={startDisabledReason ?? undefined}
           >
             {starting ? "Starting…" : "Start batch"}
           </Button>
@@ -287,7 +301,7 @@ export function BatchDropzone({
           description={`You're about to process ${labels.length} labels. Estimate: $${estimateCostUsd(
             labels.length,
           ).toFixed(2)}, ${formatEta(
-            estimateDurationMs(labels.length, 10),
+            estimateDurationMs(labels.length, POOL_CONCURRENCY),
           )} ETA. Keep this tab open until it completes.`}
           confirmLabel="Start"
           onCancel={() => setConfirmModal(null)}

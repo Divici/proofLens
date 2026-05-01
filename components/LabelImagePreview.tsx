@@ -8,6 +8,12 @@ export interface LabelImagePreviewProps {
   alt: string;
   bbox: BoundingBox | null;
   className?: string;
+  /**
+   * Override the no-image fallback copy. Used in batch context where the
+   * file was uploaded but the page didn't retain an object URL —
+   * "No image uploaded yet." would mislead the reviewer.
+   */
+  emptyMessage?: string;
 }
 
 /**
@@ -24,16 +30,17 @@ export function LabelImagePreview({
   alt,
   bbox,
   className,
+  emptyMessage = "No image uploaded yet.",
 }: LabelImagePreviewProps) {
   if (!src) {
     return (
       <div
         className={cn(
-          "border-border bg-muted/30 text-muted-foreground flex aspect-[4/5] items-center justify-center rounded-xl border border-dashed text-sm",
+          "border-border bg-muted/30 text-muted-foreground flex aspect-[4/5] items-center justify-center rounded-xl border border-dashed p-4 text-center text-sm",
           className,
         )}
       >
-        No image uploaded yet.
+        {emptyMessage}
       </div>
     );
   }

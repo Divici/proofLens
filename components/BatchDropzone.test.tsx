@@ -100,6 +100,45 @@ describe("BatchDropzone", () => {
     expect(screen.getByRole("button", { name: /start batch/i })).toBeEnabled();
   });
 
+  it("disables Start with a tooltip when startDisabledReason is provided", () => {
+    const file = imageFile("a.jpg");
+    render(
+      <BatchDropzone
+        labels={[file]}
+        pairedRows={[
+          {
+            filename: "a.jpg",
+            expected: {
+              brand: "B",
+              classType: "C",
+              abv: 40,
+              netContents: "750 mL",
+              bottlerName: "BR",
+              bottlerAddress: "ADDR",
+              countryOfOrigin: "United States",
+              govWarningRequired: true,
+              applicationNotes: "",
+              beverageType: "distilled-spirits",
+            },
+          },
+        ]}
+        warnings={[]}
+        onLabelsAdded={() => {}}
+        onPairedTextLoaded={() => {}}
+        onClear={() => {}}
+        onStart={() => {}}
+        starting={false}
+        startDisabledReason="Enter a reviewer name above to start the batch."
+      />,
+    );
+    const btn = screen.getByRole("button", { name: /start batch/i });
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute(
+      "title",
+      "Enter a reviewer name above to start the batch.",
+    );
+  });
+
   it("shows the soft confirmation modal when 50+ labels are present", async () => {
     const user = userEvent.setup();
     const onStart = vi.fn();

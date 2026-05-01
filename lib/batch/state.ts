@@ -17,6 +17,14 @@ export const SOFT_WARN_THRESHOLD = 50;
 export const HARD_CAP = 250;
 
 /**
+ * Worker-pool concurrency for `/batch`. Locked at 10 so we sit comfortably
+ * under the 100-req/min OpenRouter floor while still saturating CPU on
+ * Tesseract.js. Exported so the page, the dropzone ETA estimator, and any
+ * future caller all stay in lockstep.
+ */
+export const POOL_CONCURRENCY = 10;
+
+/**
  * Rough per-label spend forecast — `lib/ai/pricing.ts` lists ~$0.010
  * blended per file (Haiku + occasional Sonnet + LLM-judge). The number
  * we surface to reviewers is intentionally rounded so they understand
@@ -119,4 +127,33 @@ export function buildBatchSummary(
     avgProcessingTimeMs: successCount > 0 ? Math.round(totalProcMs / successCount) : 0,
     totalDurationMs,
   };
+}
+
+/** Maximum length of the persisted `Batch.title` — keeps `/history` rows tidy. */
+const BATCH_TITLE_MAX = 80;
+
+export interface ComposeBatchTitleInput {
+  count: number;
+  firstBrand: string;
+  firstFilename: string;
+}
+
+/**
+ * Build the human-readable title we save with every batch. The format is
+ * `${count} labels — ${descriptor}` where descriptor prefers the first
+ * row's brand and falls back to its filename. Result is hard-capped at 80
+ * characters so /history rows don't blow out their layout.
+ */
+export function composeBatchTitle({
+  count,
+  firstBrand,
+  firstFilename,
+}: ComposeBatchTitleInput): string {
+  const base = `${count} labels`;
+  const brand = firstBrand.trim();
+  const filename = firstFilename.trim();
+  const descriptor = brand || filename;
+  const full = descriptor ? `${base} — ${descriptor}` : base;
+  if (full.length <= BATCH_TITLE_MAX) return full;
+  return full.slice(0, BATCH_TITLE_MAX);
 }

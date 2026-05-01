@@ -189,6 +189,61 @@ describe("BatchQueue", () => {
     expect(onOpenDetail).toHaveBeenCalledWith("1");
   });
 
+  it("hides the Reset filters button while all filters are at their defaults", () => {
+    render(
+      <BatchQueue
+        items={buildItems()}
+        onRetryFailed={() => {}}
+        onRetryAll={() => {}}
+        onOpenDetail={() => {}}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /reset filters/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows + applies the Reset filters button when any filter is non-default", async () => {
+    const user = userEvent.setup();
+    render(
+      <BatchQueue
+        items={buildItems()}
+        onRetryFailed={() => {}}
+        onRetryAll={() => {}}
+        onOpenDetail={() => {}}
+      />,
+    );
+    // Apply a non-default status filter.
+    await user.click(screen.getByRole("button", { name: /failed only/i }));
+    const reset = screen.getByRole("button", { name: /reset filters/i });
+    expect(reset).toBeInTheDocument();
+    // Clicking it restores all rows.
+    await user.click(reset);
+    expect(screen.getAllByTestId("batch-queue-row")).toHaveLength(4);
+    expect(
+      screen.queryByRole("button", { name: /reset filters/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("Reset filters also clears the beverage filter", async () => {
+    const user = userEvent.setup();
+    render(
+      <BatchQueue
+        items={buildItems()}
+        onRetryFailed={() => {}}
+        onRetryAll={() => {}}
+        onOpenDetail={() => {}}
+      />,
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /beverage filter/i }),
+      "wine",
+    );
+    expect(screen.getAllByTestId("batch-queue-row")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: /reset filters/i }));
+    expect(screen.getAllByTestId("batch-queue-row")).toHaveLength(4);
+  });
+
   it("renders empty state when nothing matches the active filter", async () => {
     const user = userEvent.setup();
     render(
