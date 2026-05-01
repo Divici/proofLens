@@ -91,6 +91,12 @@ export const exportBatch = {
   async allPdfsZip(
     reviews: ReadonlyArray<Review>,
     appVersion: string,
+    /**
+     * ZIP entry mtime. Pass the batch's `createdAt` so two exports of
+     * the same batch produce byte-identical archives — that's what
+     * downstream auditors checksum against.
+     */
+    mtime?: string,
   ): Promise<Blob> {
     const { buildBrowserZip } = await import("./zip/browser");
     const entries: { name: string; bytes: Uint8Array }[] = [];
@@ -104,11 +110,16 @@ export const exportBatch = {
         bytes: new Uint8Array(await blob.arrayBuffer()),
       });
     }
-    return buildBrowserZip(entries);
+    return buildBrowserZip(entries, mtime ? new Date(mtime) : undefined);
   },
   async allJsonZip(
     batch: Batch,
     reviews: ReadonlyArray<Review>,
+    /**
+     * ZIP entry mtime — defaults to `batch.createdAt` for byte-stable
+     * exports. Caller may override (e.g. tests use a fixed Date).
+     */
+    mtime?: string,
   ): Promise<Blob> {
     const { buildBrowserZip } = await import("./zip/browser");
     // Per-review JSON files plus a `batch.json` envelope.
@@ -125,7 +136,10 @@ export const exportBatch = {
       name: "batch.json",
       bytes: new TextEncoder().encode(batchJson),
     });
-    return buildBrowserZip(entries);
+    return buildBrowserZip(
+      entries,
+      new Date(mtime ?? batch.createdAt),
+    );
   },
 };
 

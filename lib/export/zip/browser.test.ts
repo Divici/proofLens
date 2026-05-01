@@ -72,4 +72,53 @@ describe("buildBrowserZip", () => {
       1, 2, 3, 4, 5, 254, 255,
     ]);
   });
+
+  it("produces byte-identical output for two calls with the same `now`", async () => {
+    // Byte-stability is the load-bearing claim — the exported ZIP is
+    // checksummed by downstream auditors. Same inputs + same mtime
+    // must produce the same bytes.
+    const fixedDate = new Date("2026-04-29T12:30:00.000Z");
+    const entries = [
+      { name: "a.json", bytes: new TextEncoder().encode('{"a":1}') },
+      { name: "b.json", bytes: new TextEncoder().encode('{"b":2}') },
+    ];
+    const zipA = await blobToBuffer(buildBrowserZip(entries, fixedDate));
+    const zipB = await blobToBuffer(buildBrowserZip(entries, fixedDate));
+    expect(zipA.equals(zipB)).toBe(true);
+  });
+
+  it("produces different bytes for different `now` values (sanity)", async () => {
+    const entries = [
+      { name: "a.json", bytes: new TextEncoder().encode('{"a":1}') },
+    ];
+    const zipA = await blobToBuffer(
+      buildBrowserZip(entries, new Date("2026-01-01T00:00:00.000Z")),
+    );
+    const zipB = await blobToBuffer(
+      buildBrowserZip(entries, new Date("2026-12-31T23:59:58.000Z")),
+    );
+    expect(zipA.equals(zipB)).toBe(false);
+  });
+
+  it("sets bit 11 (UTF-8 name) when entry name contains non-ASCII bytes", async () => {
+    // Bit 11 of the general-purpose flag = "language encoding flag"
+    // (UTF-8). Without it Windows Explorer mojibakes non-ASCII names
+    // because it falls back to codepage 437. Spec: APPNOTE 4.4.4.
+    const blob = buildBrowserZip([
+      { name: "résumé.json", bytes: new TextEncoder().encode("{}") },
+    ]);
+    const buf = await blobToBuffer(blob);
+    // Local file header flags live at offset 6 (2 bytes, little-endian).
+    const flags = buf.readUInt16LE(6);
+    expect((flags & 0x0800) !== 0).toBe(true);
+  });
+
+  it("leaves bit 11 clear for ASCII-only entry names", async () => {
+    const blob = buildBrowserZip([
+      { name: "plain.json", bytes: new TextEncoder().encode("{}") },
+    ]);
+    const buf = await blobToBuffer(blob);
+    const flags = buf.readUInt16LE(6);
+    expect((flags & 0x0800) === 0).toBe(true);
+  });
 });

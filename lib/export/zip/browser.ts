@@ -69,12 +69,26 @@ export function buildBrowserZip(
     const crc = crc32(entry.bytes);
     const size = entry.bytes.length;
 
+    // Bit 11 of the general-purpose flag is the "language encoding"
+    // flag (APPNOTE 4.4.4). When set, the filename is interpreted as
+    // UTF-8; when clear, parsers default to codepage 437 — which
+    // mojibakes accented names on Windows Explorer. We always TextEncode
+    // names as UTF-8, so set the flag whenever any byte is > 0x7F.
+    let hasNonAscii = false;
+    for (let i = 0; i < nameBytes.length; i++) {
+      if (nameBytes[i]! > 0x7f) {
+        hasNonAscii = true;
+        break;
+      }
+    }
+    const flags = hasNonAscii ? 0x0800 : 0;
+
     // Local file header (30 bytes + name).
     const localHeader = new Uint8Array(30 + nameBytes.length);
     const lhDV = new DataView(localHeader.buffer);
     lhDV.setUint32(0, 0x04034b50, true); // signature
     lhDV.setUint16(4, 20, true); // version needed
-    lhDV.setUint16(6, 0, true); // flags
+    lhDV.setUint16(6, flags, true); // flags
     lhDV.setUint16(8, 0, true); // method = stored
     lhDV.setUint16(10, dos.time, true);
     lhDV.setUint16(12, dos.date, true);
@@ -93,7 +107,7 @@ export function buildBrowserZip(
     cdDV.setUint32(0, 0x02014b50, true); // signature
     cdDV.setUint16(4, 20, true); // version made by
     cdDV.setUint16(6, 20, true); // version needed
-    cdDV.setUint16(8, 0, true); // flags
+    cdDV.setUint16(8, flags, true); // flags
     cdDV.setUint16(10, 0, true); // method = stored
     cdDV.setUint16(12, dos.time, true);
     cdDV.setUint16(14, dos.date, true);
