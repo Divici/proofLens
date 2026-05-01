@@ -22,11 +22,16 @@ export default function Home() {
           decisions faster — without losing the human in the loop.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link href="/review" className={buttonVariants({ size: "lg" })}>
+          <Link
+            href="/review"
+            aria-label="Start a single-label review"
+            className={buttonVariants({ size: "lg" })}
+          >
             Start a review
           </Link>
           <Link
             href="/batch"
+            aria-label="Run a batch verification"
             className={buttonVariants({ size: "lg", variant: "outline" })}
           >
             <Layers className="size-4" aria-hidden="true" />
@@ -34,6 +39,7 @@ export default function Home() {
           </Link>
           <Link
             href="/review?source=camera"
+            aria-label="Capture a label from camera"
             className={buttonVariants({ size: "lg", variant: "outline" })}
           >
             <Camera className="size-4" aria-hidden="true" />
@@ -41,6 +47,7 @@ export default function Home() {
           </Link>
           <Link
             href="/history"
+            aria-label="View saved review history"
             className={buttonVariants({ size: "lg", variant: "ghost" })}
           >
             View history

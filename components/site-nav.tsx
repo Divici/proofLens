@@ -24,7 +24,7 @@ export function SiteNav() {
       >
         <Link
           href="/"
-          className="text-foreground text-base font-semibold tracking-tight"
+          className="text-foreground text-base font-semibold tracking-tight rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           proofLens
         </Link>
@@ -50,7 +50,7 @@ export function SiteNav() {
               ) : (
                 <Link
                   href={link.href}
-                  className="text-muted-foreground hover:text-foreground hover:bg-accent/60 rounded-md px-3 py-2 transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-accent/60 rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {link.label}
                 </Link>
