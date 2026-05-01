@@ -403,6 +403,57 @@ export default function BatchPage() {
     [items, openDetailId],
   );
 
+  /**
+   * Synthesize a Batch + Review[] from the in-memory items so CSV / JSON
+   * summaries are exportable mid-batch (slice 0009 — slice 0008 deferral).
+   * Thumbnails are placeholder zero-byte Blobs because the export paths
+   * exposed by this snapshot — Summary CSV and Per-field CSV — never read
+   * the thumbnail. PDF / ZIP rows are gated via `disablePdfExport`.
+   */
+  const inFlightExport = useMemo(() => {
+    const completed = items.filter(
+      (i) => i.status === "complete" && i.response,
+    );
+    if (completed.length === 0) return null;
+    const reviews: Review[] = completed.map((it) => {
+      const r = it.response!;
+      return composeReview({
+        id: it.id,
+        now: () => new Date(),
+        extracted: r.extracted,
+        expectedData: r.expected,
+        rawText: r.rawText,
+        fieldResults: r.fieldResults,
+        overall: r.overall,
+        imageQualityFlags: r.imageQualityFlags,
+        // Placeholder thumbnail; Summary / Per-field CSVs ignore it.
+        thumbnail: new Blob([], { type: "image/jpeg" }),
+        processingTimeMs: r.processingTimeMs,
+        aiSpend: r.aiSpend,
+        ocrConfidence: r.ocrConfidence,
+        imageWidth: r.imageWidth,
+        imageHeight: r.imageHeight,
+        reviewerName: reviewerName || "—",
+        decision: undefined,
+      });
+    });
+    const first = completed[0];
+    const batch: Batch = {
+      id: `inflight-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      reviewerName: reviewerName || "—",
+      reviewIds: reviews.map((r) => r.id),
+      status: running ? "processing" : "complete",
+      summary,
+      title: composeBatchTitle({
+        count: reviews.length,
+        firstBrand: first?.expected.brand ?? "",
+        firstFilename: first?.filename ?? "",
+      }),
+    };
+    return { batch, reviews };
+  }, [items, reviewerName, running, summary]);
+
   // Persist reviewer name on change (debounced via effect).
   useEffect(() => {
     if (!reviewerName.trim()) return;
@@ -451,6 +502,19 @@ export default function BatchPage() {
                   batch={hydrated.batch}
                   reviews={hydrated.reviews}
                 />
+              ) : inFlightExport ? (
+                /**
+                 * In-progress / unsaved batch — Summary CSV and Per-field
+                 * CSV are available straight away. PDFs and JSON ZIPs
+                 * still require save-first because they need the
+                 * persisted thumbnail Blob.
+                 */
+                <ExportMenu
+                  mode="batch"
+                  batch={inFlightExport.batch}
+                  reviews={inFlightExport.reviews}
+                  disablePdfExport
+                />
               ) : (
                 <Button
                   type="button"
@@ -458,7 +522,7 @@ export default function BatchPage() {
                   size="sm"
                   disabled
                   aria-disabled="true"
-                  title="Run a batch and let it save before exporting."
+                  title="Process at least one label to enable exports."
                 >
                   Export
                 </Button>

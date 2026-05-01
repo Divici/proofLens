@@ -38,6 +38,13 @@ interface BatchProps {
   mode: "batch";
   batch: Batch;
   reviews: ReadonlyArray<Review>;
+  /**
+   * In-progress batch exports (slice 0009) — set this to true to gate
+   * the All PDFs / All JSON ZIP rows behind a tooltip. CSV exports
+   * still work because they're built off the in-memory items directly
+   * without needing a persisted thumbnail.
+   */
+  disablePdfExport?: boolean;
 }
 
 export type ExportMenuProps = (SingleProps | BatchProps) & {
@@ -130,6 +137,11 @@ export function ExportMenu(props: ExportMenuProps) {
   // blocks clicks) and the visual styling.
   const rowsLocked = busyRowId !== null;
 
+  // For in-progress batches without persisted thumbnails, the PDF/ZIP
+  // paths can't run — surface a tooltip instead of a silent failure.
+  const pdfPathDisabled =
+    isBatch && (props as BatchProps).disablePdfExport === true;
+
   return (
     <Menu.Root open={open} onOpenChange={setOpen}>
       <Menu.Trigger
@@ -186,15 +198,23 @@ export function ExportMenu(props: ExportMenuProps) {
                 />
                 <MenuRow
                   label="All PDFs (zip)"
-                  hint={`${props.reviews.length} PDF${props.reviews.length === 1 ? "" : "s"}`}
+                  hint={
+                    pdfPathDisabled
+                      ? "Save the batch first"
+                      : `${props.reviews.length} PDF${props.reviews.length === 1 ? "" : "s"}`
+                  }
                   onSelect={onAllPdfs}
-                  disabled={rowsLocked}
+                  disabled={rowsLocked || pdfPathDisabled}
                 />
                 <MenuRow
                   label="All JSON (zip)"
-                  hint={`${props.reviews.length} JSON file${props.reviews.length === 1 ? "" : "s"}`}
+                  hint={
+                    pdfPathDisabled
+                      ? "Save the batch first"
+                      : `${props.reviews.length} JSON file${props.reviews.length === 1 ? "" : "s"}`
+                  }
                   onSelect={onAllJson}
-                  disabled={rowsLocked}
+                  disabled={rowsLocked || pdfPathDisabled}
                 />
               </>
             )}
