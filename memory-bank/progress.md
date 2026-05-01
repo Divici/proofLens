@@ -31,7 +31,18 @@ Phase 8 sweep + Phase 9 deploy.
 
 ## Tests
 
-- Test count: Vitest 553 / Playwright 22 (after slice 0009 — polished-demo milestone). Mutation fuzz at numRuns:100 with 0 slips. Lint warnings: 0. E2E flake fixed (5/5 consecutive clean runs proven). All 9 build slices merged.
+- Test count: Vitest 591 / Playwright 22 (after Phase 8 sweep + Phase 7 follow-up). Mutation fuzz at numRuns:100 with 0 slips. Lint warnings: 0. E2E flake fixed (5/5 consecutive clean runs proven). All 9 build slices merged + Phase 6 Cluster 1 refactor + Phase 7 Layer 1+Layer 2 evals + Phase 8 schema-coercion fix.
+
+## Phase milestones
+
+- Phase 5 BUILD complete (commit 60955ad)
+- Phase 6 audit + Cluster 1 refactor (commit bf76631)
+- Phase 7 Layer 1 deterministic eval — 37/37, 11/11 gov-warning recall
+  (commits 906c13d, a7cd38a)
+- Phase 7 Layer 2 live eval — schema-coercion fix lifted accuracy from
+  0/23 → 13/23 (56.5%) and gov-warning recall to 11/11 (100%) (commit 8debc74)
+- Phase 8 sweep complete — 1 critical issue fixed (schema coercion),
+  1 minor cosmetic finding accepted as-is. Quality gates green.
 - Goal at end of build: every R-ID has at least one passing test;
   gov-warning mutation fuzz harness with ≥100 generated mutations all
   rejected; Lighthouse a11y ≥ 95 on every route; verdict accuracy
@@ -45,7 +56,15 @@ Phase 8 sweep + Phase 9 deploy.
 - Vercel Hobby ToS — acceptable for POC, flag if commercializing
 - Vision-LLM gov-warning capitalization normalization — defended by
   Tesseract ground-truth + CI mutation fuzz
+- Vision-LLM occasional bare-scalar tool-call response — coerced to
+  structured shape with confidence:0 in lib/ai/openrouter.ts (Phase 8
+  fix). Cases with bare-scalar fields route to manual review.
 - IndexedDB quota with heavy demo use — quota-status banner at 80%
+- Layer 2 latency p50/p95 over target by 22%/6% on cold pnpm dev. Re-
+  measure post-deploy on Vercel Fluid compute (Phase 9).
+- Layer 2 verdict expectations calibrated for Layer 1 mockExtraction;
+  10 cases produce expected mismatches. Resolution path: split
+  expectations or back cases with real bottle photos.
 
 ## Blockers
 

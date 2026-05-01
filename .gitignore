@@ -8,6 +8,7 @@ STUDY_GUIDE.md
 ALIGNMENT.md
 CONDUCTOR_STATE.md
 architecture-audit.md
+.forge/
 
 # Local Claude Code overrides
 .claude/settings.local.json
