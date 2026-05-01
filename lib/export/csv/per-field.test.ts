@@ -18,7 +18,7 @@ describe("renderPerFieldCsv", () => {
     expect(rows.length).toBe(2 * 4 + 1);
   });
 
-  it("has columns review_id, filename, field_name, expected, extracted, status, confidence, ai_status, human_status, override_reason", () => {
+  it("uses Title Case headers (slice 0009) and exposes the same per-row values", () => {
     const review = makeReviewFixture();
     const csv = renderPerFieldCsv([review]);
     const parsed = Papa.parse<Record<string, string>>(csv, {
@@ -26,19 +26,19 @@ describe("renderPerFieldCsv", () => {
       skipEmptyLines: true,
     });
     const row = parsed.data[0]!;
-    expect(row.review_id).toBe("review-fixture-id");
-    expect(row.field_name).toBe("brand");
-    expect(row.expected).toBe("Old Tom Distillery");
-    expect(row.extracted).toBe("Old Tom Distillery");
-    expect(row.status).toBe("pass");
-    expect(Number(row.confidence)).toBeCloseTo(0.95);
+    expect(row["Review ID"]).toBe("review-fixture-id");
+    expect(row["Field name"]).toBe("brand");
+    expect(row["Expected"]).toBe("Old Tom Distillery");
+    expect(row["Extracted"]).toBe("Old Tom Distillery");
+    expect(row["Status"]).toBe("pass");
+    expect(Number(row["Confidence"])).toBeCloseTo(0.95);
     // No override on the fixture's first row.
-    expect(row.ai_status).toBe("");
-    expect(row.human_status).toBe("");
-    expect(row.override_reason).toBe("");
+    expect(row["AI status"]).toBe("");
+    expect(row["Human status"]).toBe("");
+    expect(row["Override reason"]).toBe("");
   });
 
-  it("populates ai_status, human_status, override_reason when humanOverride is set", () => {
+  it("populates AI status, Human status, Override reason when humanOverride is set", () => {
     const fields = makeFieldResults();
     fields[0] = {
       ...fields[0]!,
@@ -56,10 +56,10 @@ describe("renderPerFieldCsv", () => {
       header: true,
       skipEmptyLines: true,
     });
-    const overrideRow = parsed.data.find((r) => r.field_name === "brand");
-    expect(overrideRow?.ai_status).toBe("pass");
-    expect(overrideRow?.human_status).toBe("fail");
-    expect(overrideRow?.override_reason).toBe("Brand typo");
+    const overrideRow = parsed.data.find((r) => r["Field name"] === "brand");
+    expect(overrideRow?.["AI status"]).toBe("pass");
+    expect(overrideRow?.["Human status"]).toBe("fail");
+    expect(overrideRow?.["Override reason"]).toBe("Brand typo");
   });
 
   it("renders boolean / numeric / null values consistently as strings", () => {
@@ -71,9 +71,9 @@ describe("renderPerFieldCsv", () => {
       header: true,
       skipEmptyLines: true,
     });
-    const abv = parsed.data.find((r) => r.field_name === "abv");
-    expect(abv?.expected).toBe("45");
-    expect(abv?.extracted).toBe("45");
+    const abv = parsed.data.find((r) => r["Field name"] === "abv");
+    expect(abv?.["Expected"]).toBe("45");
+    expect(abv?.["Extracted"]).toBe("45");
   });
 
   it("returns header-only CSV for an empty review list", () => {

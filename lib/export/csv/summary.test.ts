@@ -18,7 +18,7 @@ describe("renderBatchSummaryCsv", () => {
     expect(rows.length).toBe(reviews.length + 1);
   });
 
-  it("includes id, filename, brand, beverage, overall_status, completed_at, reviewer, has_overrides, processing_time_ms columns", () => {
+  it("uses Title Case headers (slice 0009) and exposes the same per-row values", () => {
     const reviews = [makeReviewFixture()];
     const batch = makeBatchFixture(reviews);
     const csv = renderBatchSummaryCsv(batch, reviews);
@@ -27,14 +27,14 @@ describe("renderBatchSummaryCsv", () => {
       skipEmptyLines: true,
     });
     const row = parsed.data[0]!;
-    expect(row.id).toBe("review-fixture-id");
-    expect(row.brand).toBe("Old Tom Distillery");
-    expect(row.beverage).toBe("spirits");
-    expect(row.overall_status).toBe("fail");
-    expect(row.reviewer).toBe("Jane Doe");
-    expect(row.has_overrides).toBe("false");
-    expect(row.processing_time_ms).toBe("1234");
-    expect(row.completed_at).toBe("2026-04-29T12:00:00.000Z");
+    expect(row["ID"]).toBe("review-fixture-id");
+    expect(row["Brand"]).toBe("Old Tom Distillery");
+    expect(row["Beverage"]).toBe("spirits");
+    expect(row["Overall status"]).toBe("fail");
+    expect(row["Reviewer"]).toBe("Jane Doe");
+    expect(row["Has overrides"]).toBe("false");
+    expect(row["Processing time (ms)"]).toBe("1234");
+    expect(row["Completed at"]).toBe("2026-04-29T12:00:00.000Z");
   });
 
   it("filename column uses the review brand slug when no original filename is recorded", () => {
@@ -48,7 +48,7 @@ describe("renderBatchSummaryCsv", () => {
     const row = parsed.data[0]!;
     // We don't persist the original filename in the IDB schema (per
     // PRESEARCH §8.1), so we synthesize one from id + brand.
-    expect(row.filename).toMatch(/old-tom-distillery/);
+    expect(row["Filename"]).toMatch(/old-tom-distillery/);
   });
 
   it("renders an empty CSV (header only) when given no reviews", () => {
@@ -74,6 +74,6 @@ describe("renderBatchSummaryCsv", () => {
       header: true,
       skipEmptyLines: true,
     });
-    expect(parsed.data[0]!.brand).toBe('Brand, Co. "Special"');
+    expect(parsed.data[0]!["Brand"]).toBe('Brand, Co. "Special"');
   });
 });
