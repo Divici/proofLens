@@ -83,6 +83,59 @@ describe("POST /api/render-pdf", () => {
     expect(res.status).toBe(400);
   });
 
+  it("accepts non-object shapes for the permissive subtrees (expectedData / extracted / bboxes)", async () => {
+    // After Fix 6 the schema is `z.unknown()` for these fields. Reviews
+    // where bboxes or extracted are non-object (e.g. an array, or a
+    // scalar) are valid wire payloads as long as the load-bearing
+    // fields (id, fieldResults, brand, …) are present.
+    const review = makeReviewFixture();
+    const payload = await reviewToWirePayload(review);
+    const arrayShape = {
+      ...payload,
+      review: {
+        ...payload.review,
+        // Top-level arrays — would have been rejected by the old
+        // `z.record(z.unknown())` since records require objects.
+        bboxes: [],
+        extracted: [{ note: "image-quality" }],
+        expectedData: ["unstructured"],
+      },
+    };
+    const res = await POST(await buildRequest(arrayShape));
+    expect(res.status).toBe(200);
+  });
+
+  it("still rejects when fieldResults is missing (load-bearing field check)", async () => {
+    const review = makeReviewFixture();
+    const payload = await reviewToWirePayload(review);
+    const reviewMinusFieldResults = { ...payload.review } as Record<
+      string,
+      unknown
+    >;
+    delete reviewMinusFieldResults.fieldResults;
+    const res = await POST(
+      await buildRequest({
+        ...payload,
+        review: reviewMinusFieldResults,
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("still rejects when id is missing (load-bearing field check)", async () => {
+    const review = makeReviewFixture();
+    const payload = await reviewToWirePayload(review);
+    const reviewMinusId = { ...payload.review } as Record<string, unknown>;
+    delete reviewMinusId.id;
+    const res = await POST(
+      await buildRequest({
+        ...payload,
+        review: reviewMinusId,
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it("accepts review without an embedded thumbnail base64 — falls back to no image", async () => {
     const review = makeReviewFixture();
     const payload = await reviewToWirePayload(review);

@@ -43,10 +43,15 @@ export const SerializedReviewSchema = z
     decision: HumanDecisionSchema.optional(),
     // Permissive on the rest — only these fields are read by the PDF
     // template (plus the explicit thumbnail data URL passed separately).
-    expectedData: z.record(z.unknown()),
-    extracted: z.record(z.unknown()),
+    // We use `z.unknown()` rather than `z.record(z.unknown())` because
+    // these subtrees can legitimately be arrays (e.g. extracted's
+    // imageQualityNotes) or scalars; the template is permissive about
+    // their shape and the wire schema's job is to ensure the field is
+    // *present*, not to police its inner structure.
+    expectedData: z.unknown(),
+    extracted: z.unknown(),
     imageQualityFlags: z.array(z.unknown()).default([]),
-    bboxes: z.record(z.unknown()).default({}),
+    bboxes: z.unknown().default({}),
     rawText: z.string().default(""),
     processingTimeMs: z.number().default(0),
     aiSpend: z
