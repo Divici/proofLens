@@ -13,7 +13,9 @@ test.describe("smoke: core routes render", () => {
       page.getByRole("heading", { level: 1, name: "proofLens" }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "New review" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Batch" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Batch", exact: true }),
+    ).toBeVisible();
     // /history is a real link in the nav now (slice 0005). The home page
     // also surfaces a "View history" CTA which would resolve, so anchor
     // the assertion to the nav-bar link explicitly.
