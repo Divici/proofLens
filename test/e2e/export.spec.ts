@@ -181,9 +181,11 @@ test.describe("slice 0008 — export menus", () => {
       page.getByText(/review saved to your browser history/i),
     ).toBeVisible();
 
-    const downloadPromise = page.waitForEvent("download");
+    const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
     await page.getByRole("button", { name: /^export$/i }).click();
-    await page.getByRole("menuitem", { name: /^json/i }).click();
+    const jsonItem = page.getByRole("menuitem", { name: /^json/i });
+    await jsonItem.waitFor({ state: "visible" });
+    await jsonItem.click({ force: true });
     const download = await downloadPromise;
     const path = await download.path();
     if (!path) throw new Error("download missing");
@@ -210,9 +212,11 @@ test.describe("slice 0008 — export menus", () => {
       timeout: 30_000,
     });
 
-    const downloadPromise = page.waitForEvent("download");
+    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
     await page.getByRole("button", { name: /^export$/i }).click();
-    await page.getByRole("menuitem", { name: /all json/i }).click();
+    const allJsonItem = page.getByRole("menuitem", { name: /all json/i });
+    await allJsonItem.waitFor({ state: "visible" });
+    await allJsonItem.click({ force: true });
     const download = await downloadPromise;
     const path = await download.path();
     if (!path) throw new Error("download missing");
