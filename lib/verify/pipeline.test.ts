@@ -281,3 +281,61 @@ describe("runVerificationPipeline — beverage-aware routing (slice 0004)", () =
     expect(abv?.status).toBe("fail");
   });
 });
+
+describe("runVerificationPipeline — gray-band judge wiring (slice 0009)", () => {
+  it("invokes callJudge for gray-band brand cases and routes 'equivalent' to likely-match", async () => {
+    const e = passingExtraction();
+    // Brand with a different terminal noun pluralisation puts the
+    // token_set_ratio firmly in the [0.78, 0.92) gray band.
+    e.brand = {
+      value: "Old Tom Distilleries",
+      evidenceQuote: "Old Tom Distilleries",
+      confidence: 0.9,
+    };
+
+    let invocations = 0;
+    const callJudge = async () => {
+      invocations += 1;
+      return {
+        verdict: "equivalent" as const,
+        reasoning: "Same brand with a different terminal pluralisation.",
+      };
+    };
+
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: EXPECTED,
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+      callJudge,
+    });
+    const brand = result.fieldResults.find((f) => f.field === "brand");
+    expect(invocations).toBeGreaterThanOrEqual(1);
+    expect(brand?.status).toBe("likely-match");
+  });
+
+  it("routes 'not_equivalent' verdicts back to fail in the gray band", async () => {
+    const e = passingExtraction();
+    e.brand = {
+      value: "Old Tom Distillers Co.",
+      evidenceQuote: "Old Tom Distillers Co.",
+      confidence: 0.9,
+    };
+    const callJudge = async () => ({
+      verdict: "not_equivalent" as const,
+      reasoning: "Different legal entity.",
+    });
+
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: EXPECTED,
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+      callJudge,
+    });
+    const brand = result.fieldResults.find((f) => f.field === "brand");
+    expect(brand?.status).toBe("fail");
+  });
+});
