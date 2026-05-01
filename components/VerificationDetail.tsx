@@ -62,6 +62,12 @@ export interface VerificationDetailProps {
   saving?: boolean;
   /** Show a non-blocking quota warning banner above the decision panel. */
   quotaWarning?: { percentage: number } | null;
+  /**
+   * Override the LabelImagePreview empty-state copy. Used by the batch
+   * drill-in modal where the file was uploaded but no object URL was
+   * retained for memory reasons.
+   */
+  imageEmptyMessage?: string;
 }
 
 const OVERALL_VISUALS: Record<
@@ -122,6 +128,7 @@ export function VerificationDetail({
   existingDecision,
   saving,
   quotaWarning,
+  imageEmptyMessage,
 }: VerificationDetailProps) {
   const [activeField, setActiveField] = useState<string | null>(null);
   const qualityFlags = imageQualityFlags ?? [];
@@ -174,6 +181,7 @@ export function VerificationDetail({
               src={imageSrc}
               alt="Label preview with verification highlight"
               bbox={activeBbox}
+              emptyMessage={imageEmptyMessage}
             />
             <p className="text-muted-foreground mt-2 text-xs">
               Click a field on the right to highlight its source on the label.

@@ -20,25 +20,16 @@ describe("SiteNav", () => {
     expect(history).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("marks unshipped /batch route as coming-soon and non-actionable", () => {
+  it("renders the /batch link as a real anchor (slice 0007)", () => {
     render(<SiteNav />);
-
-    // The label is rendered (so users see what's coming)…
-    expect(screen.getByText(/batch/i)).toBeInTheDocument();
-
-    // …but it is not rendered as a real anchor — it is a non-anchor
-    // placeholder with role="link" + aria-disabled (so AT announces state).
-    const batchPlaceholder = screen.getByTestId("nav-disabled-batch");
-    expect(batchPlaceholder).toHaveAttribute("aria-disabled", "true");
-    expect(batchPlaceholder).toHaveAttribute("tabIndex", "-1");
-    expect(batchPlaceholder).toHaveAttribute("title", "Coming soon");
-    expect(batchPlaceholder.tagName).not.toBe("A");
-    expect(batchPlaceholder).not.toHaveAttribute("href");
+    const batch = screen.getByRole("link", { name: /^batch$/i });
+    expect(batch).toBeInTheDocument();
+    expect(batch).toHaveAttribute("href", "/batch");
+    expect(batch).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("includes a 'Soon' pill on disabled nav items", () => {
+  it("does not render any 'Soon' pill once /batch ships", () => {
     render(<SiteNav />);
-    const pills = screen.getAllByText(/^soon$/i);
-    expect(pills.length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryAllByText(/^soon$/i).length).toBe(0);
   });
 });

@@ -1,0 +1,101 @@
+{
+  "scenarioId": "07-demo-batch",
+  "entries": [
+    {
+      "filename": "01-spirits-pass.jpg",
+      "labelPath": "/demo-labels/01-spirits-pass.jpg",
+      "expected": {
+        "brand": "Old Tom Distillery",
+        "classType": "Kentucky Straight Bourbon Whiskey",
+        "abv": 45,
+        "netContents": "750 mL",
+        "bottlerName": "Old Tom Distillery, LLC",
+        "bottlerAddress": "123 Bourbon Lane, Bardstown, KY 40004",
+        "countryOfOrigin": "United States",
+        "govWarningRequired": true,
+        "applicationNotes": "TTB-2026-00001",
+        "beverageType": "distilled-spirits"
+      }
+    },
+    {
+      "filename": "02-stones-throw-caps.jpg",
+      "labelPath": "/demo-labels/02-stones-throw-caps.jpg",
+      "expected": {
+        "brand": "Stone's Throw",
+        "classType": "American Amber Lager",
+        "abv": 5.2,
+        "netContents": "12 fl oz",
+        "bottlerName": "Stone's Throw Brewing Co.",
+        "bottlerAddress": "Bend, OR",
+        "countryOfOrigin": "United States",
+        "govWarningRequired": true,
+        "applicationNotes": "TTB-2026-00002",
+        "beverageType": "malt-beverage"
+      }
+    },
+    {
+      "filename": "03-abv-mismatch.jpg",
+      "labelPath": "/demo-labels/03-abv-mismatch.jpg",
+      "expected": {
+        "brand": "Cedar Ridge Vodka",
+        "classType": "Vodka",
+        "abv": 40,
+        "netContents": "750 mL",
+        "bottlerName": "Cedar Ridge Distilling Co.",
+        "bottlerAddress": "1500 Cedar Ridge Rd, Swisher, IA 52338",
+        "countryOfOrigin": "United States",
+        "govWarningRequired": true,
+        "applicationNotes": "TTB-2026-00003",
+        "beverageType": "distilled-spirits"
+      }
+    },
+    {
+      "filename": "04-gov-warn-lowercase.jpg",
+      "labelPath": "/demo-labels/04-gov-warn-lowercase.jpg",
+      "expected": {
+        "brand": "Lakeside Gin",
+        "classType": "London Dry Gin",
+        "abv": 47,
+        "netContents": "750 mL",
+        "bottlerName": "Lakeside Spirits, LLC",
+        "bottlerAddress": "200 Lakeside Drive, Traverse City, MI 49684",
+        "countryOfOrigin": "United States",
+        "govWarningRequired": true,
+        "applicationNotes": "TTB-2026-00004",
+        "beverageType": "distilled-spirits"
+      }
+    },
+    {
+      "filename": "05-warn-incomplete.jpg",
+      "labelPath": "/demo-labels/05-warn-incomplete.jpg",
+      "expected": {
+        "brand": "Riverfront Vineyards",
+        "classType": "Estate Chardonnay",
+        "abv": 13.5,
+        "netContents": "750 mL",
+        "bottlerName": "Riverfront Vineyards",
+        "bottlerAddress": "Napa, CA",
+        "countryOfOrigin": "United States",
+        "govWarningRequired": true,
+        "applicationNotes": "TTB-2026-00005",
+        "beverageType": "wine"
+      }
+    },
+    {
+      "filename": "06-glare-blur.jpg",
+      "labelPath": "/demo-labels/06-glare-blur.jpg",
+      "expected": {
+        "brand": "Old Tom Distillery",
+        "classType": "Kentucky Straight Bourbon Whiskey",
+        "abv": 45,
+        "netContents": "750 mL",
+        "bottlerName": "Old Tom Distillery, LLC",
+        "bottlerAddress": "123 Bourbon Lane, Bardstown, KY 40004",
+        "countryOfOrigin": "United States",
+        "govWarningRequired": true,
+        "applicationNotes": "TTB-2026-00006",
+        "beverageType": "distilled-spirits"
+      }
+    }
+  ]
+}

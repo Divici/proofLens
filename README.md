@@ -89,3 +89,31 @@ is `import "server-only"` and must not be imported from client code.
 
 See `memory-bank/` for the persistent project context and
 `decisions/` for ADRs.
+
+## Batch flow (`/batch`)
+
+Drop a folder of label images plus a paired CSV (or JSON) describing
+the expected `ApplicationData` per file. The UI pairs by filename
+(case-insensitive, extension-agnostic) and processes up to 10 files in
+parallel. A downloadable CSV template lives at `/api/template/csv`.
+
+- Soft confirmation modal at **50 files** with cost+ETA estimate.
+- Hard cap at **250 files**; over-cap drops surface a "Trim to 250"
+  modal.
+- Per-row live status, filterable by status / beverage / has-failures
+  / overridden. Single-row + bulk **Retry all failed**.
+- Once the batch finishes, the whole run + every per-row review saves
+  to IndexedDB in a single transaction.
+
+## Known limitations
+
+- **Tab close mid-batch**: per-row results are buffered in memory and
+  saved to IndexedDB only when the entire batch finishes. If the tab
+  closes mid-run, completed-but-unsaved rows are lost. Keep the tab
+  open for the duration of the batch (≈ 125 s for 250 files at the
+  documented p50 latency).
+- **No cross-device sync**: review history is per-browser. Export
+  important reviews before clearing browser data.
+- **No image previews in the queue table**: avoids holding 250 object
+  URLs in memory. Open a row's detail modal to see the field-level
+  verification.
