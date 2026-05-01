@@ -47,75 +47,91 @@ export type ExportMenuProps = (SingleProps | BatchProps) & {
 };
 
 export function ExportMenu(props: ExportMenuProps) {
-  const [busy, setBusy] = useState(false);
+  // Track which row is currently performing the async action. Single
+  // boolean isn't enough — we need to disable every other row while one
+  // is mid-flight, and we want the menu to auto-close on click so the
+  // user sees the toast + spinner on the trigger rather than a hanging
+  // open menu.
+  const [busyRowId, setBusyRowId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   const isBatch = props.mode === "batch";
-  const disabled = busy || (isBatch && props.reviews.length === 0);
+  const disabled = busyRowId !== null || (isBatch && props.reviews.length === 0);
 
   const wrap = useCallback(
-    async (label: string, fn: () => Promise<void>) => {
-      setBusy(true);
-      try {
-        await fn();
-        toast.success(`${label} downloaded.`);
-      } catch (cause) {
-        console.error(`[export] ${label} failed`, cause);
-        const msg = cause instanceof Error ? cause.message : "Export failed.";
-        toast.error(`Could not export ${label.toLowerCase()}: ${msg}`);
-      } finally {
-        setBusy(false);
-      }
-    },
+    (rowId: string, label: string, fn: () => Promise<void>) =>
+      async () => {
+        // Auto-close the menu immediately so the user sees the trigger's
+        // spinner and any toast that follows. base-ui's `closeOnClick`
+        // default already closes the popup, but we also drive `open`
+        // explicitly so the controlled state stays in sync.
+        setOpen(false);
+        setBusyRowId(rowId);
+        try {
+          await fn();
+          toast.success(`${label} downloaded.`);
+        } catch (cause) {
+          console.error(`[export] ${label} failed`, cause);
+          const msg = cause instanceof Error ? cause.message : "Export failed.";
+          toast.error(`Could not export ${label.toLowerCase()}: ${msg}`);
+        } finally {
+          setBusyRowId(null);
+        }
+      },
     [],
   );
 
-  const onPdf = () =>
-    wrap("PDF", async () => {
-      if (props.mode !== "single") return;
-      const blob = await exportPdf(props.review, props.appVersion ?? "0.1.0");
-      downloadBlob(blob, suggestPdfName(props.review));
-    });
+  const onPdf = wrap("pdf", "PDF", async () => {
+    if (props.mode !== "single") return;
+    const blob = await exportPdf(props.review, props.appVersion ?? "0.1.0");
+    downloadBlob(blob, suggestPdfName(props.review));
+  });
 
-  const onJson = () =>
-    wrap("JSON", async () => {
-      if (props.mode !== "single") return;
-      const blob = await exportJson(props.review);
-      downloadBlob(blob, suggestJsonName(props.review));
-    });
+  const onJson = wrap("json", "JSON", async () => {
+    if (props.mode !== "single") return;
+    const blob = await exportJson(props.review);
+    downloadBlob(blob, suggestJsonName(props.review));
+  });
 
-  const onSummaryCsv = () =>
-    wrap("Summary CSV", async () => {
-      if (props.mode !== "batch") return;
-      const blob = await exportBatch.summaryCsv(props.batch, props.reviews);
-      downloadBlob(blob, suggestBatchName(props.batch, "summary", "csv"));
-    });
+  const onSummaryCsv = wrap("summary-csv", "Summary CSV", async () => {
+    if (props.mode !== "batch") return;
+    const blob = await exportBatch.summaryCsv(props.batch, props.reviews);
+    downloadBlob(blob, suggestBatchName(props.batch, "summary", "csv"));
+  });
 
-  const onPerFieldCsv = () =>
-    wrap("Per-field CSV", async () => {
-      if (props.mode !== "batch") return;
-      const blob = await exportBatch.perFieldCsv(props.reviews);
-      downloadBlob(blob, suggestBatchName(props.batch, "per-field", "csv"));
-    });
+  const onPerFieldCsv = wrap("per-field-csv", "Per-field CSV", async () => {
+    if (props.mode !== "batch") return;
+    const blob = await exportBatch.perFieldCsv(props.reviews);
+    downloadBlob(blob, suggestBatchName(props.batch, "per-field", "csv"));
+  });
 
-  const onAllPdfs = () =>
-    wrap("All PDFs (zip)", async () => {
-      if (props.mode !== "batch") return;
-      const blob = await exportBatch.allPdfsZip(
-        props.reviews,
-        props.appVersion ?? "0.1.0",
-      );
-      downloadBlob(blob, suggestBatchName(props.batch, "pdfs", "zip"));
-    });
+  const onAllPdfs = wrap("all-pdfs-zip", "All PDFs (zip)", async () => {
+    if (props.mode !== "batch") return;
+    const blob = await exportBatch.allPdfsZip(
+      props.reviews,
+      props.appVersion ?? "0.1.0",
+      props.batch.createdAt,
+    );
+    downloadBlob(blob, suggestBatchName(props.batch, "pdfs", "zip"));
+  });
 
-  const onAllJson = () =>
-    wrap("All JSON (zip)", async () => {
-      if (props.mode !== "batch") return;
-      const blob = await exportBatch.allJsonZip(props.batch, props.reviews);
-      downloadBlob(blob, suggestBatchName(props.batch, "json", "zip"));
-    });
+  const onAllJson = wrap("all-json-zip", "All JSON (zip)", async () => {
+    if (props.mode !== "batch") return;
+    const blob = await exportBatch.allJsonZip(
+      props.batch,
+      props.reviews,
+      props.batch.createdAt,
+    );
+    downloadBlob(blob, suggestBatchName(props.batch, "json", "zip"));
+  });
+
+  // While ANY row is busy, every row should reject input. Used by both
+  // the per-row `disabled` prop (which renders `aria-disabled="true"` and
+  // blocks clicks) and the visual styling.
+  const rowsLocked = busyRowId !== null;
 
   return (
-    <Menu.Root>
+    <Menu.Root open={open} onOpenChange={setOpen}>
       <Menu.Trigger
         render={
           <Button
@@ -126,7 +142,7 @@ export function ExportMenu(props: ExportMenuProps) {
             disabled={disabled}
             aria-label="Export"
           >
-            {busy ? (
+            {rowsLocked ? (
               <Loader2 className="size-3.5 animate-spin" />
             ) : (
               <Download className="size-3.5" />
@@ -141,8 +157,18 @@ export function ExportMenu(props: ExportMenuProps) {
           <Menu.Popup className="rounded-lg border border-border bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/5 p-1 min-w-44 outline-none">
             {props.mode === "single" ? (
               <>
-                <MenuRow label="PDF" hint="Per-label audit report" onSelect={onPdf} />
-                <MenuRow label="JSON" hint="Full record + audit fields" onSelect={onJson} />
+                <MenuRow
+                  label="PDF"
+                  hint="Per-label audit report"
+                  onSelect={onPdf}
+                  disabled={rowsLocked}
+                />
+                <MenuRow
+                  label="JSON"
+                  hint="Full record + audit fields"
+                  onSelect={onJson}
+                  disabled={rowsLocked}
+                />
               </>
             ) : (
               <>
@@ -150,21 +176,25 @@ export function ExportMenu(props: ExportMenuProps) {
                   label="Summary CSV"
                   hint="One row per review"
                   onSelect={onSummaryCsv}
+                  disabled={rowsLocked}
                 />
                 <MenuRow
                   label="Per-field CSV"
                   hint="One row per (review × field)"
                   onSelect={onPerFieldCsv}
+                  disabled={rowsLocked}
                 />
                 <MenuRow
                   label="All PDFs (zip)"
                   hint={`${props.reviews.length} PDF${props.reviews.length === 1 ? "" : "s"}`}
                   onSelect={onAllPdfs}
+                  disabled={rowsLocked}
                 />
                 <MenuRow
                   label="All JSON (zip)"
                   hint={`${props.reviews.length} JSON file${props.reviews.length === 1 ? "" : "s"}`}
                   onSelect={onAllJson}
+                  disabled={rowsLocked}
                 />
               </>
             )}
@@ -179,13 +209,19 @@ interface MenuRowProps {
   label: string;
   hint?: string;
   onSelect: () => void;
+  disabled?: boolean;
 }
 
-function MenuRow({ label, hint, onSelect }: MenuRowProps) {
+function MenuRow({ label, hint, onSelect, disabled = false }: MenuRowProps) {
   return (
     <Menu.Item
       onClick={onSelect}
-      className="cursor-pointer flex flex-col items-start rounded-md px-2 py-1.5 text-sm outline-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground"
+      disabled={disabled}
+      aria-disabled={disabled || undefined}
+      className={cn(
+        "cursor-pointer flex flex-col items-start rounded-md px-2 py-1.5 text-sm outline-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground",
+        disabled && "cursor-not-allowed opacity-50 pointer-events-none",
+      )}
     >
       <span>{label}</span>
       {hint ? (

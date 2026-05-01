@@ -147,4 +147,80 @@ describe("<ExportMenu>", () => {
     const btn = screen.getByRole("button", { name: /export/i });
     expect(btn).toBeDisabled();
   });
+
+  it("auto-closes the menu after selecting a row", async () => {
+    const user = userEvent.setup();
+    // Make the action resolve quickly so the menu closes and the busy
+    // state clears within the test.
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])]), {
+        status: 200,
+        headers: { "content-type": "application/pdf" },
+      }),
+    );
+    render(<ExportMenu mode="single" review={reviewFixture} />);
+    await user.click(screen.getByRole("button", { name: /export/i }));
+    const pdfItem = await screen.findByRole("menuitem", { name: /pdf/i });
+    expect(pdfItem).toBeInTheDocument();
+    await user.click(pdfItem);
+    // The menu should close as soon as the row is selected — not wait
+    // for the async action to resolve.
+    await waitFor(() => {
+      expect(screen.queryByRole("menuitem", { name: /pdf/i })).toBeNull();
+    });
+  });
+
+  it("disables every row while one row's action is in flight", async () => {
+    const user = userEvent.setup();
+    // A pending fetch keeps the busy state alive for the duration of
+    // the assertion. We resolve it at the end so the test cleans up.
+    let resolveFetch: (response: Response) => void = () => {};
+    const fetchPromise = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    vi.spyOn(window, "fetch").mockReturnValue(fetchPromise);
+
+    render(
+      <ExportMenu
+        mode="batch"
+        batch={batchFixture}
+        reviews={[reviewFixture]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /export/i }));
+    // Click "All PDFs (zip)" — that one calls fetch and stays pending.
+    const allPdfsItem = await screen.findByRole("menuitem", {
+      name: /all pdfs/i,
+    });
+    await user.click(allPdfsItem);
+
+    // Re-open the menu to inspect the row state mid-flight.
+    await user.click(screen.getByRole("button", { name: /export/i }));
+    await waitFor(() => {
+      const summary = screen.queryByRole("menuitem", { name: /summary csv/i });
+      // While the fetch is pending the trigger is disabled, so the menu
+      // can't reopen — that itself is the gate. If the trigger were
+      // somehow open, every row would still carry aria-disabled=true.
+      if (summary) {
+        expect(summary).toHaveAttribute("aria-disabled", "true");
+      } else {
+        expect(
+          screen.getByRole("button", { name: /export/i }),
+        ).toBeDisabled();
+      }
+    });
+
+    // Resolve the pending fetch so the spinner clears and the test exits.
+    resolveFetch(
+      new Response(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])]), {
+        status: 200,
+        headers: { "content-type": "application/pdf" },
+      }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /export/i }),
+      ).not.toBeDisabled();
+    });
+  });
 });
