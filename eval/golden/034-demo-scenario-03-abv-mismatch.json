@@ -1,0 +1,92 @@
+{
+  "id": "034",
+  "name": "demo-scenario-03-abv-mismatch",
+  "tags": [
+    "demo-scenario",
+    "strict-fail",
+    "abv"
+  ],
+  "input": {
+    "labelImagePath": "public/demo-labels/03-abv-mismatch.jpg",
+    "expectedData": {
+      "brand": "Cedar Ridge Vodka",
+      "classType": "Vodka",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Cedar Ridge Distilling Co.",
+      "bottlerAddress": "1500 Cedar Ridge Rd, Swisher, IA 52338",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "TTB-2026-00003",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  "mockExtraction": {
+    "brand": {
+      "value": "Cedar Ridge Vodka",
+      "evidenceQuote": "Cedar Ridge Vodka",
+      "confidence": 0.92
+    },
+    "classType": {
+      "value": "Vodka",
+      "evidenceQuote": "Vodka",
+      "confidence": 0.92
+    },
+    "alcoholContentText": {
+      "value": "38% Alc./Vol.",
+      "evidenceQuote": "38% Alc./Vol.",
+      "confidence": 0.92
+    },
+    "abvPercent": {
+      "value": 38,
+      "evidenceQuote": "38% Alc./Vol.",
+      "confidence": 0.92
+    },
+    "proof": {
+      "value": 76,
+      "evidenceQuote": "76 Proof",
+      "confidence": 0.92
+    },
+    "netContents": {
+      "value": "750 mL",
+      "evidenceQuote": "750 mL",
+      "confidence": 0.92
+    },
+    "bottlerName": {
+      "value": "Cedar Ridge Distilling Co.",
+      "evidenceQuote": "Cedar Ridge Distilling Co.",
+      "confidence": 0.92
+    },
+    "bottlerAddress": {
+      "value": "1500 Cedar Ridge Rd, Swisher, IA 52338",
+      "evidenceQuote": "1500 Cedar Ridge Rd, Swisher, IA 52338",
+      "confidence": 0.92
+    },
+    "countryOfOrigin": {
+      "value": "United States",
+      "evidenceQuote": "United States",
+      "confidence": 0.92
+    },
+    "governmentWarningText": {
+      "value": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+      "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+      "confidence": 0.92
+    },
+    "rawText": "Cedar Ridge Vodka Vodka 40% Alc./Vol. 80 Proof 750 mL Cedar Ridge Distilling Co. 1500 Cedar Ridge Rd, Swisher, IA 52338 United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    "imageQualityNotes": [],
+    "extractionConfidence": 0.95
+  },
+  "mockOcr": {
+    "rawText": "CEDAR RIDGE VODKA 38% Alc./Vol. 750 mL GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+  },
+  "expected": {
+    "overall": "fail",
+    "fieldExpectations": [
+      {
+        "field": "abv",
+        "status": "fail"
+      }
+    ],
+    "imageQualityFlags": []
+  }
+}

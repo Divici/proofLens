@@ -1,0 +1,86 @@
+# Layer 1 — Deterministic eval contract
+#
+# This YAML is human-readable documentation of the schema-shape and
+# threshold checks that `eval/runner.ts --layer=1` enforces. It mirrors
+# the conductor eval SKILL.md spec (Layer 1 evalkit-style cases).
+#
+# The runner does NOT consume this file directly — the assertions are
+# encoded in `runner.ts` against `runVerificationPipeline` so they share
+# their type definitions with production code. We keep the YAML as the
+# spec-of-record so reviewers can see the contract without reading TS.
+#
+# Updates to the assertion list MUST be reflected in `runner.ts`.
+
+run:
+  # Layer 1 must always pass — failures gate the build.
+  required: true
+  # No network, no LLM calls, no API keys needed.
+  side_effects: none
+
+# ── Per-case structural assertions ───────────────────────────────────────────
+case_schema:
+  required_fields:
+    - id              # string, monotonically-increasing zero-padded
+    - name            # string, kebab-case, descriptive
+    - tags            # string[], drives the runner's tag-bucket reporting
+    - input.labelImagePath
+    - input.expectedData       # validated against ApplicationDataSchema
+    - mockExtraction           # validated against ExtractedLabelDataSchema
+    - mockOcr.rawText
+    - expected.overall         # OverallStatus | { oneOf: OverallStatus[] }
+    - expected.fieldExpectations
+    - expected.imageQualityFlags
+
+# ── Pipeline response-shape assertions ───────────────────────────────────────
+response_shape:
+  required_keys:
+    - extracted          # ExtractedLabelData
+    - expected           # ApplicationData
+    - rawText            # string
+    - fieldResults       # FieldResult[]
+    - overall            # OverallStatus
+    - processingTimeMs   # number
+    - aiSpend.primaryUsd # number
+    - aiSpend.fallbackUsd # number
+    - imageQualityFlags  # ImageQualityFlag[]
+    - imageQualityPoor   # boolean
+    - imageWidth         # number > 0
+    - imageHeight        # number > 0
+
+# ── Verdict assertions per case ──────────────────────────────────────────────
+verdict_assertions:
+  - check: overall_matches_expected
+    description: |
+      `runVerificationPipeline(...)` returns `overall` equal to
+      `case.expected.overall` (or, if expected is `{oneOf: [...]}`, in the
+      provided union).
+  - check: field_status_matches_expected
+    description: |
+      For every entry in `case.expected.fieldExpectations`, the matching
+      `FieldResult.status` (looked up by `field` key) equals the expected
+      status (or is in the `{oneOf: [...]}` union).
+  - check: gov_warning_recall_100pct
+    description: |
+      For every case tagged `100-percent-recall`, the pipeline must
+      produce `overall === "fail"` AND `governmentWarning.status === "fail"`.
+      A single MISS fails the entire run regardless of overall accuracy.
+
+# ── Latency / cost ceilings (informational, enforced by Layer 2) ─────────────
+thresholds:
+  layer1_runtime_ms_max: 30000   # whole Layer 1 must finish ≤ 30 s
+  layer2_p50_latency_ms_max: 5000
+  layer2_p95_latency_ms_max: 8000
+  layer2_per_label_cost_usd_max: 0.05
+  layer2_blended_cost_usd_target: 0.010
+
+# ── Hard rules ───────────────────────────────────────────────────────────────
+hard_rules:
+  - id: gov_warning_recall
+    rule: "Gov-warning recall on `100-percent-recall` cases must be exactly 100% in BOTH layers"
+    enforcement: runner exits 1 on any miss
+  - id: layer1_zero_failures
+    rule: "Layer 1 must produce zero failed cases — schema or verdict"
+    enforcement: runner exits 1 on any failure
+  - id: layer2_accuracy_threshold
+    rule: "Layer 2 verdict accuracy must be ≥ 95%"
+    enforcement: runner exits 1 below threshold

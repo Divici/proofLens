@@ -12,7 +12,11 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "eval:generate": "node eval/generate-golden.mjs",
+    "eval:deterministic": "tsx eval/runner.ts --layer=1",
+    "eval": "tsx eval/runner.ts --layer=2",
+    "eval:dry": "tsx eval/runner.ts --dry-run"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -64,6 +68,7 @@
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^3.0.7"
   },

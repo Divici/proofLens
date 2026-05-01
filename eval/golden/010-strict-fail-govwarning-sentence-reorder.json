@@ -1,0 +1,93 @@
+{
+  "id": "010",
+  "name": "strict-fail-govwarning-sentence-reorder",
+  "tags": [
+    "strict-fail",
+    "gov-warning",
+    "100-percent-recall"
+  ],
+  "input": {
+    "labelImagePath": "public/demo-labels/04-gov-warn-lowercase.jpg",
+    "expectedData": {
+      "brand": "Lakeside Gin",
+      "classType": "London Dry Gin",
+      "abv": 47,
+      "netContents": "750 mL",
+      "bottlerName": "Lakeside Spirits, LLC",
+      "bottlerAddress": "200 Lakeside Drive, Traverse City, MI 49684",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "TTB-2026-00004",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  "mockExtraction": {
+    "brand": {
+      "value": "Lakeside Gin",
+      "evidenceQuote": "Lakeside Gin",
+      "confidence": 0.92
+    },
+    "classType": {
+      "value": "London Dry Gin",
+      "evidenceQuote": "London Dry Gin",
+      "confidence": 0.92
+    },
+    "alcoholContentText": {
+      "value": "47% Alc./Vol.",
+      "evidenceQuote": "47% Alc./Vol.",
+      "confidence": 0.92
+    },
+    "abvPercent": {
+      "value": 47,
+      "evidenceQuote": "47%",
+      "confidence": 0.92
+    },
+    "proof": {
+      "value": 94,
+      "evidenceQuote": "94 Proof",
+      "confidence": 0.92
+    },
+    "netContents": {
+      "value": "750 mL",
+      "evidenceQuote": "750 mL",
+      "confidence": 0.92
+    },
+    "bottlerName": {
+      "value": "Lakeside Spirits, LLC",
+      "evidenceQuote": "Lakeside Spirits, LLC",
+      "confidence": 0.92
+    },
+    "bottlerAddress": {
+      "value": "200 Lakeside Drive, Traverse City, MI 49684",
+      "evidenceQuote": "200 Lakeside Drive, Traverse City, MI 49684",
+      "confidence": 0.92
+    },
+    "countryOfOrigin": {
+      "value": "United States",
+      "evidenceQuote": "United States",
+      "confidence": 0.92
+    },
+    "governmentWarningText": {
+      "value": "GOVERNMENT WARNING: (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems. (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects.",
+      "evidenceQuote": "GOVERNMENT WARNING: (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems. (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects.",
+      "confidence": 0.92
+    },
+    "rawText": "Lakeside Gin London Dry Gin 47% Alc./Vol. 94 Proof 750 mL Lakeside Spirits, LLC 200 Lakeside Drive, Traverse City, MI 49684 United States GOVERNMENT WARNING: (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems. (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects.",
+    "imageQualityNotes": [],
+    "extractionConfidence": 0.95
+  },
+  "mockOcr": {
+    "rawText": "Lakeside Gin London Dry Gin 47% Alc./Vol. 750 mL GOVERNMENT WARNING: (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems. (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects."
+  },
+  "expected": {
+    "overall": "fail",
+    "fieldExpectations": [
+      {
+        "field": "governmentWarning",
+        "status": "fail"
+      }
+    ],
+    "imageQualityFlags": [],
+    "mustReachGovWarningFail": true
+  }
+}

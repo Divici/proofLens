@@ -1,0 +1,96 @@
+{
+  "id": "022",
+  "name": "nuanced-brand-abbreviation",
+  "tags": [
+    "nuanced-match",
+    "brand"
+  ],
+  "input": {
+    "labelImagePath": "public/demo-labels/02-stones-throw-caps.jpg",
+    "expectedData": {
+      "brand": "Stone's Throw",
+      "classType": "American Amber Lager",
+      "abv": 5.2,
+      "netContents": "12 fl oz",
+      "bottlerName": "Stone's Throw Brewing Co.",
+      "bottlerAddress": "Bend, OR",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "TTB-2026-00002",
+      "beverageType": "malt-beverage"
+    }
+  },
+  "mockExtraction": {
+    "brand": {
+      "value": "Stone's Throw Brewing",
+      "evidenceQuote": "Stone's Throw Brewing",
+      "confidence": 0.92
+    },
+    "classType": {
+      "value": "American Amber Lager",
+      "evidenceQuote": "American Amber Lager",
+      "confidence": 0.92
+    },
+    "alcoholContentText": {
+      "value": "5.2% Alc./Vol.",
+      "evidenceQuote": "5.2% Alc./Vol.",
+      "confidence": 0.92
+    },
+    "abvPercent": {
+      "value": 5.2,
+      "evidenceQuote": "5.2%",
+      "confidence": 0.92
+    },
+    "proof": {
+      "value": 10.4,
+      "evidenceQuote": "10.4 Proof",
+      "confidence": 0.92
+    },
+    "netContents": {
+      "value": "12 fl oz",
+      "evidenceQuote": "12 fl oz",
+      "confidence": 0.92
+    },
+    "bottlerName": {
+      "value": "Stone's Throw Brewing Co.",
+      "evidenceQuote": "Stone's Throw Brewing Co.",
+      "confidence": 0.92
+    },
+    "bottlerAddress": {
+      "value": "Bend, OR",
+      "evidenceQuote": "Bend, OR",
+      "confidence": 0.92
+    },
+    "countryOfOrigin": {
+      "value": "United States",
+      "evidenceQuote": "United States",
+      "confidence": 0.92
+    },
+    "governmentWarningText": {
+      "value": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+      "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+      "confidence": 0.92
+    },
+    "rawText": "Stone's Throw American Amber Lager 5.2% Alc./Vol. 10.4 Proof 12 fl oz Stone's Throw Brewing Co. Bend, OR United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    "imageQualityNotes": [],
+    "extractionConfidence": 0.95
+  },
+  "mockOcr": {
+    "rawText": "Stone's Throw Brewing American Amber Lager 5.2% Alc./Vol. 12 fl oz GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+  },
+  "expected": {
+    "overall": "pass-with-warnings",
+    "fieldExpectations": [
+      {
+        "field": "brand",
+        "status": {
+          "oneOf": [
+            "likely-match",
+            "manual-review"
+          ]
+        }
+      }
+    ],
+    "imageQualityFlags": []
+  }
+}

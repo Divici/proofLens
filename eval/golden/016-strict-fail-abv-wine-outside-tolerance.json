@@ -1,0 +1,92 @@
+{
+  "id": "016",
+  "name": "strict-fail-abv-wine-outside-tolerance",
+  "tags": [
+    "strict-fail",
+    "abv",
+    "wine"
+  ],
+  "input": {
+    "labelImagePath": "public/demo-labels/03-abv-mismatch.jpg",
+    "expectedData": {
+      "brand": "Riverfront Vineyards",
+      "classType": "Estate Chardonnay",
+      "abv": 14.5,
+      "netContents": "750 mL",
+      "bottlerName": "Riverfront Vineyards",
+      "bottlerAddress": "Napa, CA",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "TTB-2026-00005",
+      "beverageType": "wine"
+    }
+  },
+  "mockExtraction": {
+    "brand": {
+      "value": "Riverfront Vineyards",
+      "evidenceQuote": "Riverfront Vineyards",
+      "confidence": 0.92
+    },
+    "classType": {
+      "value": "Estate Chardonnay",
+      "evidenceQuote": "Estate Chardonnay",
+      "confidence": 0.92
+    },
+    "alcoholContentText": {
+      "value": "12.5% Alc./Vol.",
+      "evidenceQuote": "12.5% Alc./Vol.",
+      "confidence": 0.92
+    },
+    "abvPercent": {
+      "value": 12.5,
+      "evidenceQuote": "12.5% Alc./Vol.",
+      "confidence": 0.92
+    },
+    "proof": {
+      "value": 25,
+      "evidenceQuote": "25 Proof",
+      "confidence": 0.92
+    },
+    "netContents": {
+      "value": "750 mL",
+      "evidenceQuote": "750 mL",
+      "confidence": 0.92
+    },
+    "bottlerName": {
+      "value": "Riverfront Vineyards",
+      "evidenceQuote": "Riverfront Vineyards",
+      "confidence": 0.92
+    },
+    "bottlerAddress": {
+      "value": "Napa, CA",
+      "evidenceQuote": "Napa, CA",
+      "confidence": 0.92
+    },
+    "countryOfOrigin": {
+      "value": "United States",
+      "evidenceQuote": "United States",
+      "confidence": 0.92
+    },
+    "governmentWarningText": {
+      "value": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+      "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+      "confidence": 0.92
+    },
+    "rawText": "Riverfront Vineyards Estate Chardonnay 14.5% Alc./Vol. 29 Proof 750 mL Riverfront Vineyards Napa, CA United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    "imageQualityNotes": [],
+    "extractionConfidence": 0.95
+  },
+  "mockOcr": {
+    "rawText": "Riverfront Vineyards Estate Chardonnay 12.5% Alc./Vol. 750 mL GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+  },
+  "expected": {
+    "overall": "fail",
+    "fieldExpectations": [
+      {
+        "field": "abv",
+        "status": "fail"
+      }
+    ],
+    "imageQualityFlags": []
+  }
+}

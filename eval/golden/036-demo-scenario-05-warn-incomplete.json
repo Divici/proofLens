@@ -1,0 +1,94 @@
+{
+  "id": "036",
+  "name": "demo-scenario-05-warn-incomplete",
+  "tags": [
+    "demo-scenario",
+    "strict-fail",
+    "gov-warning",
+    "100-percent-recall"
+  ],
+  "input": {
+    "labelImagePath": "public/demo-labels/05-warn-incomplete.jpg",
+    "expectedData": {
+      "brand": "Riverfront Vineyards",
+      "classType": "Estate Chardonnay",
+      "abv": 13.5,
+      "netContents": "750 mL",
+      "bottlerName": "Riverfront Vineyards",
+      "bottlerAddress": "Napa, CA",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "TTB-2026-00005",
+      "beverageType": "wine"
+    }
+  },
+  "mockExtraction": {
+    "brand": {
+      "value": "Riverfront Vineyards",
+      "evidenceQuote": "Riverfront Vineyards",
+      "confidence": 0.92
+    },
+    "classType": {
+      "value": "Estate Chardonnay",
+      "evidenceQuote": "Estate Chardonnay",
+      "confidence": 0.92
+    },
+    "alcoholContentText": {
+      "value": "13.5% Alc./Vol.",
+      "evidenceQuote": "13.5% Alc./Vol.",
+      "confidence": 0.92
+    },
+    "abvPercent": {
+      "value": 13.5,
+      "evidenceQuote": "13.5%",
+      "confidence": 0.92
+    },
+    "proof": {
+      "value": 27,
+      "evidenceQuote": "27 Proof",
+      "confidence": 0.92
+    },
+    "netContents": {
+      "value": "750 mL",
+      "evidenceQuote": "750 mL",
+      "confidence": 0.92
+    },
+    "bottlerName": {
+      "value": "Riverfront Vineyards",
+      "evidenceQuote": "Riverfront Vineyards",
+      "confidence": 0.92
+    },
+    "bottlerAddress": {
+      "value": "Napa, CA",
+      "evidenceQuote": "Napa, CA",
+      "confidence": 0.92
+    },
+    "countryOfOrigin": {
+      "value": "United States",
+      "evidenceQuote": "United States",
+      "confidence": 0.92
+    },
+    "governmentWarningText": {
+      "value": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
+      "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
+      "confidence": 0.92
+    },
+    "rawText": "Riverfront Vineyards Estate Chardonnay 13.5% Alc./Vol. 27 Proof 750 mL Riverfront Vineyards Napa, CA United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
+    "imageQualityNotes": [],
+    "extractionConfidence": 0.95
+  },
+  "mockOcr": {
+    "rawText": "RIVERFRONT VINEYARDS ESTATE CHARDONNAY 13.5% Alc./Vol. 750 mL GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy"
+  },
+  "expected": {
+    "overall": "fail",
+    "fieldExpectations": [
+      {
+        "field": "governmentWarning",
+        "status": "fail"
+      }
+    ],
+    "imageQualityFlags": [],
+    "mustReachGovWarningFail": true
+  }
+}
