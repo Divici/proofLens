@@ -27,7 +27,11 @@
 
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Review } from "@/lib/storage/types";
-import type { FieldResult, FieldStatus } from "@/lib/verify/types";
+import type {
+  FieldResult,
+  FieldStatus,
+  OverallStatus,
+} from "@/lib/verify/types";
 
 const SECTION_16_21_FOOTER =
   "Government warning text was checked against 27 CFR § 16.21 (verified 2026-04-30).";
@@ -48,6 +52,52 @@ const STATUS_LABEL: Record<FieldStatus, string> = {
   "manual-review": "Manual review",
   "not-required": "Not required",
 };
+
+/**
+ * Verdict pill colours per overall status (PRD §9.6). White text on a
+ * status-coloured background — chosen to read clearly when printed in
+ * grayscale (each colour has a different luminance) and to stay legible
+ * on screen at PDF preview zoom.
+ */
+const VERDICT_COLOURS: Record<OverallStatus, string> = {
+  pass: "#16a34a", // green-600
+  "pass-with-warnings": "#d97706", // amber-600
+  fail: "#dc2626", // red-600
+  "needs-manual-review": "#2563eb", // blue-600
+  "request-better-image": "#6b7280", // gray-500
+};
+
+const VERDICT_LABEL: Record<OverallStatus, string> = {
+  pass: "Pass",
+  "pass-with-warnings": "Pass with warnings",
+  fail: "Fail",
+  "needs-manual-review": "Needs manual review",
+  "request-better-image": "Request better image",
+};
+
+/**
+ * Format an ISO-8601 timestamp as a stable, human-readable UTC string.
+ * Using `Intl.DateTimeFormat('en-US', ...)` so the server-rendered PDF
+ * is deterministic regardless of the request's locale or timezone — the
+ * audit-of-record must not vary by reviewer machine.
+ *
+ * Output looks like: `Apr 29, 2026, 12:00 PM UTC`.
+ */
+const COMPLETED_AT_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+});
+
+function formatCompletedAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso; // fall back to raw on bad input
+  return `${COMPLETED_AT_FORMATTER.format(date)} UTC`;
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -128,10 +178,21 @@ const styles = StyleSheet.create({
   verdictPill: {
     marginTop: 4,
     marginBottom: 8,
-    padding: 6,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+  },
+  verdictLabel: {
+    color: "#ffffff",
+    fontSize: 7,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  verdictValue: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
   },
   overrideRow: {
     borderTopWidth: 1,
@@ -230,7 +291,9 @@ export function ReviewReport({
           </View>
           <View style={styles.metadataCell}>
             <Text style={styles.metadataLabel}>Completed at</Text>
-            <Text style={styles.metadataValue}>{review.createdAt}</Text>
+            <Text style={styles.metadataValue}>
+              {formatCompletedAt(review.createdAt)}
+            </Text>
           </View>
           <View style={styles.metadataCell}>
             <Text style={styles.metadataLabel}>Rules version</Text>
@@ -279,13 +342,22 @@ export function ReviewReport({
           ))}
         </View>
 
-        {/* 5. Overall verdict */}
-        <View style={styles.verdictPill}>
-          <Text style={styles.metadataLabel}>Overall verdict</Text>
-          <Text style={styles.metadataValue}>
-            {review.overall} — final decision: {decisionText}
+        {/* 5. Overall verdict — coloured pill keyed off OverallStatus. */}
+        <Text style={styles.sectionTitle}>Overall verdict</Text>
+        <View
+          style={[
+            styles.verdictPill,
+            { backgroundColor: VERDICT_COLOURS[review.overall] },
+          ]}
+        >
+          <Text style={styles.verdictLabel}>Verdict</Text>
+          <Text style={styles.verdictValue}>
+            {VERDICT_LABEL[review.overall]}
           </Text>
         </View>
+        <Text style={styles.metadataValue}>
+          Final decision: {decisionText}
+        </Text>
 
         {/* 6. Human overrides — only when present */}
         {overrideRows.length > 0 ? (

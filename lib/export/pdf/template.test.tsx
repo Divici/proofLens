@@ -13,6 +13,7 @@ import {
   makeReviewFixture,
   makeFieldResults,
 } from "@/test/fixtures/review";
+import type { OverallStatus } from "@/lib/verify/types";
 
 /**
  * `react-pdf` primitives (`Document`, `Page`, `Text`, `View`, `Image`) are
@@ -23,7 +24,7 @@ import {
 
 interface AnyEl {
   type: unknown;
-  props: { children?: unknown };
+  props: { children?: unknown; style?: unknown };
 }
 
 function flattenAll(node: unknown, out: AnyEl[] = []): AnyEl[] {
@@ -100,6 +101,89 @@ describe("ReviewReport (react-pdf component)", () => {
     // 256 thumbnail footer note
     expect(text).toMatch(/256(?:\s*-?\s*)?px thumbnail/i);
   });
+
+  it("formats the completed-at timestamp as a stable, human-readable UTC string", () => {
+    const review = makeReviewFixture({
+      createdAt: "2026-04-29T12:00:00.000Z",
+    });
+    const tree = ReviewReport({
+      review,
+      thumbnailDataUrl: "data:image/jpeg;base64,AAAA",
+      appVersion: "0.1.0",
+    });
+    const text = collectText(tree).join(" ");
+    // Raw ISO must NOT appear — we want the human form.
+    expect(text).not.toContain("2026-04-29T12:00:00.000Z");
+    // Human form: "Apr 29, 2026, 12:00 PM UTC" (en-US, hour12, UTC tz).
+    expect(text).toMatch(/Apr 29, 2026/);
+    expect(text).toMatch(/12:00\s*PM/i);
+    expect(text).toMatch(/UTC/);
+  });
+
+  it("falls back to the raw input string when createdAt is unparseable", () => {
+    // Defensive: if a malformed timestamp slips through the wire schema
+    // we should still render the raw value rather than "Invalid Date".
+    const review = makeReviewFixture({ createdAt: "not-a-date" });
+    const tree = ReviewReport({
+      review,
+      thumbnailDataUrl: "data:image/jpeg;base64,AAAA",
+      appVersion: "0.1.0",
+    });
+    const text = collectText(tree).join(" ");
+    expect(text).toContain("not-a-date");
+    expect(text).not.toMatch(/Invalid Date/i);
+  });
+
+  it.each<{ status: OverallStatus; colour: string; label: string }>([
+    { status: "pass", colour: "#16a34a", label: "Pass" },
+    {
+      status: "pass-with-warnings",
+      colour: "#d97706",
+      label: "Pass with warnings",
+    },
+    { status: "fail", colour: "#dc2626", label: "Fail" },
+    {
+      status: "needs-manual-review",
+      colour: "#2563eb",
+      label: "Needs manual review",
+    },
+    {
+      status: "request-better-image",
+      colour: "#6b7280",
+      label: "Request better image",
+    },
+  ])(
+    "renders verdict pill for %s with the correct colour + label",
+    ({ status, colour, label }) => {
+      const review = makeReviewFixture({ overall: status });
+      const tree = ReviewReport({
+        review,
+        thumbnailDataUrl: "data:image/jpeg;base64,AAAA",
+        appVersion: "0.1.0",
+      });
+      const all = flattenAll(tree);
+
+      // Find a VIEW whose style array carries our backgroundColor — that
+      // is the verdict pill. The component composes [styles.verdictPill,
+      // { backgroundColor: VERDICT_COLOURS[overall] }].
+      const pill = all.find((el) => {
+        if (el.type !== "VIEW") return false;
+        const style = el.props.style;
+        if (!Array.isArray(style)) return false;
+        return style.some(
+          (s) =>
+            s &&
+            typeof s === "object" &&
+            (s as { backgroundColor?: string }).backgroundColor === colour,
+        );
+      });
+      expect(pill).toBeDefined();
+
+      // The label text must match VERDICT_LABEL[status].
+      const text = collectText(tree).join(" ");
+      expect(text).toContain(label);
+    },
+  );
 
   it("omits the override section when no fields carry humanOverride", () => {
     const review = makeReviewFixture();
