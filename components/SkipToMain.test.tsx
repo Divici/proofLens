@@ -10,12 +10,14 @@ describe("SkipToMain", () => {
     expect(link).toHaveAttribute("href", "#main");
   });
 
-  it("is visually hidden by default but reappears on focus", () => {
+  it("is visually hidden by default but reappears on keyboard focus", () => {
     render(<SkipToMain />);
     const link = screen.getByRole("link", { name: /skip to main content/i });
-    // Tailwind sr-only-style hide pattern with focus reveal — class is not
-    // a behavioural assertion on its own, but the focus-visible classes are
-    // the contract that makes the link discoverable to keyboard users.
-    expect(link.className).toMatch(/sr-only|focus:|focus-visible:/);
+    // Tailwind sr-only-style hide pattern with keyboard-only reveal — the
+    // class string is not a behavioural assertion on its own, but the
+    // `focus-visible:` classes are the contract that makes the link
+    // discoverable to keyboard users without flashing on mouse-focus.
+    expect(link.className).toMatch(/\bsr-only\b/);
+    expect(link.className).toMatch(/focus-visible:not-sr-only/);
   });
 });

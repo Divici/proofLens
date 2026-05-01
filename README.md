@@ -304,6 +304,7 @@ is `import "server-only"` and must not be imported from client code.
 - **Real TTB COLA bundle.** The demo bundle ships programmatic JPEG
   placeholders for all seven scenarios; sourcing license-clean real
   COLA artwork is a future improvement.
+- **Country-of-origin and malt-beverage ABV evaluators default to Optional**: the form does not currently surface `isImported` or `addedFlavorsContributeAlcohol` flags. Reviewers can override the per-field result manually. (See `lib/verify/beverage-rules.ts`.)
 
 ## Future improvements
 

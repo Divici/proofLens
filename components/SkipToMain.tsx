@@ -14,11 +14,11 @@ export function SkipToMain() {
     <a
       href="#main"
       className={
-        "sr-only focus:not-sr-only " +
-        "focus:fixed focus:left-4 focus:top-4 focus:z-50 " +
-        "focus:rounded-md focus:bg-foreground focus:px-3 focus:py-2 " +
-        "focus:text-sm focus:font-medium focus:text-background " +
-        "focus:shadow-lg focus:outline-none focus-visible:ring-2 " +
+        "sr-only focus-visible:not-sr-only " +
+        "focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 " +
+        "focus-visible:rounded-md focus-visible:bg-foreground focus-visible:px-3 focus-visible:py-2 " +
+        "focus-visible:text-sm focus-visible:font-medium focus-visible:text-background " +
+        "focus-visible:shadow-lg focus-visible:outline-none focus-visible:ring-2 " +
         "focus-visible:ring-ring"
       }
     >

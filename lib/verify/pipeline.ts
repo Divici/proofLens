@@ -50,9 +50,11 @@ import type { ImageQualityFlag } from "@/lib/quality/types";
  * Returns a `FieldResult[]` (one per regulated field) plus the rolled-up
  * overall status. Stateless — no IO except the optional judge callback.
  *
- * Note: the LLM-judge endpoint at /api/judge-field exists but is NOT YET
- * called from this pipeline; gray-band cases route to "manual-review"
- * status until production wiring lands. See slice-3-detail.md track 5.
+ * Gray-band nuanced cases (similarity 0.78–0.92) call the LLM-judge
+ * endpoint at /api/judge-field via the optional `callJudge` param.
+ * On judge failure or absence of `callJudge`, the ladder gracefully
+ * falls back to "manual-review". Strict fields (gov-warning, ABV,
+ * net-contents) never call the judge.
  */
 
 export interface PipelineImageQuality {
@@ -215,10 +217,14 @@ export async function runVerificationPipeline({
   /**
    * Resolve the per-beverage requirement for a field. Same context for
    * every field — the evaluators look up only the keys they need.
+   *
+   * Design note: `isImported` and `addedFlavorsContributeAlcohol` are
+   * not surfaced by the application form, so country-of-origin and
+   * malt-beverage ABV evaluators conservatively default to "optional".
+   * Reviewers can override the per-field result manually. See
+   * `decisions/0002-verification-pipeline-architecture.md` and the
+   * Known Limitations section of the README.
    */
-  // TODO(slice-0009): thread isImported and addedFlavorsContributeAlcohol from
-  // the form once those UI flags ship; until then country-of-origin and malt
-  // ABV evaluators conservatively default to optional. See decisions/0002.
   const ruleContext = { expectedAbv: expected.abv };
   const requirement = (field: BeverageField): ResolvedRequirement =>
     evaluateRule(expected.beverageType, field, ruleContext);
