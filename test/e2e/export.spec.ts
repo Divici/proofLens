@@ -130,8 +130,15 @@ test.describe("slice 0008 — export menus", () => {
   test("single review: export PDF downloads a non-empty PDF file", async ({
     page,
   }) => {
+    // Render-pdf is the slowest path — extend the per-test timeout so
+    // the synchronous @react-pdf/renderer pipeline has room when the
+    // dev server is also serving competing requests under fullyParallel.
+    test.setTimeout(90_000);
     await page.goto("/review");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
     await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();
@@ -170,6 +177,9 @@ test.describe("slice 0008 — export menus", () => {
   }) => {
     await page.goto("/review");
     await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("img", { name: /uploaded label preview/i })
+      .waitFor({ state: "visible" });
     await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
     await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();
@@ -200,6 +210,9 @@ test.describe("slice 0008 — export menus", () => {
   test("batch: All JSON (zip) downloads a ZIP with a per-review entry", async ({
     page,
   }) => {
+    // Batch + zip + IDB persistence is also slower than 30s under
+    // parallel load — give the test the same headroom as the PDF case.
+    test.setTimeout(90_000);
     // Drive the batch page through the demo manifest so we get a saved
     // batch with N reviews.
     await page.goto("/batch");
