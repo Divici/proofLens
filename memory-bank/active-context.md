@@ -2,10 +2,10 @@
 
 ## Current phase
 
-**Phase 5 — Build — paused at reviewable milestone (post-slice-0005).**
-Awaiting user "continue" to dispatch slice 0006. Slices 0001-0005
-merged. Next milestone pause is after slice 0009 (the full polished
-demo).
+**Phase 5 — Build COMPLETE — paused at polished-demo milestone (post-slice-0009).**
+All 9 build slices merged. Awaiting user "continue" to advance into
+Phase 6 (Architecture Audit), Phase 7 (Eval), Phase 8 (Sweep),
+Phase 9 (Deploy + CHECKPOINT 4).
 
 ## Just completed
 
