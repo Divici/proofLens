@@ -11,6 +11,11 @@ architecture-audit.md
 
 # Local Claude Code overrides
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Tesseract.js runtime-downloaded language data
+eng.traineddata
+*.traineddata
 
 # Git worktrees for isolated slice work
 .worktrees/
@@ -42,6 +47,8 @@ yarn-error.log*
 .pnpm-debug.log*
 vitest.log
 playwright.log
+dev.log
+eval.log
 
 # Local crash dumps
 *.stackdump
