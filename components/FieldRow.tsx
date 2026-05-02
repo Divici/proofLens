@@ -37,51 +37,54 @@ interface StatusVisual {
   testId: string;
 }
 
+// Pill palette mirrors the Phase-9 design language: solid pastel
+// background + saturated text, no ring border. Calmer than the previous
+// ring-inset look and more readable on the new white-card surfaces.
 const STATUS_VISUALS: Record<FieldStatus, StatusVisual> = {
   pass: {
-    label: "Pass",
+    label: "Match",
     badgeClass:
-      "bg-emerald-500/10 text-emerald-700 ring-emerald-600/30 dark:text-emerald-300",
+      "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
     Icon: CircleCheck,
-    iconClass: "text-emerald-600 dark:text-emerald-400",
+    iconClass: "text-green-600 dark:text-green-400",
     testId: "status-icon-pass",
   },
   "likely-match": {
     label: "Likely match",
     badgeClass:
-      "bg-sky-500/10 text-sky-700 ring-sky-600/30 dark:text-sky-300",
+      "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
     Icon: Check,
     iconClass: "text-sky-600 dark:text-sky-400",
     testId: "status-icon-likely-match",
   },
   warning: {
-    label: "Warning",
+    label: "Flagged",
     badgeClass:
-      "bg-amber-500/10 text-amber-700 ring-amber-600/30 dark:text-amber-300",
+      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
     Icon: AlertTriangle,
-    iconClass: "text-amber-600 dark:text-amber-400",
+    iconClass: "text-yellow-600 dark:text-yellow-400",
     testId: "status-icon-warning",
   },
   fail: {
     label: "Fail",
     badgeClass:
-      "bg-rose-500/10 text-rose-700 ring-rose-600/30 dark:text-rose-300",
+      "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
     Icon: XCircle,
-    iconClass: "text-rose-600 dark:text-rose-400",
+    iconClass: "text-red-600 dark:text-red-400",
     testId: "status-icon-fail",
   },
   missing: {
     label: "Missing",
     badgeClass:
-      "bg-zinc-500/10 text-zinc-700 ring-zinc-600/30 dark:text-zinc-300",
+      "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
     Icon: CircleSlash,
-    iconClass: "text-zinc-500",
+    iconClass: "text-gray-500",
     testId: "status-icon-missing",
   },
   "low-confidence": {
     label: "Low confidence",
     badgeClass:
-      "bg-orange-500/10 text-orange-700 ring-orange-600/30 dark:text-orange-300",
+      "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
     Icon: CircleAlert,
     iconClass: "text-orange-500",
     testId: "status-icon-low-confidence",
@@ -89,15 +92,15 @@ const STATUS_VISUALS: Record<FieldStatus, StatusVisual> = {
   "manual-review": {
     label: "Manual review",
     badgeClass:
-      "bg-violet-500/10 text-violet-700 ring-violet-600/30 dark:text-violet-300",
+      "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
     Icon: Eye,
-    iconClass: "text-violet-600 dark:text-violet-400",
+    iconClass: "text-purple-600 dark:text-purple-400",
     testId: "status-icon-manual-review",
   },
   "not-required": {
     label: "Not required",
     badgeClass:
-      "bg-muted text-muted-foreground ring-border",
+      "bg-muted text-muted-foreground",
     Icon: CircleHelp,
     iconClass: "text-muted-foreground",
     testId: "status-icon-not-required",
@@ -179,7 +182,7 @@ export function FieldRow({
           </div>
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium",
               visual.badgeClass,
             )}
           >

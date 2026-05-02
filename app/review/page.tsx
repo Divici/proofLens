@@ -28,6 +28,7 @@ import type { FieldOverride, FieldResult, OverallStatus } from "@/lib/verify/typ
 import type { ImageQualityFlag } from "@/lib/quality/types";
 import type { HumanDecision } from "@/lib/storage/types";
 import { composeReview } from "@/lib/storage/compose-review";
+import { rollUpOverall } from "@/lib/verify/status-engine";
 import { generateThumbnail } from "@/lib/image/thumbnail";
 import {
   createReview,
@@ -382,6 +383,11 @@ function ReviewPageInner() {
         }
 
         const id = savedReviewId ?? crypto.randomUUID();
+        // Recompute overall from the override-applied fieldResults
+        // before persisting — otherwise the saved Review record (and
+        // every history surface that reads from it) keeps the original
+        // AI verdict despite reviewer overrides. R-012.
+        const persistedOverall = rollUpOverall(fieldResults);
         const review = composeReview({
           id,
           now: () => new Date(),
@@ -389,7 +395,7 @@ function ReviewPageInner() {
           expectedData: result.expected,
           extracted: result.extracted,
           fieldResults,
-          overall: result.overall,
+          overall: persistedOverall,
           imageQualityFlags: result.imageQualityFlags ?? [],
           thumbnail,
           rawText: result.rawText,
@@ -466,17 +472,17 @@ function ReviewPageInner() {
             aria-label="Label image and expected data"
             className="flex flex-col gap-4"
           >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-foreground text-sm font-semibold">
                 Label image
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <label htmlFor="demo-scenario" className="sr-only">
                   Demo scenario
                 </label>
                 <select
                   id="demo-scenario"
-                  className="border-border bg-background rounded-md border px-2 py-1 text-xs"
+                  className="border-border bg-background min-w-0 max-w-[180px] truncate rounded-md border px-2 py-1 text-xs"
                   value={demoScenarioId}
                   onChange={(e) => setDemoScenarioId(e.target.value)}
                 >
@@ -588,7 +594,10 @@ function ReviewPageInner() {
                 <VerificationDetail
                   imageSrc={previewUrl}
                   fieldResults={fieldResults}
-                  overall={successResult.overall}
+                  // Use the override-aware rollup so the overall pill on
+                  // the result/confirmation pane reflects reviewer
+                  // overrides in real time. R-012: human override > AI.
+                  overall={rollUpOverall(fieldResults)}
                   processingTimeMs={successResult.processingTimeMs}
                   primaryUsd={successResult.aiSpend.primaryUsd}
                   ocrConfidence={successResult.ocrConfidence}

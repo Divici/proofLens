@@ -27,7 +27,10 @@ describe("FieldRow", () => {
     expect(screen.getByText("Brand name")).toBeInTheDocument();
     // The value appears at least once (so does Expected for byte-equal pairs).
     expect(screen.getAllByText("Old Tom Distillery").length).toBeGreaterThan(0);
-    expect(screen.getByText(/^pass$/i)).toBeInTheDocument();
+    // Field-level pass renders as "Match" per the Phase-9 design language
+    // (TTB reviewers think in match/mismatch at the field level; the
+    // overall pill keeps the "Pass" verb per PRD R-008).
+    expect(screen.getByText(/^match$/i)).toBeInTheDocument();
   });
 
   it("renders distinct text + icon for fail status (never colour-only)", () => {

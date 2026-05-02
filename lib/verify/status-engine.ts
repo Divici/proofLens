@@ -81,6 +81,16 @@ export function resolveNuancedStatus({
 }
 
 /**
+ * Returns the field's effective status — human override takes precedence
+ * over the AI status. Without honoring overrides here the rollup keeps
+ * the original AI verdict even after a reviewer has overridden every
+ * failed field to pass.
+ */
+export function effectiveFieldStatus(field: FieldResult): FieldStatus {
+  return field.humanOverride?.humanStatus ?? field.status;
+}
+
+/**
  * Roll-up logic per PRD §9.6.
  *
  *   1. Any `fail` → overall fail.
@@ -89,7 +99,8 @@ export function resolveNuancedStatus({
  *   4. Any `warning` or `likely-match` (and no fail / mr) → pass-with-warnings.
  *   5. Otherwise → pass.
  *
- * `not-required` rows are inert and don't affect the roll-up.
+ * `not-required` rows are inert and don't affect the roll-up. Reads each
+ * field's `effectiveFieldStatus` so reviewer overrides flow through.
  */
 export function rollUpOverall(fields: ReadonlyArray<FieldResult>): OverallStatus {
   let hasFail = false;
@@ -101,9 +112,10 @@ export function rollUpOverall(fields: ReadonlyArray<FieldResult>): OverallStatus
   let activeCount = 0;
 
   for (const f of fields) {
-    if (f.status === "not-required") continue;
+    const status = effectiveFieldStatus(f);
+    if (status === "not-required") continue;
     activeCount++;
-    switch (f.status) {
+    switch (status) {
       case "fail":
         hasFail = true;
         break;

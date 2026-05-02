@@ -149,6 +149,65 @@ describe("rollUpOverall", () => {
       rollUpOverall([field("pass"), field("not-required"), field("pass")]),
     ).toBe("pass");
   });
+
+  // R-012 regression — Phase 9 user-reported bug: overriding every fail
+  // to pass on /review left the saved review (and the confirmation pane)
+  // showing fail because the rollup ignored humanOverride.humanStatus.
+  describe("honors human overrides", () => {
+    function withOverride(
+      status: FieldResult["status"],
+      humanStatus: FieldResult["status"],
+    ): FieldResult {
+      return {
+        ...field(status),
+        humanOverride: {
+          originalAiStatus: status,
+          humanStatus,
+          reason: "test override",
+          timestamp: "2026-05-02T00:00:00.000Z",
+          reviewerName: "Reviewer",
+        },
+      };
+    }
+
+    it("returns 'pass' when every fail is overridden to pass", () => {
+      expect(
+        rollUpOverall([
+          withOverride("fail", "pass"),
+          withOverride("fail", "pass"),
+          field("pass"),
+        ]),
+      ).toBe("pass");
+    });
+
+    it("returns 'fail' when an override flips a pass to fail", () => {
+      expect(
+        rollUpOverall([
+          field("pass"),
+          withOverride("pass", "fail"),
+          field("pass"),
+        ]),
+      ).toBe("fail");
+    });
+
+    it("override to manual-review surfaces in the rollup", () => {
+      expect(
+        rollUpOverall([
+          field("pass"),
+          withOverride("fail", "manual-review"),
+        ]),
+      ).toBe("needs-manual-review");
+    });
+
+    it("override to not-required removes that field from the rollup", () => {
+      expect(
+        rollUpOverall([
+          field("pass"),
+          withOverride("fail", "not-required"),
+        ]),
+      ).toBe("pass");
+    });
+  });
 });
 
 describe("image-quality override (slice 0004 R-011)", () => {
