@@ -1,0 +1,82 @@
+[
+  {
+    "filename": "bacardi-rasberry-FRONT.jpeg",
+    "description": "Bacardi Raspberry — front, clean lighting",
+    "applicationData": {
+      "brand": "Bacardi",
+      "classType": "Raspberry Flavored Rum",
+      "abv": 35,
+      "netContents": "750 mL",
+      "bottlerName": "Bacardi U.S.A., Inc.",
+      "bottlerAddress": "Coral Gables, Florida",
+      "countryOfOrigin": "Puerto Rico",
+      "govWarningRequired": true,
+      "applicationNotes": "Real bottle — auto-extracted brand/class; ABV + bottler hand-tuned to actual product spec.",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "jack-daniels-ANGLE.jpeg",
+    "description": "Jack Daniel's — angled shot",
+    "applicationData": {
+      "brand": "Jack Daniel's",
+      "classType": "Tennessee Whiskey",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Jack Daniel Distillery, Lem Motlow, Prop., Inc.",
+      "bottlerAddress": "Lynchburg, Tennessee 37352",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "Real bottle — auto-extracted full record; bottler details normalized to canonical TTB form.",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "ron-zacapa-FRONT.jpeg",
+    "description": "Ron Zacapa — front, clean",
+    "applicationData": {
+      "brand": "Ron Zacapa",
+      "classType": "Rum",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Industrias Licoreras de Guatemala",
+      "bottlerAddress": "Quetzaltenango, Guatemala",
+      "countryOfOrigin": "Guatemala",
+      "govWarningRequired": true,
+      "applicationNotes": "Real bottle — auto-extracted brand/class/ABV; bottler details hand-tuned (LLM returned literal 'null' strings).",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "ron-zacapa-ANGLE.jpeg",
+    "description": "Ron Zacapa — angled (image-quality test)",
+    "applicationData": {
+      "brand": "Ron Zacapa",
+      "classType": "Rum",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Industrias Licoreras de Guatemala",
+      "bottlerAddress": "Quetzaltenango, Guatemala",
+      "countryOfOrigin": "Guatemala",
+      "govWarningRequired": true,
+      "applicationNotes": "Same product as ron-zacapa-FRONT; angled photo to exercise image-quality detection.",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "ron-zacapa-FRONT-GLARE.jpeg",
+    "description": "Ron Zacapa — front with glare (image-quality test)",
+    "applicationData": {
+      "brand": "Ron Zacapa",
+      "classType": "Rum",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Industrias Licoreras de Guatemala",
+      "bottlerAddress": "Quetzaltenango, Guatemala",
+      "countryOfOrigin": "Guatemala",
+      "govWarningRequired": true,
+      "applicationNotes": "Same product as ron-zacapa-FRONT; glare overlay to exercise exposure-histogram heuristics.",
+      "beverageType": "distilled-spirits"
+    }
+  }
+]

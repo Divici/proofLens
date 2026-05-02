@@ -1,0 +1,566 @@
+<!--
+  Design reference for the Active Review screen — supplied during the
+  post-Phase-9 redesign discussion. Do not edit. If the design evolves,
+  add a new file alongside this one (e.g. active-review-prototype-v2.html)
+  rather than mutating this artifact.
+
+  Open in a browser to see the rendered intent:
+  visual language (calm white surface, dark header bar, pill statuses),
+  layout (artwork panel | data table), and per-row interactions
+  (checkbox + status pill + optional discrepancy note). The CSS variables
+  at :root document the canonical color tokens we adopt in components.
+
+  Tracked alongside ADR 0008 (decisions/0008-queue-and-design-language.md)
+  and PROJECT_BRIEF.md.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTB Label Verification</title>
+    <style>
+      :root {
+        --bg-page: #FFFFFF;
+        --text-primary: #111827;
+        --text-secondary: #6B7280;
+        --text-tertiary: #9CA3AF;
+        --border-light: #F3F4F6;
+        --border-medium: #E5E7EB;
+
+        --logo-purple: #9333EA;
+        --btn-dark: #1F2937;
+        --btn-dark-hover: #111827;
+
+        --pill-purple-bg: #F3E8FF;
+        --pill-purple-text: #9333EA;
+        --pill-green-bg: #DCFCE7;
+        --pill-green-text: #16A34A;
+        --pill-yellow-bg: #FEF08A;
+        --pill-yellow-text: #CA8A04;
+        --pill-gray-bg: #F3F4F6;
+        --pill-gray-text: #4B5563;
+
+        --radius-pill: 9999px;
+        --radius-lg: 12px;
+        --radius-md: 8px;
+        --radius-sm: 4px;
+        --font-main: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-main);
+        background-color: var(--bg-page);
+        color: var(--text-primary);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+
+        background-color: #2D3139;
+        display: flex;
+        justify-content: center;
+        padding: 24px;
+        min-height: 100vh;
+      }
+
+      .app-window {
+        background-color: var(--bg-page);
+        width: 100%;
+        max-width: 1280px;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border-light);
+      }
+
+      .logo-area {
+        display: flex;
+        align-items: center;
+        width: 200px;
+      }
+
+      .logo-icon {
+        width: 24px;
+        height: 24px;
+        background-color: var(--logo-purple);
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        border-radius: 4px;
+        transform: rotate(15deg);
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 8px;
+      }
+
+      .nav-link {
+        padding: 6px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-decoration: none;
+        border-radius: var(--radius-pill);
+        transition: all 0.2s ease;
+      }
+
+      .nav-link:hover {
+        color: var(--text-primary);
+      }
+
+      .nav-link.active {
+        background-color: var(--pill-gray-bg);
+        color: var(--text-primary);
+      }
+
+      .profile-area {
+        display: flex;
+        justify-content: flex-end;
+        width: 200px;
+      }
+
+      .avatar {
+        width: 32px;
+        height: 32px;
+        background-color: var(--border-medium);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: var(--text-secondary);
+        overflow: hidden;
+      }
+
+      main {
+        padding: 32px 48px;
+        flex-grow: 1;
+      }
+
+      .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+      }
+
+      .header-title-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .breadcrumb {
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .search-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-tertiary);
+        font-size: 14px;
+      }
+
+      .search-bar svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .btn {
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: var(--radius-pill);
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .btn-primary {
+        background-color: var(--btn-dark);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background-color: var(--btn-dark-hover);
+      }
+
+      .btn-secondary {
+        background-color: white;
+        color: var(--text-primary);
+        border: 1px solid var(--border-medium);
+      }
+
+      .btn-secondary:hover {
+        background-color: var(--border-light);
+      }
+
+      .verification-grid {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 40px;
+        align-items: start;
+      }
+
+      .artwork-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .artwork-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+
+      .artwork-container {
+        width: 100%;
+        aspect-ratio: 3/4;
+        background-color: var(--border-light);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-medium);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .mock-label {
+        width: 80%;
+        height: 70%;
+        background-color: white;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+        font-family: serif;
+      }
+
+      .mock-label-brand { font-size: 24px; font-weight: bold; margin-bottom: 8px; }
+      .mock-label-type { font-size: 14px; margin-bottom: 24px; color: #555; }
+      .mock-label-details { font-size: 10px; color: #888; }
+      .ai-scan-overlay {
+        position: absolute;
+        top: 20%; left: 10%; right: 10%; bottom: 40%;
+        border: 2px dashed rgba(147, 51, 234, 0.3);
+        background: rgba(147, 51, 234, 0.05);
+        border-radius: 4px;
+        pointer-events: none;
+      }
+
+      .processing-time {
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .processing-time svg { width: 14px; height: 14px; color: var(--pill-green-text); }
+
+      .data-panel {
+        width: 100%;
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .th-row {
+        border-bottom: 1px solid var(--border-medium);
+      }
+
+      th {
+        text-align: left;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        padding: 0 16px 12px 16px;
+      }
+
+      .td-row {
+        border-bottom: 1px solid var(--border-light);
+        transition: background-color 0.2s ease;
+      }
+
+      .td-row:hover {
+        background-color: #FAFAFA;
+      }
+
+      .td-row.flagged {
+        background-color: rgba(254, 240, 138, 0.15);
+      }
+
+      td {
+        padding: 16px;
+        font-size: 14px;
+        color: var(--text-secondary);
+        vertical-align: top;
+      }
+
+      td.primary-cell {
+        color: var(--text-primary);
+        font-weight: 400;
+      }
+
+      .checkbox-cell {
+        width: 40px;
+        padding-left: 8px;
+      }
+
+      input[type="checkbox"] {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border: 1px solid var(--border-medium);
+        border-radius: 4px;
+        cursor: pointer;
+        position: relative;
+        top: 2px;
+      }
+
+      input[type="checkbox"]:checked {
+        background-color: var(--logo-purple);
+        border-color: var(--logo-purple);
+      }
+
+      input[type="checkbox"]:checked::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 4px;
+        height: 8px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: var(--radius-pill);
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .pill.green { background-color: var(--pill-green-bg); color: var(--pill-green-text); }
+      .pill.yellow { background-color: var(--pill-yellow-bg); color: var(--pill-yellow-text); }
+      .pill.purple { background-color: var(--pill-purple-bg); color: var(--pill-purple-text); }
+      .pill.gray { background-color: var(--pill-gray-bg); color: var(--pill-gray-text); }
+
+      .id-cell {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      .discrepancy-note {
+        margin-top: 8px;
+        font-size: 13px;
+        color: var(--pill-yellow-text);
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        background-color: rgba(254, 240, 138, 0.3);
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+      }
+
+      .discrepancy-note svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        position: relative;
+        top: 2px;
+      }
+
+      th:nth-child(2), td:nth-child(2) { width: 20%; }
+      th:nth-child(3), td:nth-child(3) { width: 30%; }
+      th:nth-child(4), td:nth-child(4) { width: 30%; }
+      th:nth-child(5), td:nth-child(5) { width: 15%; }
+
+      .review-actions {
+        margin-top: 32px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-light);
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="app-window">
+      <nav>
+        <div class="logo-area">
+          <div class="logo-icon"></div>
+        </div>
+        <div class="nav-links">
+          <a href="#" class="nav-link">Queue</a>
+          <a href="#" class="nav-link active">Active Review</a>
+          <a href="#" class="nav-link">History</a>
+        </div>
+        <div class="profile-area">
+          <div class="avatar">AG</div>
+        </div>
+      </nav>
+
+      <main>
+        <header class="page-header">
+          <div class="header-title-group">
+            <div class="breadcrumb">
+              <span>Application Queue</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"></path></svg>
+              <span>APP-2023-8910</span>
+            </div>
+            <h1>Label Verification Review</h1>
+          </div>
+
+          <div class="header-actions">
+            <div class="search-bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              Find in submission...
+            </div>
+            <button class="btn btn-secondary">Return to Queue</button>
+          </div>
+        </header>
+
+        <div class="verification-grid">
+          <div class="artwork-panel">
+            <div class="artwork-title">Uploaded Artwork (Front)</div>
+            <div class="artwork-container">
+              <div class="mock-label">
+                <div class="mock-label-brand">VALLEY OAK</div>
+                <div class="mock-label-type">CABERNET SAUVIGNON</div>
+                <div class="mock-label-details">750ML &bull; 14.5% ALC. BY VOL.</div>
+              </div>
+              <div class="ai-scan-overlay"></div>
+            </div>
+            <div class="processing-time">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              AI Extraction complete in 4.2s
+            </div>
+          </div>
+
+          <div class="data-panel">
+            <table class="table">
+              <thead>
+                <tr class="th-row">
+                  <th></th>
+                  <th>Data Field</th>
+                  <th>Expected (Application)</th>
+                  <th>Extracted (AI Vision)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="td-row">
+                  <td class="checkbox-cell"><input type="checkbox" checked=""></td>
+                  <td class="primary-cell">Brand Name</td>
+                  <td>Valley Oak</td>
+                  <td>Valley Oak</td>
+                  <td><span class="pill green">Match</span></td>
+                </tr>
+
+                <tr class="td-row">
+                  <td class="checkbox-cell"><input type="checkbox" checked=""></td>
+                  <td class="primary-cell">Class/Type</td>
+                  <td>Cabernet Sauvignon</td>
+                  <td>Cabernet Sauvignon</td>
+                  <td><span class="pill green">Match</span></td>
+                </tr>
+
+                <tr class="td-row flagged">
+                  <td class="checkbox-cell"><input type="checkbox"></td>
+                  <td class="primary-cell">Alcohol by Volume (ABV)</td>
+                  <td>13.5%</td>
+                  <td>
+                    14.5%
+                    <div class="discrepancy-note">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                      Value exceeds tolerance limits vs application.
+                    </div>
+                  </td>
+                  <td><span class="pill yellow">Flagged</span></td>
+                </tr>
+
+                <tr class="td-row">
+                  <td class="checkbox-cell"><input type="checkbox" checked=""></td>
+                  <td class="primary-cell">Net Contents</td>
+                  <td>750 ML</td>
+                  <td>750ML</td>
+                  <td><span class="pill green">Match</span></td>
+                </tr>
+
+                <tr class="td-row">
+                  <td class="checkbox-cell"><input type="checkbox"></td>
+                  <td class="primary-cell">Bottler Info</td>
+                  <td>Valley Oak Vineyards, CA</td>
+                  <td><em>Not detected on front label</em></td>
+                  <td><span class="pill gray">Missing</span></td>
+                </tr>
+
+                <tr class="td-row">
+                  <td class="checkbox-cell"><input type="checkbox" checked=""></td>
+                  <td class="primary-cell">Appellation</td>
+                  <td>Napa Valley</td>
+                  <td>Napa Valley</td>
+                  <td><span class="pill green">Match</span></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="review-actions">
+              <button class="btn btn-secondary">Request Corrections</button>
+              <button class="btn btn-primary" disabled="" style="opacity: 0.5; cursor: not-allowed;">Approve Verification</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+  </body>
+</html>

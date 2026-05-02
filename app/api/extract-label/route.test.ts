@@ -411,11 +411,11 @@ describe("POST /api/extract-label", () => {
     wipe();
   });
 
-  it("returns 413 when the image exceeds the 4 MB upload limit", async () => {
-    // Allocate a 5 MB buffer so the route's size guard fires. We don't need
+  it("returns 413 when the image exceeds the 8 MB upload limit", async () => {
+    // Allocate a 9 MB buffer so the route's size guard fires. We don't need
     // valid JPEG bytes — the size check runs before we hand the buffer to
     // sharp/preprocess.
-    const oversize = new Uint8Array(5 * 1024 * 1024);
+    const oversize = new Uint8Array(9 * 1024 * 1024);
     const blob = new Blob([oversize], { type: "image/jpeg" });
 
     const formData = new FormData();
@@ -431,7 +431,7 @@ describe("POST /api/extract-label", () => {
 
     expect(response.status).toBe(413);
     const body = await response.json();
-    expect(body.error).toMatch(/4 ?MB/i);
+    expect(body.error).toMatch(/8 ?MB/i);
   });
 
   it("returns 400 with a friendly message when sharp metadata is missing dimensions", async () => {

@@ -38,7 +38,12 @@ import type { CallJudgeFn } from "@/lib/verify/nuanced/ladder";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+// 8 MB — fits typical phone-camera bottle photos at native resolution.
+// sharp downsizes anything >2 MP after upload, so this only gates the
+// raw upload size; downstream Claude/OpenRouter sees a much smaller
+// re-encoded JPEG. Originally 4 MB; bumped to support real-world
+// reviewer photos (Phase-9 follow-up).
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 interface ExtractLabelSuccessBody {
   extracted: import("@/lib/ai/schema").ExtractedLabelData;
@@ -133,7 +138,7 @@ export async function POST(
   }
   if (imageEntry.size > MAX_IMAGE_BYTES) {
     return NextResponse.json<ExtractLabelErrorBody>(
-      { error: "Image exceeds the 4 MB upload limit." },
+      { error: "Image exceeds the 8 MB upload limit." },
       { status: 413 },
     );
   }
