@@ -2,10 +2,22 @@
 
 ## Current phase
 
-**Phase 5 — Build COMPLETE — paused at polished-demo milestone (post-slice-0009).**
-All 9 build slices merged. Awaiting user "continue" to advance into
-Phase 6 (Architecture Audit), Phase 7 (Eval), Phase 8 (Sweep),
-Phase 9 (Deploy + CHECKPOINT 4).
+**Phase 9 — DEPLOY COMPLETE — live at https://prooflens-ai.vercel.app/.**
+All 9 conductor phases now done end-to-end. Project shipped.
+
+Last verified Layer 2 against the deployed instance: 11/11 (100 %)
+gov-warning recall, p50=5.7s / p95=7.3s, avg cost $0.0085/case,
+$0.20 total spend across all Layer 2 runs (well under the $20 cap).
+
+**Production architecture compromise (ADR 0007):** Tesseract.js is
+local-dev-only because Vercel's experimental Rust bytecode runtime
+cannot resolve the `require('..')` shorthand inside tesseract.js's
+worker_thread CJS chain. Production uses an LLM-only extraction
+path with the LLM's verbatim gov-warning capture as the strict-
+matcher input. The hard regulatory requirement (100 % gov-warning
+recall) is empirically met on production. Bbox highlighting and
+the Tesseract hallucination cross-check degrade gracefully on
+production; both intact in local dev.
 
 ## Just completed
 

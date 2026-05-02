@@ -43,6 +43,12 @@ Phase 8 sweep + Phase 9 deploy.
   0/23 → 13/23 (56.5%) and gov-warning recall to 11/11 (100%) (commit 8debc74)
 - Phase 8 sweep complete — 1 critical issue fixed (schema coercion),
   1 minor cosmetic finding accepted as-is. Quality gates green.
+- Phase 9 DEPLOY complete — live at https://prooflens-ai.vercel.app
+  (commit bc2c3d0). Tesseract dropped on Vercel (ADR 0007) after 9
+  documented fix attempts hit Vercel's bytecode runtime wall. Layer 2
+  against the deployed instance: **11/11 (100%) gov-warning recall**,
+  p50=5.7s / p95=7.3s (within p95 target), avg cost $0.0085/case.
+  Production faster than local dev cold start.
 - Goal at end of build: every R-ID has at least one passing test;
   gov-warning mutation fuzz harness with ≥100 generated mutations all
   rejected; Lighthouse a11y ≥ 95 on every route; verdict accuracy
