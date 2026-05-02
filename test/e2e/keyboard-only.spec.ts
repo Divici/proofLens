@@ -145,20 +145,16 @@ test.describe("keyboard-only single-label flow (slice 0009)", () => {
       page.getByRole("heading", { level: 1, name: /new review/i }),
     ).toBeVisible();
 
-    // Reach the "Load demo image" button via Tab navigation, then activate it.
-    const loadDemoImage = page.getByRole("button", {
-      name: /load demo image/i,
+    // Activate the single "Load demo scenario" button via keyboard. It
+    // loads BOTH the image AND the matching expected-data form values.
+    const loadDemoScenario = page.getByRole("button", {
+      name: /load demo scenario/i,
     });
-    await loadDemoImage.focus();
+    await loadDemoScenario.focus();
     await page.keyboard.press("Enter");
     await expect(
       page.getByRole("img", { name: /uploaded label preview/i }),
     ).toBeVisible();
-
-    // "Load demo data" autofills the expected fields.
-    const loadDemoData = page.getByRole("button", { name: /load demo data/i });
-    await loadDemoData.focus();
-    await page.keyboard.press("Enter");
     await expect(page.getByLabel(/brand name/i).first()).toHaveValue(
       "Old Tom Distillery",
     );

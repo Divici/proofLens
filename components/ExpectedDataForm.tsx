@@ -8,7 +8,6 @@ import {
   ApplicationDataSchema,
   type ApplicationData,
 } from "@/lib/ai/schema";
-import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 import { evaluateRule } from "@/lib/verify/beverage-rules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +17,13 @@ import { cn } from "@/lib/utils";
 export interface ExpectedDataFormProps {
   onSubmit: (data: ApplicationData) => void | Promise<void>;
   isSubmitting?: boolean;
+  /**
+   * Defaults applied at mount. To swap in a new set of defaults at runtime
+   * (e.g. when a demo scenario is loaded), give the parent a `key` prop
+   * that changes when the values change — RHF holds form state per-mount,
+   * so the only correct way to swap defaults is to remount.
+   */
   initialValues?: Partial<ApplicationData>;
-  /** Optional demo scenario id for the "Load demo data" button. */
-  demoScenarioId?: string;
 }
 
 const DEFAULT_FORM_VALUES: ApplicationData = {
@@ -50,15 +53,14 @@ const BEVERAGE_OPTIONS: Array<{
  * Manual entry form for `ApplicationData` (PRD §13.1).
  *
  * Wired to react-hook-form with a Zod resolver so submit is gated on
- * schema validity. The "Load demo data" button replaces every field
- * with the slice 0002 placeholder scenario, letting reviewers preview
- * the verification flow without typing.
+ * schema validity. Demo scenarios are now loaded via the page-level
+ * "Load demo scenario" affordance — that path supplies `initialValues`
+ * + a fresh `key` so this form remounts with the scenario's defaults.
  */
 export function ExpectedDataForm({
   onSubmit,
   isSubmitting = false,
   initialValues,
-  demoScenarioId,
 }: ExpectedDataFormProps) {
   const formId = useId();
   const form = useForm<ApplicationData>({
@@ -70,7 +72,6 @@ export function ExpectedDataForm({
   const {
     register,
     handleSubmit,
-    reset,
     control,
     formState: { errors },
   } = form;
@@ -98,13 +99,6 @@ export function ExpectedDataForm({
       console.error("[ExpectedDataForm] onSubmit threw", cause);
       toast.error("Something went wrong, please try again.");
     }
-  };
-
-  const handleLoadDemo = () => {
-    const scenario =
-      DEMO_SCENARIOS.find((s) => s.id === demoScenarioId) ??
-      DEMO_SCENARIO_01;
-    reset(scenario.data);
   };
 
   return (
@@ -250,14 +244,7 @@ export function ExpectedDataForm({
         />
       </Field>
 
-      <div className="flex items-center justify-between gap-2 pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleLoadDemo}
-        >
-          Load demo data
-        </Button>
+      <div className="flex items-center justify-end gap-2 pt-2">
         <Button
           type="submit"
           disabled={isSubmitting}

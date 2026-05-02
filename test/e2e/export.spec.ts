@@ -135,11 +135,12 @@ test.describe("slice 0008 — export menus", () => {
     // dev server is also serving competing requests under fullyParallel.
     test.setTimeout(90_000);
     await page.goto("/review");
-    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("button", { name: /load demo scenario/i })
+      .click();
     await page
       .getByRole("img", { name: /uploaded label preview/i })
       .waitFor({ state: "visible" });
-    await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
     await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();
 
@@ -176,11 +177,12 @@ test.describe("slice 0008 — export menus", () => {
     page,
   }) => {
     await page.goto("/review");
-    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("button", { name: /load demo scenario/i })
+      .click();
     await page
       .getByRole("img", { name: /uploaded label preview/i })
       .waitFor({ state: "visible" });
-    await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
     await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();
 

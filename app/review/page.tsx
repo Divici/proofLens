@@ -116,6 +116,17 @@ function ReviewPageInner() {
   const [demoScenarioId, setDemoScenarioId] = useState<string>(
     DEMO_SCENARIO_01.id,
   );
+  /**
+   * Application-data defaults applied to the next mount of
+   * `<ExpectedDataForm>`. The "Load demo scenario" button populates this
+   * AND bumps `formKey` so RHF remounts the form with the new values
+   * (RHF holds form state per-mount; the only correct way to swap
+   * defaults is to remount). Falsy → form starts empty as before.
+   */
+  const [loadedDemoData, setLoadedDemoData] = useState<
+    Partial<ApplicationData> | undefined
+  >(undefined);
+  const [formKey, setFormKey] = useState<number>(0);
   const [reviewerName, setReviewerNameState] = useState<string>("");
   const [fieldResults, setFieldResults] = useState<FieldResult[]>([]);
   const [savedReviewId, setSavedReviewId] = useState<string | null>(null);
@@ -249,7 +260,7 @@ function ReviewPageInner() {
     }
   }, [status]);
 
-  const handleLoadDemoImage = async () => {
+  const handleLoadDemoScenario = async () => {
     const scenario =
       DEMO_SCENARIOS.find((s) => s.id === demoScenarioId) ??
       DEMO_SCENARIO_01;
@@ -260,11 +271,18 @@ function ReviewPageInner() {
         type: blob.type || "image/jpeg",
       });
       setImageFile(file);
+      // Populate the form with the matching expected-data in the same
+      // click. Bumping `formKey` remounts ExpectedDataForm so RHF picks
+      // up the new defaultValues — the documented React pattern for
+      // swapping defaults at runtime.
+      setLoadedDemoData(scenario.data);
+      setFormKey((n) => n + 1);
     } catch (cause) {
-      console.error("[review] failed to load demo image", cause);
+      console.error("[review] failed to load demo scenario", cause);
       setStatus({
         kind: "error",
-        message: "We could not load the demo image. Please upload one manually.",
+        message:
+          "We could not load the demo scenario. Please upload an image and enter expected data manually.",
       });
     }
   };
@@ -472,9 +490,9 @@ function ReviewPageInner() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={handleLoadDemoImage}
+                  onClick={handleLoadDemoScenario}
                 >
-                  <Sparkles className="size-3.5" /> Load demo image
+                  <Sparkles className="size-3.5" /> Load demo scenario
                 </Button>
                 <Button
                   type="button"
@@ -516,9 +534,10 @@ function ReviewPageInner() {
               Expected application data
             </h2>
             <ExpectedDataForm
+              key={formKey}
               onSubmit={handleSubmit}
               isSubmitting={status.kind === "loading"}
-              demoScenarioId={demoScenarioId}
+              initialValues={loadedDemoData}
             />
           </section>
 

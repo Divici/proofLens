@@ -154,12 +154,14 @@ test.describe("single-label review flow", () => {
       page.getByRole("heading", { level: 1, name: /new review/i }),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("button", { name: /load demo scenario/i })
+      .click();
+    // The single-button affordance loads BOTH the image AND the matching
+    // expected-data form values in one click.
     await expect(
       page.getByRole("img", { name: /uploaded label preview/i }),
     ).toBeVisible();
-
-    await page.getByRole("button", { name: /load demo data/i }).click();
     await expect(page.getByLabel(/brand name/i).first()).toHaveValue(
       "Old Tom Distillery",
     );

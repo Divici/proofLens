@@ -33,9 +33,12 @@ describe("ExpectedDataForm", () => {
     expect(
       screen.getByRole("button", { name: /verify label/i }),
     ).toBeInTheDocument();
+    // Demo loading was lifted to the page-level "Load demo scenario"
+    // button (loads image + form values in one click). The form itself
+    // no longer ships an in-form demo affordance.
     expect(
-      screen.getByRole("button", { name: /load demo data/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /load demo/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("blocks submit and shows validation errors when required fields are empty", async () => {
@@ -88,11 +91,16 @@ describe("ExpectedDataForm", () => {
     expect(submitted.beverageType).toBe("distilled-spirits");
   });
 
-  it("populates the form when the user clicks Load demo data", async () => {
-    const user = userEvent.setup();
-    render(<ExpectedDataForm onSubmit={() => {}} />);
-
-    await user.click(screen.getByRole("button", { name: /load demo data/i }));
+  it("renders with demo scenario values when initialValues is supplied", () => {
+    // The page-level "Load demo scenario" handler bumps a `key` and
+    // re-renders <ExpectedDataForm initialValues={scenario.data}>. This
+    // test stands in for that flow at the unit-test layer.
+    render(
+      <ExpectedDataForm
+        onSubmit={() => {}}
+        initialValues={DEMO_SCENARIO_01.data}
+      />,
+    );
 
     expect(screen.getByLabelText(/brand name/i)).toHaveValue(
       DEMO_SCENARIO_01.data.brand,
@@ -148,9 +156,13 @@ describe("ExpectedDataForm", () => {
     const onSubmit = vi.fn().mockRejectedValue(new Error("upstream boom"));
     const user = userEvent.setup();
 
-    render(<ExpectedDataForm onSubmit={onSubmit} />);
+    render(
+      <ExpectedDataForm
+        onSubmit={onSubmit}
+        initialValues={DEMO_SCENARIO_01.data}
+      />,
+    );
 
-    await user.click(screen.getByRole("button", { name: /load demo data/i }));
     await user.click(screen.getByRole("button", { name: /verify label/i }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());

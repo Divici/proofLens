@@ -117,11 +117,12 @@ test.describe("slice 0005 — override + history e2e", () => {
   }) => {
     // 1. Run the verification.
     await page.goto("/review");
-    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("button", { name: /load demo scenario/i })
+      .click();
     await page
       .getByRole("img", { name: /uploaded label preview/i })
       .waitFor({ state: "visible" });
-    await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 
     await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();
@@ -188,11 +189,12 @@ test.describe("slice 0005 — override + history e2e", () => {
     page,
   }) => {
     await page.goto("/review");
-    await page.getByRole("button", { name: /load demo image/i }).click();
+    await page
+      .getByRole("button", { name: /load demo scenario/i })
+      .click();
     await page
       .getByRole("img", { name: /uploaded label preview/i })
       .waitFor({ state: "visible" });
-    await page.getByRole("button", { name: /load demo data/i }).click();
     await page.getByRole("button", { name: /verify label/i }).click();
 
     await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();

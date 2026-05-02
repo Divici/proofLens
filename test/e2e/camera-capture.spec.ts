@@ -185,9 +185,27 @@ test.describe("camera capture flow", () => {
       page.getByRole("heading", { name: /capture from camera/i }),
     ).toBeHidden();
 
-    // Reuse the demo-data load path to fill in expected fields, then
-    // verify the stubbed extraction lands.
-    await page.getByRole("button", { name: /load demo data/i }).click();
+    // Fill the expected-data form manually — clicking "Load demo
+    // scenario" would overwrite the camera-captured image with the
+    // demo's bundled placeholder. Typing a minimum-viable application
+    // record is the closest stand-in for what a real reviewer does
+    // after a camera capture.
+    await page.getByLabel(/brand name/i).first().fill("Old Tom Distillery");
+    await page
+      .getByLabel(/class.*type/i)
+      .first()
+      .fill("Kentucky Straight Bourbon Whiskey");
+    await page.getByLabel(/abv/i).first().fill("45");
+    await page.getByLabel(/net contents/i).first().fill("750 mL");
+    await page
+      .getByLabel(/bottler.*name/i)
+      .first()
+      .fill("Old Tom Distillery, LLC");
+    await page
+      .getByLabel(/bottler.*address/i)
+      .first()
+      .fill("123 Bourbon Lane, Bardstown, KY 40004");
+    await page.getByLabel(/country of origin/i).first().fill("United States");
     await page.getByRole("button", { name: /verify label/i }).click();
 
     await expect(page.getByText("Verification result")).toBeVisible();
