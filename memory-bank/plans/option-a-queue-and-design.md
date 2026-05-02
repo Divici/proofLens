@@ -52,6 +52,14 @@ mirrors the workflow (Queue → Active Review → History).
 
 ### In scope
 
+- **Remove the live camera-capture feature.** `PROJECT_BRIEF.md` is
+  silent on camera capture — Jenny's image-quality discussion is
+  about brewery-submitted artwork the agent reads, not about the
+  agent taking new photos themselves. Camera was an internal Phase-0
+  addition that predates the brief becoming the source of truth.
+  Removing it simplifies the queue model (agents review submitted
+  artifacts, they don't snap photos) and drops a feature that
+  Marcus's restricted-network environment would block anyway.
 - New route `/queue` — list of pending applications, click → review.
 - New route `/queue` becomes the **home** (`/` redirects to `/queue`).
 - `/review` accepts a `?scenario=<id>` query param and pre-loads both
@@ -78,6 +86,8 @@ mirrors the workflow (Queue → Active Review → History).
 
 ### Out of scope (explicitly)
 
+- **Live camera capture stays removed.** Brief is silent; we drop
+  the feature in this same redesign (see in-scope above).
 - COLA integration of any kind (per brief: *"we're not looking to
   integrate with COLA directly"* — Marcus).
 - Auth / login / per-agent identity (per brief: *"don't do anything
@@ -250,9 +260,62 @@ mirrors the workflow (Queue → Active Review → History).
    - Update `lib/storage/review-repo.ts` if needed for the new field.
    - Update `composeReview` tests for the new field.
 
+### Step 2.5 — Remove camera capture (scope cut, brief alignment)
+
+The brief (`PROJECT_BRIEF.md`) doesn't mention camera capture; it was
+an internal Phase-0 addition. Drop it before the queue work so we
+don't have to plumb camera entry points through the new nav.
+
+10a. Delete files:
+   - `components/CameraCapture.tsx`
+   - `components/CameraCapture.test.tsx`
+   - `components/CameraPermissionsPrompt.tsx`
+   - `components/CameraPermissionsPrompt.test.tsx`
+   - `lib/camera/getusermedia.ts` + any tests
+   - `lib/camera/preprocess-worker.ts` + any tests
+   - `lib/camera/` entire directory if empty after the above
+   - `test/e2e/camera-capture.spec.ts`
+10b. Trim `playwright.config.ts`:
+   - Remove the `camera` project entry (the dedicated project that
+     scopes `--use-fake-ui-for-media-stream` flags). Only the
+     `chromium` project remains.
+10c. Trim `app/review/page.tsx`:
+   - Remove the `cameraOpen` state and its setter.
+   - Remove the `<CameraCapture>` render block.
+   - Remove the "Camera" button in the demo-controls toolbar.
+   - Remove the `?source=camera` URL param handling (if any) — the
+     queue is the only entry-point-with-state we need.
+   - Remove the `Camera` icon import from `lucide-react` if it's
+     unused after the above.
+10d. Trim `app/page.tsx`:
+   - The home is being replaced with `redirect('/queue')` in Step 13
+     anyway, so the "Capture from camera" CTA dies naturally. No
+     extra work; just confirm the new home doesn't reintroduce a
+     camera link.
+10e. Mark ADR 0004 superseded:
+   - Open `decisions/0004-camera-capture-and-state-machine.md`.
+   - Add a header note at the top:
+     ```
+     **Status:** Superseded by ADR 0008 (2026-05-02).
+     Camera capture removed in the queue redesign — `PROJECT_BRIEF.md`
+     does not mention live photo capture, and the queue model assumes
+     agents review brewery-submitted artwork rather than taking new
+     photos themselves.
+     ```
+   - Do NOT delete the ADR — ADRs are historical record.
+10f. Update `README.md` and any docs (`docs/architecture.md`,
+   `docs/troubleshooting.md`) — remove every reference to camera
+   capture or `getUserMedia`.
+10g. Quality gate after the rip-out:
+   - `pnpm typecheck` — clean (catches dangling imports).
+   - `pnpm lint` — clean (catches unused imports).
+   - `pnpm vitest run` — must stay green; some tests will be deleted
+     wholesale, none should fail.
+   - `pnpm test:e2e` — should pass with one fewer spec.
+
 ### Step 3 — Queue page
 
-10. Create `app/queue/page.tsx`. Use a table-style layout matching the
+11. Create `app/queue/page.tsx`. Use a table-style layout matching the
     pill aesthetic from the design language work in `e4f42d6` and the
     reference in `design/active-review-prototype.html`:
    - Columns: APP-ID (mono) · Brand · Beverage type · Source pill
@@ -272,7 +335,7 @@ mirrors the workflow (Queue → Active Review → History).
 
 ### Step 4 — Wire `/review` to accept `?scenario=`
 
-11. In `app/review/page.tsx`:
+12. In `app/review/page.tsx`:
    - Read `scenario` from `useSearchParams()`.
    - In an effect that depends on `[scenario]`: if present and valid,
      resolve the scenario from EITHER `DEMO_SCENARIOS` OR
@@ -294,7 +357,7 @@ mirrors the workflow (Queue → Active Review → History).
 
 ### Step 5 — Nav update
 
-12. Update `components/site-nav.tsx`:
+13. Update `components/site-nav.tsx`:
    - New `NAV_LINKS = [{ href: '/queue', label: 'Queue' },
      { href: '/batch', label: 'Batch' },
      { href: '/history', label: 'History' },
@@ -307,7 +370,7 @@ mirrors the workflow (Queue → Active Review → History).
 
 ### Step 6 — Home redirect
 
-13. Replace `app/page.tsx` body with:
+14. Replace `app/page.tsx` body with:
     ```tsx
     import { redirect } from 'next/navigation';
     export default function Home() {
@@ -317,7 +380,7 @@ mirrors the workflow (Queue → Active Review → History).
 
 ### Step 7 — E2E sweep
 
-14. Add `test/e2e/queue.spec.ts`:
+15. Add `test/e2e/queue.spec.ts`:
     - Visit `/queue` → assert table renders with ≥6 synthetic rows
       AND ≥1 real-photo row (count depends on the supplied manifest).
     - Click a synthetic row → assert URL becomes
@@ -329,7 +392,7 @@ mirrors the workflow (Queue → Active Review → History).
     - For each: assert `<img>` preview is visible AND brand input has
       the scenario's brand value.
 
-15. Audit existing e2e specs that navigate via the home page or click
+16. Audit existing e2e specs that navigate via the home page or click
     `/review` directly. For each, either:
     - Start the test at `/queue` and click through, OR
     - `page.goto('/review')` directly to bypass the queue.
@@ -338,25 +401,28 @@ mirrors the workflow (Queue → Active Review → History).
 
 ### Step 8 — Docs + memory bank
 
-16. Update `memory-bank/active-context.md`:
+17. Update `memory-bank/active-context.md`:
     - "Current phase: Phase 9 deploy + Post-deploy queue redesign
       complete. Live at https://prooflens-ai.vercel.app/queue."
-17. Update `memory-bank/progress.md`:
+18. Update `memory-bank/progress.md`:
     - "Post-deploy: introduced /queue as new home (commit pending);
       reviewer now lands in pending-applications list per
-      `PROJECT_BRIEF.md` Sarah Chen interview workflow."
-18. Update `README.md`:
+      `PROJECT_BRIEF.md` Sarah Chen interview workflow. Camera
+      capture removed (brief silent on it; Step 10 above)."
+19. Update `README.md`:
     - "How to use" section: "Open the deployed URL → land in the
       Queue → click an application to review. Manual upload is still
       available at /review for ad-hoc reviews."
     - Note that the queue mixes synthetic placeholder labels with
       real bottle photos (including image-quality variants).
+    - Remove every camera-capture mention.
 
 ### Step 9 — Quality gates + commit
 
-19. `pnpm typecheck && pnpm lint && pnpm vitest run` — all green.
-20. `pnpm test:e2e` — all 22+ green (24+ after the new queue spec).
-21. Single commit:
+20. `pnpm typecheck && pnpm lint && pnpm vitest run` — all green.
+21. `pnpm test:e2e` — should pass; expect ~21 specs after removing
+    `camera-capture.spec.ts` and adding `queue.spec.ts`.
+22. Single commit:
     ```
     feat(queue): introduce /queue as home, /review accepts ?scenario=, design-language nav
 
@@ -378,14 +444,15 @@ mirrors the workflow (Queue → Active Review → History).
     - public/demo-labels/real/ added with manifest.json — real bottle
       photos including image-quality variants (different angles,
       lighting, glare); each photo becomes its own queue row
+    - camera capture removed (brief is silent; ADR 0004 marked superseded)
     - ADR 0008 records the design + nav decisions and the stakeholder
       quotes they trace to
     - scenarioId added to Review schema so the queue's Reviewed pill
       is exact (not a brand heuristic)
 
-    Quality gates green: 596+ vitest, 22+ e2e (incl. new queue spec).
+    Quality gates green: typecheck/lint/vitest/e2e all green.
     ```
-22. `git push origin main` — Vercel auto-deploys.
+23. `git push origin main` — Vercel auto-deploys.
 
 ---
 
@@ -534,12 +601,14 @@ NEW:
 
 MODIFIED:
   app/page.tsx                          (redirect to /queue)
-  app/review/page.tsx                   (?scenario= handling + breadcrumb + persist scenarioId on save; resolves both DEMO_SCENARIOS and REAL_SCENARIOS)
+  app/review/page.tsx                   (?scenario= handling + breadcrumb + persist scenarioId on save; resolves both DEMO_SCENARIOS and REAL_SCENARIOS; remove camera button + state)
   components/site-nav.tsx               (Queue · Batch · History · Settings)
   components/site-nav.test.tsx          (assert new links)
   lib/storage/types.ts                  (add optional scenarioId to ReviewSchema)
   lib/storage/compose-review.ts         (accept + persist scenarioId)
   lib/storage/compose-review.test.ts    (cover scenarioId round-trip)
+  playwright.config.ts                  (drop the `camera` project)
+  decisions/0004-camera-capture-and-state-machine.md   (mark superseded by ADR 0008)
   test/e2e/smoke.spec.ts                (home → /queue redirect)
   test/e2e/keyboard-only.spec.ts        (rework if needed)
   test/e2e/single-label.spec.ts         (rework if needed)
@@ -549,6 +618,18 @@ MODIFIED:
   memory-bank/active-context.md
   memory-bank/progress.md
   README.md
+  docs/architecture.md                  (remove camera mentions if present)
+  docs/troubleshooting.md               (remove camera mentions if present)
+
+DELETED:
+  components/CameraCapture.tsx
+  components/CameraCapture.test.tsx
+  components/CameraPermissionsPrompt.tsx
+  components/CameraPermissionsPrompt.test.tsx
+  lib/camera/getusermedia.ts            (and adjacent tests)
+  lib/camera/preprocess-worker.ts       (and adjacent tests)
+  lib/camera/                           (the whole directory if empty after deletes)
+  test/e2e/camera-capture.spec.ts
 ```
 
 ---
@@ -606,6 +687,10 @@ MODIFIED:
 - See a table of mock pending applications with APP-IDs, mixing
   synthetic placeholders (APP-2026-NNNN) and real bottle photos
   (APP-2026-RNNN).
+- No "Camera" / "Capture from camera" controls anywhere in the UI.
+  `git grep -i "camera\|getUserMedia"` returns only references in
+  the historical ADR 0004 (now marked superseded) and incidental
+  matches in third-party code.
 - Click any row → `/review?scenario=<id>` opens with image AND form
   pre-populated, breadcrumb visible.
 - For real-photo rows that have image-quality issues (glare /
