@@ -1,4 +1,5 @@
 import "server-only";
+import path from "node:path";
 import { createWorker, type Worker } from "tesseract.js";
 
 /**
@@ -39,11 +40,20 @@ let workerPromise: Promise<Worker> | null = null;
 async function getWorker(): Promise<Worker> {
   if (workerPromise) return workerPromise;
   workerPromise = (async () => {
-    // The Tesseract worker logger is noisy by default; silence it for
-    // production. `createWorker("eng")` is the modern v5 API and embeds
-    // language loading into worker init.
+    // Bundle eng.traineddata with the deployment under public/tessdata/.
+    // Without this, Tesseract.js downloads ~5 MB from
+    // tessdata.projectnaptha.com on cold start, which Vercel function
+    // sandboxes occasionally can't complete inside the maxDuration window.
+    // `langPath` accepts an absolute file path in Node mode; `gzip: false`
+    // signals that the file is the uncompressed `.traineddata`, not
+    // `.traineddata.gz`. `cachePath` keeps any auxiliary writes inside
+    // /tmp (the only writable area on Vercel functions).
+    const langPath = path.join(process.cwd(), "public", "tessdata");
     const worker = await createWorker("eng", undefined, {
       logger: () => {},
+      langPath,
+      gzip: false,
+      cachePath: "/tmp",
     });
     return worker;
   })();
