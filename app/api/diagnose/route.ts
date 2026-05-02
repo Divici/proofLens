@@ -42,7 +42,7 @@ export async function GET(): Promise<NextResponse<DiagnoseBody>> {
   );
 
   const t0 = Date.now();
-  let step = "tesseract-init";
+  const step = "tesseract-init";
   try {
     // tesseractExtract internally calls getWorker() which inits the
     // worker singleton on first invocation. Time the whole call.
