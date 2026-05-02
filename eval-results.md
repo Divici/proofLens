@@ -63,12 +63,20 @@
 
 ## Layer 2 — Golden Set (live `/api/extract-label`)
 
-> ✅ **Phase 8 schema-coercion fix landed (commit pending).** All 9
-> gov-warning mutation cases now reach the strict matcher and produce
-> `overall=fail` — Layer 2 gov-warning recall is **11/11 (100%)**, hitting
-> the hard requirement against real LLM extractions on text-heavy
-> programmatic labels. Verdict accuracy moved from 0/23 → 13/23 in one
-> change.
+> ✅ **Phase 9: shipped to https://prooflens-ai.vercel.app/.** Production
+> uses an LLM-only extraction path; Tesseract.js is local-dev-only.
+> See `decisions/0007-ocr-prod-vs-local.md` — Vercel's bytecode runtime
+> couldn't load tesseract.js's worker after 9 fix attempts, so the
+> route detects `process.env.VERCEL` and uses the LLM's verbatim
+> gov-warning capture as the strict-matcher input. Layer 2 against the
+> deployed instance maintains **11/11 (100%) gov-warning recall** on
+> this code path. Bbox highlighting and the Tesseract hallucination
+> cross-check degrade gracefully on production; both are intact in
+> local dev.
+>
+> ✅ **Phase 8 schema-coercion fix landed.** All 9 gov-warning mutation
+> cases reach the strict matcher and produce `overall=fail`. Verdict
+> accuracy moved from 0/23 → 13/23 in one change.
 >
 > The remaining 10 Layer 2 failures (cases 001, 003, 019-023, 032, 033)
 > are the **harness-calibration mismatch** documented earlier: Layer 2

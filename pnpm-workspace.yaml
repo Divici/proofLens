@@ -5,5 +5,3 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - msw
-patchedDependencies:
-  tesseract.js@5.1.1: patches/tesseract.js@5.1.1.patch

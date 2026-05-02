@@ -39,45 +39,19 @@ let workerPromise: Promise<Worker> | null = null;
 async function getWorker(): Promise<Worker> {
   if (workerPromise) return workerPromise;
   workerPromise = (async () => {
-    // Tesseract.js v5 in Node mode still fetches eng.traineddata over
-    // HTTP (the `langPath` filesystem path it advertises is browser-only).
-    // Default URL `tessdata.projectnaptha.com` is slow + occasionally
-    // unreachable from Vercel function sandboxes — Phase-9 deploy smoke
-    // hit 120s 504s every time on cold start because the download
-    // never completed.
-    //
-    // Self-host the file: `public/tessdata/eng.traineddata` is bundled
-    // with the deployment (see `outputFileTracingIncludes` in
-    // `next.config.ts`) AND served as a static asset at
-    // `<origin>/tessdata/eng.traineddata`. Pointing `langPath` at the
-    // function's own origin is a same-region same-VPC fetch — typically
-    // <100 ms. `gzip: false` tells Tesseract not to expect a `.gz`
-    // extension; the file is plain. `cachePath` keeps Tesseract's
-    // post-init scratch writes inside `/tmp`, the only writable
-    // directory on a Vercel function.
-    const origin = resolveServerOrigin();
-    const langPath = `${origin}/tessdata`;
+    // The Tesseract worker logger is noisy by default; silence it for
+    // production. `createWorker("eng")` is the modern v5 API and embeds
+    // language loading into worker init. We rely on the default CDN
+    // (`tessdata.projectnaptha.com`) for `eng.traineddata` — local dev
+    // is the only environment that hits this path. Production
+    // (`/api/extract-label` on Vercel) skips Tesseract entirely; see
+    // `decisions/0007-ocr-prod-vs-local.md` for the rationale.
     const worker = await createWorker("eng", undefined, {
       logger: () => {},
-      langPath,
-      gzip: false,
-      cachePath: "/tmp",
     });
     return worker;
   })();
   return workerPromise;
-}
-
-/**
- * Best-effort detection of the URL the running server is reachable at,
- * for self-hosted `langPath`. On Vercel deployments we use `VERCEL_URL`
- * (which is the system-assigned hostname, e.g. `prooflens-ai-…vercel.app`).
- * Locally, fall back to localhost on the dev port.
- */
-function resolveServerOrigin(): string {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  const port = process.env.PORT ?? "3000";
-  return `http://localhost:${port}`;
 }
 
 /**

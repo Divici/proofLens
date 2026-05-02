@@ -265,6 +265,61 @@ describe("POST /api/extract-label", () => {
     }
 
     expect(receivedAuth).toBe("Bearer sk-test-fixture");
+    // ocrSource defaults to "tesseract" when not on Vercel.
+    expect(body.ocrSource).toBe("tesseract");
+  });
+
+  it("skips Tesseract on Vercel and falls back to LLM gov-warning text", async () => {
+    const restoreVercel = setEnv({ VERCEL: "1" });
+    try {
+      server.use(
+        http.post(
+          "https://openrouter.ai/api/v1/chat/completions",
+          () => HttpResponse.json(SUCCESS_BODY, { status: 200 }),
+        ),
+      );
+
+      const tesseractModule = await import("@/lib/ocr/tesseract");
+      const tesseractMock = vi.mocked(tesseractModule.tesseractExtract);
+      tesseractMock.mockClear();
+
+      const blob = await makeJpegBlob(1200, 900);
+      const request = await buildRequest(
+        blob,
+        JSON.stringify(VALID_APPLICATION_DATA),
+      );
+
+      const { POST } = await import("./route");
+      const response = await POST(request);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+
+      // Hard contract: Tesseract must NOT be called when running on
+      // Vercel (we drop OCR there because the worker_threads bytecode
+      // runtime can't load tesseract.js correctly).
+      expect(tesseractMock).not.toHaveBeenCalled();
+
+      // Response signals the OCR source so UI/history can surface it.
+      expect(body.ocrSource).toBe("llm-fallback");
+
+      // rawText falls back to the LLM's gov-warning text (the verbatim
+      // copy the model captured per the system prompt). The strict
+      // matcher operates on this text so gov-warning recall still
+      // works — Layer 2 against the deployed instance has empirically
+      // shown 11/11 recall on this path.
+      expect(body.rawText).toContain("GOVERNMENT WARNING:");
+
+      // Bbox-driven words are absent — bbox highlighting on production
+      // gracefully no-ops.
+      // (No words asserted; the route doesn't expose them in the response.)
+
+      // Verification still produced a result.
+      expect(typeof body.overall).toBe("string");
+      expect(Array.isArray(body.fieldResults)).toBe(true);
+    } finally {
+      restoreVercel();
+    }
   });
 
   it("returns 400 when the image part is missing", async () => {

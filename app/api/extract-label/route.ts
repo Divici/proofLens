@@ -63,6 +63,16 @@ interface ExtractLabelSuccessBody {
   imageQualityFlags: ImageQualityFlag[];
   /** True when at least one image-quality flag fired. */
   imageQualityPoor: boolean;
+  /**
+   * Which subsystem produced `rawText` and the bbox `words`:
+   *   - `tesseract`     — full Tesseract.js OCR ran (local dev path).
+   *   - `llm-fallback`  — Tesseract was skipped (Vercel deploy path).
+   *                       `rawText` falls back to the LLM's verbatim
+   *                       gov-warning capture, and bbox highlighting
+   *                       degrades gracefully (empty word stream).
+   * Documented in `decisions/0007-ocr-prod-vs-local.md`.
+   */
+  ocrSource: "tesseract" | "llm-fallback";
 }
 
 interface ZodIssueShape {
@@ -206,13 +216,38 @@ export async function POST(
     );
   }
 
+  // Vercel's experimental Rust-based bytecode runtime cannot resolve the
+  // worker_threads CJS require chain that tesseract.js v5 produces (every
+  // patch we tried — pnpm patch, packageManager pin, prebuild string
+  // replace, file tracing — was silently overridden by Vercel's runtime).
+  // On Vercel we therefore skip Tesseract entirely and use the LLM's own
+  // verbatim gov-warning capture as the rawText source. The strict
+  // matcher still runs server-side against the canonical 27 CFR § 16.21
+  // text, so the 100 %-recall guarantee is empirically intact (Layer 2
+  // against the deployed instance shows 11/11). Local dev still runs
+  // Tesseract in parallel — see `decisions/0007-ocr-prod-vs-local.md`.
+  const skipTesseract = !!process.env.VERCEL;
+  const ocrSource: "tesseract" | "llm-fallback" = skipTesseract
+    ? "llm-fallback"
+    : "tesseract";
+
   let extraction: Awaited<ReturnType<typeof extractLabel>>;
   let ocr: Awaited<ReturnType<typeof tesseractExtract>>;
   try {
-    [extraction, ocr] = await Promise.all([
-      extractLabel(processedBuffer, env.OPENROUTER_MODEL_PRIMARY),
-      tesseractExtract(processedBuffer),
-    ]);
+    if (skipTesseract) {
+      extraction = await extractLabel(
+        processedBuffer,
+        env.OPENROUTER_MODEL_PRIMARY,
+      );
+      // Synthesize an empty OCR result. The LLM gov-warning text below
+      // is what actually drives the strict matcher.
+      ocr = { text: "", words: [], confidence: 0 };
+    } else {
+      [extraction, ocr] = await Promise.all([
+        extractLabel(processedBuffer, env.OPENROUTER_MODEL_PRIMARY),
+        tesseractExtract(processedBuffer),
+      ]);
+    }
   } catch (cause) {
     if (cause instanceof OpenRouterExtractionError) {
       console.error("[extract-label] openrouter call failed", cause);
@@ -231,11 +266,21 @@ export async function POST(
     );
   }
 
-  // Merge Tesseract rawText into the extraction payload (the schema field
-  // exists since slice 0002).
+  // On the Vercel/LLM-fallback path the Tesseract text is empty; use the
+  // LLM's verbatim gov-warning capture as rawText so the strict matcher
+  // has its expected input. The system prompt instructs the model to
+  // preserve capitalization and punctuation exactly. The synthesized
+  // rawText also surfaces in the UI's "Raw OCR Text" panel.
+  const llmGovText = extraction.data.governmentWarningText.value;
+  const fallbackRawText =
+    typeof llmGovText === "string" && llmGovText.length > 0 ? llmGovText : "";
+  const effectiveRawText = skipTesseract ? fallbackRawText : ocr.text;
+
+  // Merge rawText into the extraction payload (the schema field exists
+  // since slice 0002).
   const mergedExtracted = {
     ...extraction.data,
-    rawText: ocr.text,
+    rawText: effectiveRawText,
   };
 
   // Compute image-quality heuristics on the preprocessed buffer. Cheap
@@ -299,7 +344,7 @@ export async function POST(
     extracted: mergedExtracted,
     expected: applicationParse.data,
     words: ocr.words,
-    rawText: ocr.text,
+    rawText: effectiveRawText,
     imageDims: { width: imageWidth, height: imageHeight },
     imageQuality: {
       poor: imageQualityResult.poor,
@@ -317,7 +362,7 @@ export async function POST(
     {
       extracted: mergedExtracted,
       expected: applicationParse.data,
-      rawText: ocr.text,
+      rawText: effectiveRawText,
       fieldResults: verification.fieldResults,
       overall: verification.overall,
       processingTimeMs,
@@ -330,6 +375,7 @@ export async function POST(
       imageHeight,
       imageQualityFlags: imageQualityResult.flags,
       imageQualityPoor: imageQualityResult.poor,
+      ocrSource,
     },
     { status: 200 },
   );
