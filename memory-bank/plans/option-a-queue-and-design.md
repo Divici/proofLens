@@ -531,13 +531,22 @@ work arrives in a list the agent works through.
    Review" instead of the engineering "Pass / Warning / Fail".
    Overall pill keeps "Pass / Pass with Warnings / Needs Manual
    Review / Fail / Request Better Image" per PRD R-008.
-6. Visual language adopted from `design/active-review-prototype.html`:
+6. **Camera capture removed.** `PROJECT_BRIEF.md` does not mention
+   live photo capture (Jenny's image-quality discussion is about
+   brewery-submitted artwork the agent reads, not about the agent
+   taking new photos themselves). Camera was an internal Phase-0
+   addition that predates `PROJECT_BRIEF.md` becoming the source of
+   truth. ADR 0004 is marked superseded by this ADR; the
+   `CameraCapture` component, `lib/camera/` module, dedicated
+   Playwright project, and `?source=camera` URL param are all
+   removed.
+7. Visual language adopted from `design/active-review-prototype.html`:
    solid pastel pills, dark CTA, calm white surface, breadcrumb +
    header structure, table-row hover tint. We adopt the *language*
    without porting the literal HTML — our existing `FieldRow`
    component renders the field + explanation + evidence vertically
    (richer than the prototype's single table row) and stays.
-7. `scenarioId` added to the `Review` IndexedDB schema as an optional
+8. `scenarioId` added to the `Review` IndexedDB schema as an optional
    string. Lets the queue's "Reviewed" status pill be exact instead
    of brand-fuzzy. Additive change; existing records stay valid.
 
