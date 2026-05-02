@@ -53,7 +53,7 @@ export function LabelImagePreview({
       )}
     >
       {/* Using a plain <img/> instead of next/image — the source can be a
-          blob: URL (camera capture) or any reviewer-supplied data URL,
+          blob: URL (uploader) or any reviewer-supplied data URL,
           which next/image's loader does not support. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

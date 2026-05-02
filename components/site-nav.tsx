@@ -9,7 +9,7 @@ interface NavLink {
 }
 
 const NAV_LINKS: ReadonlyArray<NavLink> = [
-  { href: "/review", label: "New review" },
+  { href: "/queue", label: "Queue" },
   { href: "/batch", label: "Batch" },
   { href: "/history", label: "History" },
   { href: "/settings", label: "Settings" },
@@ -23,7 +23,7 @@ export function SiteNav() {
         className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6"
       >
         <Link
-          href="/"
+          href="/queue"
           className="text-foreground text-base font-semibold tracking-tight rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           proofLens

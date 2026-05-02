@@ -2,8 +2,15 @@
 
 ## Current phase
 
+**Post-Phase-9 polish — Queue redesign complete — live at
+https://prooflens-ai.vercel.app/queue.** ADR 0008 introduced `/queue` as
+the new home (`/` redirects); `/review` accepts `?scenario=<id>` and
+pre-loads both image and form, mirroring the COLA-pre-load workflow
+described in `PROJECT_BRIEF.md` (Sarah Chen). Camera capture removed —
+brief is silent on live capture; ADR 0004 marked superseded.
+
 **Phase 9 — DEPLOY COMPLETE — live at https://prooflens-ai.vercel.app/.**
-All 9 conductor phases now done end-to-end. Project shipped.
+All 9 conductor phases done end-to-end. Project shipped.
 
 Last verified Layer 2 against the deployed instance: 11/11 (100 %)
 gov-warning recall, p50=5.7s / p95=7.3s, avg cost $0.0085/case,
@@ -70,7 +77,9 @@ production; both intact in local dev.
   (slice 0002)
 - Image-quality heuristic thresholds — tune in slice 0004
 - Tesseract worker init strategy — slice 0003
-- Camera capture device-specific quirks discovered during slice 0006
+- ~~Camera capture device-specific quirks discovered during slice 0006~~
+  *(removed in post-Phase-9 redesign per ADR 0008 — brief is silent on
+  live capture)*
 - Real demo image sourcing (TTB COLA + Figma mocks) — slice 0009 final
   pass
 

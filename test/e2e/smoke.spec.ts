@@ -1,24 +1,22 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("smoke: core routes render", () => {
-  test("home page returns 200 and shows the proofLens shell", async ({
+  test("home redirects to /queue and shows the pending-applications list", async ({
     page,
-    request,
   }) => {
-    const response = await request.get("/");
-    expect(response.status()).toBe(200);
-
     await page.goto("/");
+    // Post-Phase-9 redesign: the agent's entry point is the queue
+    // (PROJECT_BRIEF.md, Sarah Chen workflow).
+    await expect(page).toHaveURL(/\/queue$/);
     await expect(
-      page.getByRole("heading", { level: 1, name: "proofLens" }),
+      page.getByRole("heading", { level: 1, name: /pending applications/i }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "New review" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /^queue$/i }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Batch", exact: true }),
     ).toBeVisible();
-    // /history is a real link in the nav now (slice 0005). The home page
-    // also surfaces a "View history" CTA which would resolve, so anchor
-    // the assertion to the nav-bar link explicitly.
     await expect(
       page.getByRole("link", { name: "History", exact: true }),
     ).toBeVisible();

@@ -9,17 +9,17 @@ import {
   Sparkles,
   AlertTriangle,
   Loader2,
-  Camera,
 } from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
 import { LabelUploader } from "@/components/LabelUploader";
 import { ExpectedDataForm } from "@/components/ExpectedDataForm";
 import { VerificationDetail } from "@/components/VerificationDetail";
-import { CameraCapture } from "@/components/CameraCapture";
 import { ExportMenu } from "@/components/ExportMenu";
 import { ProviderHealthBanner } from "@/components/ProviderHealthBanner";
 import { Button } from "@/components/ui/button";
 import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
+import { REAL_SCENARIOS } from "@/lib/demo/real-scenarios";
+import { listApplications } from "@/lib/queue/applications";
 import type {
   ApplicationData,
   ExtractedLabelData,
@@ -96,16 +96,46 @@ type ExtractionStatus =
   | { kind: "error"; message: string }
   | { kind: "success"; result: ExtractionResult };
 
+/**
+ * Resolve a queue scenario id (synthetic or real) to a uniform shape the
+ * page can preload. Real scenario ids start with `real-`. The brief
+ * (`PROJECT_BRIEF.md`, Sarah Chen) frames the agent workflow as the
+ * application data being already on file — `/queue` -> click row ->
+ * `/review?scenario=...` simulates that COLA pre-load.
+ */
+function resolveScenario(
+  scenarioId: string | null,
+): { labelPath: string; data: ApplicationData } | null {
+  if (!scenarioId) return null;
+  if (scenarioId.startsWith("real-")) {
+    const real = REAL_SCENARIOS.find((s) => s.id === scenarioId);
+    return real
+      ? { labelPath: real.labelPath, data: real.data }
+      : null;
+  }
+  const synth = DEMO_SCENARIOS.find((s) => s.id === scenarioId);
+  return synth ? { labelPath: synth.labelPath, data: synth.data } : null;
+}
+
+function applicationIdForScenario(scenarioId: string): string | null {
+  const match = listApplications().find((a) => a.scenarioId === scenarioId);
+  return match ? match.applicationId : null;
+}
+
 function ReviewPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reviewId = searchParams?.get("reviewId") ?? null;
-  const startInCameraMode = searchParams?.get("source") === "camera";
+  const scenarioParam = searchParams?.get("scenario") ?? null;
+  const fromQueue = Boolean(scenarioParam);
+  const queueAppId = useMemo(
+    () => (scenarioParam ? applicationIdForScenario(scenarioParam) : null),
+    [scenarioParam],
+  );
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [status, setStatus] = useState<ExtractionStatus>({ kind: "idle" });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [cameraOpen, setCameraOpen] = useState<boolean>(startInCameraMode);
   /**
    * When the page is opened with `?reviewId=`, we pull the persisted
    * thumbnail Blob from IndexedDB and stash it here. A dedicated effect
@@ -261,6 +291,46 @@ function ReviewPageInner() {
     }
   }, [status]);
 
+  // Pre-load image + form when the page is opened from the queue
+  // (`/review?scenario=<id>`). Mirrors the brief's COLA-pre-load
+  // workflow — the application data is already on file when the agent
+  // pulls up an application. Direct `/review` entry (no `?scenario=`)
+  // remains supported and shows no breadcrumb.
+  useEffect(() => {
+    if (!scenarioParam || reviewId) return;
+    const resolved = resolveScenario(scenarioParam);
+    if (!resolved) {
+      toast.warning(
+        "We couldn't find that queue scenario — start from the application form below.",
+      );
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(resolved.labelPath);
+        const blob = await response.blob();
+        const file = new File(
+          [blob],
+          `${scenarioParam}${blob.type === "image/png" ? ".png" : ".jpg"}`,
+          { type: blob.type || "image/jpeg" },
+        );
+        if (cancelled) return;
+        setImageFile(file);
+        setLoadedDemoData(resolved.data);
+        setFormKey((n) => n + 1);
+      } catch (cause) {
+        console.error("[review] failed to preload scenario", cause);
+        if (!cancelled) {
+          toast.error("We couldn't load the scenario artwork — try again.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scenarioParam, reviewId]);
+
   const handleLoadDemoScenario = async () => {
     const scenario =
       DEMO_SCENARIOS.find((s) => s.id === demoScenarioId) ??
@@ -408,6 +478,7 @@ function ReviewPageInner() {
           imageWidth: result.imageWidth,
           imageHeight: result.imageHeight,
           decision,
+          ...(scenarioParam ? { scenarioId: scenarioParam } : {}),
         });
 
         if (savedReviewId) {
@@ -432,7 +503,7 @@ function ReviewPageInner() {
         setSaving(false);
       }
     },
-    [fieldResults, imageFile, router, savedReviewId, status],
+    [fieldResults, imageFile, router, savedReviewId, scenarioParam, status],
   );
 
   const successResult = useMemo(
@@ -449,20 +520,52 @@ function ReviewPageInner() {
       >
         <ProviderHealthBanner />
         <div className="flex flex-col gap-3">
-          <Link
-            href="/"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-          >
-            <ArrowLeft className="size-3.5" aria-hidden="true" /> Back to home
-          </Link>
+          {fromQueue ? (
+            <nav
+              aria-label="Breadcrumb"
+              className="text-xs text-muted-foreground"
+            >
+              <ol className="flex items-center gap-1.5">
+                <li>
+                  <Link
+                    href="/queue"
+                    className="hover:text-foreground rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Application Queue
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-muted-foreground/60">
+                  ›
+                </li>
+                <li>
+                  <span className="font-mono text-foreground">
+                    {queueAppId ?? "—"}
+                  </span>
+                </li>
+              </ol>
+            </nav>
+          ) : (
+            <Link
+              href="/queue"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden="true" /> Back to queue
+            </Link>
+          )}
           <div className="flex flex-col gap-1">
             <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-              {savedReviewId ? "Reopened review" : "New review"}
+              {savedReviewId
+                ? "Reopened review"
+                : fromQueue
+                  ? "Active review"
+                  : "New review"}
             </h1>
             <p className="text-muted-foreground text-sm">
               {savedReviewId
                 ? "Editing a previously saved review. Saving again updates the existing record."
-                : "Upload one alcohol-label image, enter the expected application data, and proofLens will extract the visible fields, run the verification pipeline, and highlight evidence on the image."}
+                : fromQueue
+                  ? "Verify that what's on the label matches what's in the application. Brand, ABV, government warning — agent's eyes still make the call."
+                  : "Upload one alcohol-label image, enter the expected application data, and proofLens will extract the visible fields, run the verification pipeline, and highlight evidence on the image."}
             </p>
           </div>
         </div>
@@ -476,65 +579,40 @@ function ReviewPageInner() {
               <h2 className="text-foreground text-sm font-semibold">
                 Label image
               </h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <label htmlFor="demo-scenario" className="sr-only">
-                  Demo scenario
-                </label>
-                <select
-                  id="demo-scenario"
-                  className="border-border bg-background min-w-0 max-w-[180px] truncate rounded-md border px-2 py-1 text-xs"
-                  value={demoScenarioId}
-                  onChange={(e) => setDemoScenarioId(e.target.value)}
-                >
-                  {DEMO_SCENARIOS.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLoadDemoScenario}
-                >
-                  <Sparkles className="size-3.5" /> Load demo scenario
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCameraOpen((open) => !open)}
-                  aria-pressed={cameraOpen}
-                >
-                  <Camera className="size-3.5" />
-                  {cameraOpen ? "Close camera" : "Camera"}
-                </Button>
-              </div>
+              {fromQueue ? null : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor="demo-scenario" className="sr-only">
+                    Demo scenario
+                  </label>
+                  <select
+                    id="demo-scenario"
+                    className="border-border bg-background min-w-0 max-w-[180px] truncate rounded-md border px-2 py-1 text-xs"
+                    value={demoScenarioId}
+                    onChange={(e) => setDemoScenarioId(e.target.value)}
+                  >
+                    {DEMO_SCENARIOS.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLoadDemoScenario}
+                  >
+                    <Sparkles className="size-3.5" /> Load demo scenario
+                  </Button>
+                </div>
+              )}
             </div>
-            {cameraOpen ? (
-              <div className="border-border bg-card/40 rounded-xl border p-4">
-                <CameraCapture
-                  onCapture={({ blob, width, height }) => {
-                    const file = new File([blob], `capture-${Date.now()}.jpg`, {
-                      type: blob.type || "image/jpeg",
-                    });
-                    setImageFile(file);
-                    setCameraOpen(false);
-                    toast.success(
-                      `Captured ${width}×${height} — review the photo, then submit for verification.`,
-                    );
-                  }}
-                  onCancel={() => setCameraOpen(false)}
-                />
-              </div>
-            ) : (
-              <LabelUploader
-                onFileSelected={setImageFile}
-                previewUrl={previewUrl}
-                previewAlt="Uploaded label preview"
-              />
-            )}
+            <LabelUploader
+              onFileSelected={setImageFile}
+              previewUrl={previewUrl}
+              previewAlt="Uploaded label preview"
+            />
+
 
             <h2 className="text-foreground text-sm font-semibold pt-2">
               Expected application data

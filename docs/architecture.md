@@ -115,8 +115,9 @@ Key invariants:
 | `lib/export/json/` | single + batch JSON envelopes |
 | `lib/export/zip/browser.ts` | Stored (level-0) ZIP writer |
 | `lib/export/client.ts` | Browser glue + download trigger |
-| `lib/camera/` | `getUserMedia` wrapper |
-| `lib/demo/scenarios.ts` | Bundled demo scenarios + batch manifest |
+| `lib/queue/applications.ts` | Mock COLA queue mapper (DEMO_SCENARIOS + REAL_SCENARIOS → QueuedApplication[]) |
+| `lib/demo/scenarios.ts` | Bundled synthetic demo scenarios + batch manifest |
+| `lib/demo/real-scenarios.ts` | Real bottle photos loaded from `public/demo-labels/real/manifest.json` |
 | `lib/bbox/locate.ts` | Find OCR words matching an evidence quote |
 
 ## Server endpoints (stateless)

@@ -151,6 +151,49 @@ describe("composeReview", () => {
     ]);
   });
 
+  it("persists the optional scenarioId so the queue can match Reviewed rows exactly", () => {
+    const review = composeReview({
+      id: "x",
+      now: () => new Date(),
+      reviewerName: "Jane Doe",
+      expectedData: makeExpected(),
+      extracted: makeExtracted(),
+      fieldResults,
+      overall: "pass",
+      imageQualityFlags: [],
+      thumbnail: new Blob(["t"]),
+      rawText: "ANY",
+      processingTimeMs: 1000,
+      aiSpend: { primaryUsd: 0.001, fallbackUsd: 0 },
+      ocrConfidence: 0.92,
+      imageWidth: 1200,
+      imageHeight: 900,
+      scenarioId: "01-spirits-pass",
+    });
+    expect(review.scenarioId).toBe("01-spirits-pass");
+  });
+
+  it("omits scenarioId when not supplied (additive optional field)", () => {
+    const review = composeReview({
+      id: "x",
+      now: () => new Date(),
+      reviewerName: "Jane Doe",
+      expectedData: makeExpected(),
+      extracted: makeExtracted(),
+      fieldResults,
+      overall: "pass",
+      imageQualityFlags: [],
+      thumbnail: new Blob(["t"]),
+      rawText: "ANY",
+      processingTimeMs: 1000,
+      aiSpend: { primaryUsd: 0.001, fallbackUsd: 0 },
+      ocrConfidence: 0.92,
+      imageWidth: 1200,
+      imageHeight: 900,
+    });
+    expect(review.scenarioId).toBeUndefined();
+  });
+
   it("persists ocrConfidence and image dimensions on the Review record", () => {
     const review = composeReview({
       id: "x",

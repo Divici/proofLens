@@ -4,22 +4,6 @@ Common issues and how to fix them. If you hit something that isn't
 covered here, file an issue and include `pnpm --version`, your Node
 version, and the browser/OS combo.
 
-## Camera permissions
-
-**Symptom**: "Camera" button on `/review` shows "We can't access your
-camera" even after clicking Allow.
-
-- Make sure you're served over `https://` (or `http://localhost`).
-  `getUserMedia` requires a secure context.
-- Some browsers cache permission denials at the site level. Open the
-  site permissions panel (the lock icon in the address bar) and reset
-  Camera to "Ask" / "Allow".
-- On macOS, also check System Settings → Privacy & Security → Camera
-  and confirm your browser is in the allow-list.
-- If you're on a corporate device, an MDM profile may block camera
-  access. The fallback is uploading a JPEG / PNG via the file
-  picker.
-
 ## OpenRouter rate limits
 
 **Symptom**: Single-label flow returns "The vision provider could not

@@ -36,7 +36,7 @@ and must pass — any regression fails the build.
 - `lib/storage/` — IndexedDB via `idb`
 - `lib/workers/` — Web Worker pool for batch
 - `lib/export/` — PDF / CSV / JSON / ZIP
-- `lib/camera/` — `getUserMedia` wrapper
+- `lib/queue/` — mock COLA queue mapper (DEMO_SCENARIOS + REAL_SCENARIOS)
 
 ## Skills
 

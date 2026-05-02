@@ -1,8 +1,17 @@
 # 0004: Camera capture + permissions state machine
 
 **Date:** 2026-04-30
-**Status:** accepted
+**Status:** Superseded by ADR 0008 (2026-05-02)
 **Slice:** 0006 (camera capture milestone)
+
+> **Superseded.** Camera capture was removed in the queue redesign.
+> `PROJECT_BRIEF.md` does not mention live photo capture — Jenny Park's
+> image-quality discussion describes brewery-submitted artwork the
+> agent reads, not the agent taking new photos themselves. The queue
+> model assumes agents review submitted artifacts. Marcus Williams's
+> "our network blocks outbound traffic to a lot of domains" further
+> argues against features that depend on browser-device APIs in the
+> deployed posture. See ADR 0008 for the full rationale.
 
 ## Context
 

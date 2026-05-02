@@ -32,9 +32,10 @@ pnpm dev
 ```
 
 The dev server runs on `http://localhost:3000` by default. Open `/`
-for the home shell, `/review` for a single-label review, `/batch` for
-the bulk flow, `/history` for saved reviews, `/settings` for the
-provider allow-list, or `/api/health` for provider reachability.
+to land in the **Queue** (the agent's home — see `PROJECT_BRIEF.md`),
+`/review` for an ad-hoc single-label review, `/batch` for the bulk
+flow, `/history` for saved reviews, `/settings` for the provider
+allow-list, or `/api/health` for provider reachability.
 
 ## Test
 
@@ -72,23 +73,34 @@ job passing.
 
 ## How to use the app
 
-1. Visit `/review`.
-2. Upload a label image (drag-and-drop, click to pick, or capture from
-   the device camera).
-3. Fill in the expected application data — or click **Load demo data**
-   to autofill one of the seven bundled scenarios.
-4. Click **Verify label**.
-5. Review the per-field verdicts. Click any row to highlight its
+1. Open the deployed URL (or `/`) — you land in the **Queue**, the
+   list of pending applications. This mirrors the workflow described
+   in `PROJECT_BRIEF.md` (Sarah Chen, Deputy Director): "an agent
+   pulls up an application, looks at the label artwork, and checks
+   that what's on the label matches what's in the application."
+2. The queue mixes **synthetic** placeholder labels (`APP-2026-NNNN`)
+   and **real bottle photos** (`APP-2026-RNNN`) including
+   image-quality variants (front, angled, glare). Click a row →
+   `/review?scenario=<id>` opens with both the artwork and the
+   application form pre-loaded.
+3. Click **Verify label**.
+4. Review the per-field verdicts. Click any row to highlight its
    bounding box on the image.
-6. Apply per-field overrides where you disagree with the AI (capture a
-   reason — every override carries a timestamped audit note).
-7. Pick a final decision (Approve / Reject / Manual Review / Request
+5. Apply per-field overrides where you disagree with the AI (capture
+   a reason — every override carries a timestamped audit note).
+6. Pick a final decision (Approve / Reject / Manual Review / Request
    Better Image), enter your reviewer name, and **Save review**.
-8. Saved reviews live under `/history` (browser-local). Open any row
-   to reopen + edit + re-save.
-9. **Export** a PDF audit report or a JSON snapshot from the review
-   detail. From a saved batch, also Summary CSV / Per-field CSV / All
-   PDFs (zip) / All JSON (zip).
+7. Saved reviews live under `/history` (browser-local). Open any row
+   to reopen + edit + re-save. Once saved, the originating queue row
+   shows a **Reviewed** pill (matched by `scenarioId` on the saved
+   record).
+8. **Export** a PDF audit report or a JSON snapshot from the review
+   detail. From a saved batch, also Summary CSV / Per-field CSV /
+   All PDFs (zip) / All JSON (zip).
+9. **Manual entry is still supported.** Visit `/review` directly (no
+   `?scenario=`) for an ad-hoc review — the uploader, expected-data
+   form, and demo-scenario picker are all available. Bulk uploads
+   live at `/batch` for Janet's "200, 300 at once" use case.
 
 ## AI / OCR approach
 
@@ -214,9 +226,10 @@ the active rules version (`ttb-2026-04-30`).
 
 - **Next.js 16** App Router + React 19 + TypeScript strict +
   Tailwind v4 + shadcn/ui + base-ui primitives.
-- **`app/`** — routes (`/`, `/review`, `/batch`, `/history`,
-  `/settings`, `/about`) and the stateless API endpoints under
-  `app/api/`.
+- **`app/`** — routes (`/`, `/queue`, `/review`, `/batch`,
+  `/history`, `/settings`, `/about`) and the stateless API endpoints
+  under `app/api/`. `/` redirects to `/queue` (the agent's entry
+  point per `PROJECT_BRIEF.md`).
 - **`lib/`** — pure modules:
   - `lib/ai/` — OpenRouter client, prompts, schemas, judge call
   - `lib/ocr/` — Tesseract.js wrapper
@@ -227,7 +240,10 @@ the active rules version (`ttb-2026-04-30`).
   - `lib/storage/` — IndexedDB via `idb`
   - `lib/workers/` — main-thread extraction pool for batch
   - `lib/export/` — PDF / CSV / JSON / ZIP
-  - `lib/camera/` — `getUserMedia` wrapper
+  - `lib/queue/` — mock COLA queue mapper
+    (`DEMO_SCENARIOS` + `REAL_SCENARIOS` → `QueuedApplication[]`)
+  - `lib/demo/real-scenarios.ts` — Zod-validated loader for real
+    bottle photos under `public/demo-labels/real/`
 - **No server-side user data** — stateless endpoints, IndexedDB
   persistence in the browser.
 - **OpenRouter** is the single LLM gateway; model names are env vars

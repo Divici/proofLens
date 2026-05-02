@@ -41,6 +41,8 @@ export interface ComposeReviewArgs {
   imageWidth: number;
   imageHeight: number;
   decision?: HumanDecision;
+  /** Queue scenario this review was started from (optional). */
+  scenarioId?: string;
 }
 
 export function composeReview(args: ComposeReviewArgs): Review {
@@ -75,5 +77,6 @@ export function composeReview(args: ComposeReviewArgs): Review {
     imageHeight: args.imageHeight,
     brand: args.expectedData.brand,
     hasOverrides,
+    ...(args.scenarioId ? { scenarioId: args.scenarioId } : {}),
   };
 }

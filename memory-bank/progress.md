@@ -49,6 +49,19 @@ Phase 8 sweep + Phase 9 deploy.
   against the deployed instance: **11/11 (100%) gov-warning recall**,
   p50=5.7s / p95=7.3s (within p95 target), avg cost $0.0085/case.
   Production faster than local dev cold start.
+- **Post-Phase-9 redesign — `/queue` is the new home (ADR 0008,
+  2026-05-02).** Reflects the workflow described in `PROJECT_BRIEF.md`
+  (Sarah Chen, Deputy Director): "an agent pulls up an application,
+  looks at the label artwork, and checks that what's on the label
+  matches what's in the application." The home now redirects to
+  `/queue`, which lists pending applications mapped from
+  `DEMO_SCENARIOS` (synthetic placeholder labels) and `REAL_SCENARIOS`
+  (real bottle photos including image-quality variants — front,
+  angled, glare). Clicking a row opens `/review?scenario=<id>` with
+  both the image and the application form pre-loaded. Camera capture
+  removed (brief is silent on it; Marcus's "our network blocks
+  outbound traffic" further argues against device-API features). Nav
+  reordered: Queue · Batch · History · Settings.
 - Goal at end of build: every R-ID has at least one passing test;
   gov-warning mutation fuzz harness with ≥100 generated mutations all
   rejected; Lighthouse a11y ≥ 95 on every route; verdict accuracy

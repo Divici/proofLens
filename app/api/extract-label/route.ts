@@ -38,7 +38,7 @@ import type { CallJudgeFn } from "@/lib/verify/nuanced/ladder";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// 8 MB — fits typical phone-camera bottle photos at native resolution.
+// 8 MB — fits typical smartphone bottle photos at native resolution.
 // sharp downsizes anything >2 MP after upload, so this only gates the
 // raw upload size; downstream Claude/OpenRouter sees a much smaller
 // re-encoded JPEG. Originally 4 MB; bumped to support real-world

@@ -86,6 +86,14 @@ export interface Review {
   brand: string;
   /** True iff at least one fieldResult carries a humanOverride. */
   hasOverrides: boolean;
+  /**
+   * Queue scenario this review was started from, when present. Lets the
+   * `/queue` page mark rows "Reviewed" by exact match instead of a
+   * brand heuristic. Optional and additive — reviews started via direct
+   * `/review` entry omit it, and existing records stay valid (no
+   * rules-version bump).
+   */
+  scenarioId?: string;
 }
 
 /** Per-batch aggregate counters surfaced in the batch summary panel. */
