@@ -21,14 +21,27 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/extract-label": [
       "./public/tessdata/**",
+      // Cover both the symlink path AND the pnpm content-addressable
+      // store path so Vercel's tracer picks up the real files. The
+      // require('..') in worker-script/node/index.js resolves to
+      // worker-script/index.js — that file (and the rest of the package)
+      // must be present in the deployment's /var/task tree.
+      "./node_modules/tesseract.js/**",
       "./node_modules/tesseract.js-core/**",
-      "./node_modules/tesseract.js/src/worker-script/**",
+      "./node_modules/.pnpm/tesseract.js@*/node_modules/tesseract.js/**",
+      "./node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/**",
+      "./node_modules/.pnpm/node-fetch@*/**",
+      "./node_modules/.pnpm/wasm-feature-detect@*/**",
     ],
     "/api/health": ["./public/tessdata/**"],
     "/api/diagnose": [
       "./public/tessdata/**",
+      "./node_modules/tesseract.js/**",
       "./node_modules/tesseract.js-core/**",
-      "./node_modules/tesseract.js/src/worker-script/**",
+      "./node_modules/.pnpm/tesseract.js@*/node_modules/tesseract.js/**",
+      "./node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/**",
+      "./node_modules/.pnpm/node-fetch@*/**",
+      "./node_modules/.pnpm/wasm-feature-detect@*/**",
     ],
   },
 };

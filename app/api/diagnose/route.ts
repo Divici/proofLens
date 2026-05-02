@@ -13,6 +13,7 @@ interface DiagnoseBody {
   vercelUrl: string | null;
   cwd: string;
   bundledTraineddata: { exists: boolean; size: number | null; checkPath: string };
+  bundleAudit: Record<string, boolean>;
   error?: string;
   ocrTextSnippet?: string;
 }
@@ -35,6 +36,38 @@ export async function GET(): Promise<NextResponse<DiagnoseBody>> {
     // Leave bundled as exists:false
   }
 
+  // Audit which tesseract.js bundle files are actually present in the
+  // /var/task tree. Helps diagnose why require('..') and require of the
+  // wasm core files might fail at runtime.
+  const cwd = process.cwd();
+  const auditPaths = {
+    "tesseract.js index.js":
+      "node_modules/tesseract.js/src/index.js",
+    "tesseract.js worker-script/index.js":
+      "node_modules/tesseract.js/src/worker-script/index.js",
+    "tesseract.js worker-script/node/index.js":
+      "node_modules/tesseract.js/src/worker-script/node/index.js",
+    "tesseract.js worker-script/node/getCore.js":
+      "node_modules/tesseract.js/src/worker-script/node/getCore.js",
+    "tesseract.js-core simd-lstm.wasm":
+      "node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm",
+    "tesseract.js-core simd-lstm.wasm.js":
+      "node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js",
+    "tesseract.js-core simd.wasm":
+      "node_modules/tesseract.js-core/tesseract-core-simd.wasm",
+    "wasm-feature-detect index.js":
+      "node_modules/wasm-feature-detect/dist/cjs/index.js",
+  };
+  const bundleAudit: Record<string, boolean> = {};
+  for (const [label, rel] of Object.entries(auditPaths)) {
+    try {
+      readFileSync(path.join(cwd, rel));
+      bundleAudit[label] = true;
+    } catch {
+      bundleAudit[label] = false;
+    }
+  }
+
   // Tiny 1x1 white JPEG so the OCR call resolves quickly once init is done.
   const tinyJpeg = Buffer.from(
     "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAr/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AL+AAAH//Z",
@@ -55,6 +88,7 @@ export async function GET(): Promise<NextResponse<DiagnoseBody>> {
       vercelUrl: process.env.VERCEL_URL ?? null,
       cwd: process.cwd(),
       bundledTraineddata: bundled,
+      bundleAudit,
       ocrTextSnippet: (result.text ?? "").slice(0, 80),
     });
   } catch (cause) {
@@ -67,6 +101,7 @@ export async function GET(): Promise<NextResponse<DiagnoseBody>> {
         vercelUrl: process.env.VERCEL_URL ?? null,
         cwd: process.cwd(),
         bundledTraineddata: bundled,
+        bundleAudit,
         error:
           cause instanceof Error
             ? `${cause.name}: ${cause.message}`
