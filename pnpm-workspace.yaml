@@ -1,7 +1,9 @@
+
+ignoredBuiltDependencies:
+  - unrs-resolver
 onlyBuiltDependencies:
   - esbuild
   - sharp
   - msw
-
-ignoredBuiltDependencies:
-  - unrs-resolver
+patchedDependencies:
+  tesseract.js@5.1.1: patches/tesseract.js@5.1.1.patch

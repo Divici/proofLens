@@ -59,6 +59,8 @@ poll-health.ps1
 deploy-smoke.ps1
 warm-then-post.ps1
 inspect-headers.ps1
+hit-diagnose.ps1
+check-tessdata.ps1
 
 # Local crash dumps
 *.stackdump
