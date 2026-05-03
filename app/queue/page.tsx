@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 import { SiteNav } from "@/components/site-nav";
 import {
   listApplications,
@@ -90,6 +90,24 @@ export default function QueuePage() {
             this browser only.
           </p>
         </header>
+
+        <aside
+          role="note"
+          aria-label="Proof-of-concept disclaimer"
+          className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200"
+        >
+          <Info
+            aria-hidden="true"
+            className="mt-0.5 size-4 shrink-0"
+          />
+          <span>
+            <strong className="font-semibold">Proof of concept.</strong>{" "}
+            The applications below are not real COLA filings. This page
+            is populated from synthetic placeholder labels and a small
+            set of real bottle photos provided as demonstration data.
+            No information here is filed with the TTB.
+          </span>
+        </aside>
 
         {applications.length === 0 ? (
           <EmptyState />

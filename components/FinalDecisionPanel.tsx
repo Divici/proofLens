@@ -109,9 +109,10 @@ export function FinalDecisionPanel({
   return (
     <div
       className={cn(
-        // Border + ring tinted with the primary token so the FAB target
-        // visually pops and it's clear this is the CTA-flavoured zone.
-        "border-primary/40 ring-1 ring-primary/15 bg-card/50 flex flex-col gap-4 rounded-xl border p-4",
+        // Border + ring tinted emerald to match the JumpToFinalReview FAB,
+        // so the CTA's destination is unmistakable when the agent scrolls
+        // into it (or jumps via the FAB).
+        "border-emerald-500/50 ring-1 ring-emerald-500/15 bg-emerald-50/40 dark:bg-emerald-500/5 flex flex-col gap-4 rounded-xl border p-4",
         className,
       )}
       aria-label="Final decision"
