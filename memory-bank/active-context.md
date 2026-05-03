@@ -28,6 +28,25 @@ production; both intact in local dev.
 
 ## Just completed
 
+- **Grader audit (post-redesign) — four changes per ADR 0009.**
+  (1) Bottler-address grader now strips ZIPs and aliases full state
+  names to USPS two-letter abbreviations before the ladder — the
+  Old Tom case ("BARDSTOWN, KENTUCKY" on label vs "123 Bourbon Lane,
+  Bardstown, KY 40004" in application) now passes (TTB § 5.66:
+  city+state only; street + ZIP optional).
+  (2) Country-of-origin's requirement rule is now auto-derived from
+  the application's `countryOfOrigin` value (any non-US country →
+  required) instead of always defaulting to optional.
+  (3) Net-contents value-match now warns (not fails) on volumes that
+  aren't on the TTB authorized standards-of-fill list (§§ 4.72 / 5.203).
+  (4) Bottler name now warns (not fails) when no TTB-approved
+  function-describing phrase ("Bottled by", "Distilled by", etc.) is
+  found near the bottler name in the raw OCR (§§ 5.66 / 4.35 / 7.66).
+  Vitest 612/612 green; ADR 0009 captures the warning-vs-fail framing
+  and the deferred items (ABV format compliance, class/type
+  substantive compliance, § 16.22 layout/contrast/typesize).
+
+
 - **Slice 0001 (scaffold + dev loop)** merged. Next.js 16 + TS strict +
   Tailwind v4 + shadcn/ui (button, card, input, label, select, sonner) +
   Inter via `next/font`. `lib/env.ts` Zod-validates 5 OpenRouter env

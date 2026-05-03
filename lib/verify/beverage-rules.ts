@@ -147,9 +147,14 @@ export interface RuleContext {
    */
   addedFlavorsContributeAlcohol?: boolean;
   /**
-   * Imported product flag. Country-of-origin is required for imports per
-   * 19 CFR Part 134 (cross-referenced from § 5.67/5.68/7.68/4.35).
-   * Defaults to false; reviewers can opt in once the form exposes it.
+   * Imported product flag. Country-of-origin is required for imports
+   * per 19 CFR Part 134 (cross-referenced from § 5.67/5.68/7.68/4.35).
+   *
+   * Auto-derived in the pipeline from `expected.countryOfOrigin` via
+   * `isUnitedStates(...)` — any non-US country implies imported. The
+   * brief's "country of origin for imports" maps cleanly to this rule;
+   * the application form does not need a separate `isImported`
+   * checkbox. See ADR 0009.
    */
   isImported?: boolean;
 }
