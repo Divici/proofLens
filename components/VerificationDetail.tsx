@@ -300,13 +300,15 @@ export function VerificationDetail({
       ) : null}
 
       {onSaveDecision ? (
-        <FinalDecisionPanel
-          defaultReviewerName={reviewerName ?? ""}
-          existingDecision={existingDecision}
-          onSave={onSaveDecision}
-          onReviewerNameChange={onReviewerNameChange}
-          saving={saving}
-        />
+        <div id="final-decision" data-testid="final-decision-anchor">
+          <FinalDecisionPanel
+            defaultReviewerName={reviewerName ?? ""}
+            existingDecision={existingDecision}
+            onSave={onSaveDecision}
+            onReviewerNameChange={onReviewerNameChange}
+            saving={saving}
+          />
+        </div>
       ) : null}
     </div>
   );

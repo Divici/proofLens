@@ -13,10 +13,15 @@ import {
 import { SiteNav } from "@/components/site-nav";
 import { LabelUploader } from "@/components/LabelUploader";
 import { ExpectedDataForm } from "@/components/ExpectedDataForm";
+import { ApplicationDataView } from "@/components/ApplicationDataView";
 import { VerificationDetail } from "@/components/VerificationDetail";
 import { ExportMenu } from "@/components/ExportMenu";
 import { ProviderHealthBanner } from "@/components/ProviderHealthBanner";
+import { ImageLightbox } from "@/components/ImageLightbox";
+import { JumpToFinalReviewButton } from "@/components/JumpToFinalReviewButton";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Maximize2 } from "lucide-react";
 import { DEMO_SCENARIOS, DEMO_SCENARIO_01 } from "@/lib/demo/scenarios";
 import { REAL_SCENARIOS } from "@/lib/demo/real-scenarios";
 import { listApplications } from "@/lib/queue/applications";
@@ -165,6 +170,32 @@ function ReviewPageInner() {
     HumanDecision | undefined
   >(undefined);
   const [saving, setSaving] = useState(false);
+  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  const tabParam = searchParams?.get("tab") ?? null;
+  // Tab state lives in the URL (`?tab=results`) so a refresh keeps the
+  // reviewer where they were. Initial value: results tab when reopening
+  // a saved review (?reviewId), otherwise honor ?tab=, otherwise default
+  // to the application-data tab so the agent reads the application
+  // before seeing the AI's read of the label.
+  const initialTab: "data" | "results" =
+    tabParam === "results" || tabParam === "data"
+      ? tabParam
+      : reviewId
+        ? "results"
+        : "data";
+  const [activeTab, setActiveTab] = useState<"data" | "results">(initialTab);
+  const handleTabChange = useCallback(
+    (next: string) => {
+      const value = next === "results" ? "results" : "data";
+      setActiveTab(value);
+      // Mirror to URL so refresh keeps the tab. Only push when it
+      // changes meaningfully (avoid history thrash).
+      const sp = new URLSearchParams(searchParams?.toString() ?? "");
+      sp.set("tab", value);
+      router.replace(`/review?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
   const [quotaWarning, setQuotaWarning] = useState<{
     percentage: number;
   } | null>(null);
@@ -391,6 +422,9 @@ function ReviewPageInner() {
 
       const result = (await response.json()) as ExtractionResult;
       setStatus({ kind: "success", result });
+      // Auto-switch to the Results tab so the agent doesn't have to
+      // hunt for the verdict (also persists ?tab=results in the URL).
+      handleTabChange("results");
     } catch (cause) {
       console.error("[review] extraction request failed", cause);
       setStatus({
@@ -428,6 +462,16 @@ function ReviewPageInner() {
   const handleReviewerNameChange = useCallback((name: string) => {
     setReviewerNameState(name);
   }, []);
+
+  const handleJumpToFinalReview = useCallback(() => {
+    // Switch to results first so the anchor exists in the DOM, then
+    // smooth-scroll to it on the next paint.
+    handleTabChange("results");
+    requestAnimationFrame(() => {
+      const el = document.getElementById("final-decision");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [handleTabChange]);
 
   const handleSaveDecision = useCallback(
     async (decision: HumanDecision) => {
@@ -571,9 +615,12 @@ function ReviewPageInner() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Left column — label image. On lg+ shown full size next to
+              the tab block; below lg, clamped to a thumbnail above the
+              tabs with tap-to-expand into a fullscreen lightbox. */}
           <section
-            aria-label="Label image and expected data"
-            className="flex flex-col gap-4"
+            aria-label="Label artwork"
+            className="flex flex-col gap-3"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-foreground text-sm font-semibold">
@@ -607,103 +654,176 @@ function ReviewPageInner() {
                 </div>
               )}
             </div>
-            <LabelUploader
-              onFileSelected={setImageFile}
-              previewUrl={previewUrl}
-              previewAlt="Uploaded label preview"
-            />
-
-
-            <h2 className="text-foreground text-sm font-semibold pt-2">
-              Expected application data
-            </h2>
-            <ExpectedDataForm
-              key={formKey}
-              onSubmit={handleSubmit}
-              isSubmitting={status.kind === "loading"}
-              initialValues={loadedDemoData}
-            />
+            {/* Mobile: clamped thumbnail with tap-to-expand. */}
+            <div className="lg:hidden">
+              {previewUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setImageLightboxOpen(true)}
+                  aria-label="Tap to expand label artwork"
+                  className="relative block w-full overflow-hidden rounded-xl border border-border bg-card/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt="Uploaded label preview — tap to expand"
+                    className="block max-h-40 w-full object-contain"
+                  />
+                  <span className="bg-background/80 absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                    <Maximize2 className="size-3" aria-hidden="true" /> Expand
+                  </span>
+                </button>
+              ) : (
+                <LabelUploader
+                  onFileSelected={setImageFile}
+                  previewUrl={previewUrl}
+                  previewAlt="Uploaded label preview"
+                />
+              )}
+            </div>
+            {/* Desktop: full-size uploader / preview. */}
+            <div className="hidden lg:block">
+              <LabelUploader
+                onFileSelected={setImageFile}
+                previewUrl={previewUrl}
+                previewAlt="Uploaded label preview"
+              />
+            </div>
           </section>
 
+          {/* Right column — tabbed [Application data | Results]. */}
           <section
-            aria-label="Extraction results"
-            aria-live="polite"
-            className="flex flex-col gap-4"
+            aria-label="Application data and verification results"
+            className="flex flex-col gap-3"
           >
-            <h2 className="text-foreground text-sm font-semibold">Results</h2>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              <TabsList aria-label="Review sections">
+                <TabsTrigger value="data">Application data</TabsTrigger>
+                <TabsTrigger
+                  value="results"
+                  disabled={status.kind === "idle"}
+                >
+                  Results
+                </TabsTrigger>
+              </TabsList>
 
-            {status.kind === "idle" ? (
-              <div className="text-muted-foreground rounded-xl border border-dashed border-border bg-card/40 p-6 text-center text-sm">
-                Upload a label and submit the form to see verification results
-                here.
-              </div>
-            ) : null}
-
-            {status.kind === "loading" ? (
-              <div
-                role="status"
-                className="flex items-center gap-3 rounded-xl border border-border bg-card/40 p-6 text-sm"
-              >
-                <Loader2
-                  className="size-4 animate-spin text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <span className="text-muted-foreground">
-                  Running OCR + vision-LLM extraction in parallel…
-                </span>
-              </div>
-            ) : null}
-
-            {status.kind === "error" ? (
-              <div
-                role="alert"
-                className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-2 rounded-xl border p-4 text-sm"
-              >
-                <AlertTriangle
-                  className="mt-0.5 size-4 shrink-0"
-                  aria-hidden="true"
-                />
-                <span>{status.message}</span>
-              </div>
-            ) : null}
-
-            {successResult ? (
-              <>
-                <VerificationDetail
-                  imageSrc={previewUrl}
-                  fieldResults={fieldResults}
-                  // Use the override-aware rollup so the overall pill on
-                  // the result/confirmation pane reflects reviewer
-                  // overrides in real time. R-012: human override > AI.
-                  overall={rollUpOverall(fieldResults)}
-                  processingTimeMs={successResult.processingTimeMs}
-                  primaryUsd={successResult.aiSpend.primaryUsd}
-                  ocrConfidence={successResult.ocrConfidence}
-                  imageQualityFlags={successResult.imageQualityFlags ?? []}
-                  beverageType={successResult.expected.beverageType}
-                  reviewerName={reviewerName}
-                  onOverrideSave={handleOverrideSave}
-                  onOverrideClear={handleOverrideClear}
-                  onReviewerNameChange={handleReviewerNameChange}
-                  onSaveDecision={handleSaveDecision}
-                  existingDecision={existingDecision}
-                  saving={saving}
-                  quotaWarning={quotaWarning}
-                />
-                {/* Export menu — only available after the review has been
-                    saved (the export packs the IndexedDB Review record). */}
-                {savedReviewId ? (
-                  <SavedReviewExport reviewId={savedReviewId} />
+              <TabsContent value="data" className="pt-4">
+                {fromQueue ? (
+                  loadedDemoData ? (
+                    <ApplicationDataView
+                      data={loadedDemoData as ApplicationData}
+                      onVerify={() =>
+                        handleSubmit(loadedDemoData as ApplicationData)
+                      }
+                      isVerifying={status.kind === "loading"}
+                    />
+                  ) : (
+                    <div
+                      role="status"
+                      className="text-muted-foreground flex items-center gap-2 rounded-xl border border-dashed border-border bg-card/40 p-6 text-sm"
+                    >
+                      <Loader2
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                      Loading application from the queue…
+                    </div>
+                  )
                 ) : (
-                  <p className="text-muted-foreground text-xs">
-                    Save the review to enable PDF / JSON export.
-                  </p>
+                  <ExpectedDataForm
+                    key={formKey}
+                    onSubmit={handleSubmit}
+                    isSubmitting={status.kind === "loading"}
+                    initialValues={loadedDemoData}
+                  />
                 )}
-              </>
-            ) : null}
+              </TabsContent>
+
+              <TabsContent
+                value="results"
+                className="flex flex-col gap-4 pt-4"
+                aria-live="polite"
+              >
+                {status.kind === "idle" ? (
+                  <div className="text-muted-foreground rounded-xl border border-dashed border-border bg-card/40 p-6 text-center text-sm">
+                    Verify a label to see results here.
+                  </div>
+                ) : null}
+
+                {status.kind === "loading" ? (
+                  <div
+                    role="status"
+                    className="flex items-center gap-3 rounded-xl border border-border bg-card/40 p-6 text-sm"
+                  >
+                    <Loader2
+                      className="size-4 animate-spin text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="text-muted-foreground">
+                      Running OCR + vision-LLM extraction in parallel…
+                    </span>
+                  </div>
+                ) : null}
+
+                {status.kind === "error" ? (
+                  <div
+                    role="alert"
+                    className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-2 rounded-xl border p-4 text-sm"
+                  >
+                    <AlertTriangle
+                      className="mt-0.5 size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>{status.message}</span>
+                  </div>
+                ) : null}
+
+                {successResult ? (
+                  <>
+                    <VerificationDetail
+                      imageSrc={previewUrl}
+                      fieldResults={fieldResults}
+                      overall={rollUpOverall(fieldResults)}
+                      processingTimeMs={successResult.processingTimeMs}
+                      primaryUsd={successResult.aiSpend.primaryUsd}
+                      ocrConfidence={successResult.ocrConfidence}
+                      imageQualityFlags={successResult.imageQualityFlags ?? []}
+                      beverageType={successResult.expected.beverageType}
+                      reviewerName={reviewerName}
+                      onOverrideSave={handleOverrideSave}
+                      onOverrideClear={handleOverrideClear}
+                      onReviewerNameChange={handleReviewerNameChange}
+                      onSaveDecision={handleSaveDecision}
+                      existingDecision={existingDecision}
+                      saving={saving}
+                      quotaWarning={quotaWarning}
+                    />
+                    {savedReviewId ? (
+                      <SavedReviewExport reviewId={savedReviewId} />
+                    ) : (
+                      <p className="text-muted-foreground text-xs">
+                        Save the review to enable PDF / JSON export.
+                      </p>
+                    )}
+                  </>
+                ) : null}
+              </TabsContent>
+            </Tabs>
           </section>
         </div>
       </main>
+
+      <JumpToFinalReviewButton
+        visible={status.kind === "success"}
+        onJump={handleJumpToFinalReview}
+      />
+
+      <ImageLightbox
+        open={imageLightboxOpen}
+        src={previewUrl}
+        alt="Label artwork (expanded)"
+        onClose={() => setImageLightboxOpen(false)}
+      />
     </>
   );
 }
