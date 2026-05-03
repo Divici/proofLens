@@ -16,6 +16,21 @@ describe("govWarningMatch — three-layer strict matcher", () => {
     expect(result.status).toBe("pass");
   });
 
+  it("passes when the body is in ALL CAPS but words match verbatim (real bottle labels frequently render the entire warning in caps)", () => {
+    // Phase-9 user report: a synthetic label rendered the warning in
+    // ALL CAPS. The matcher rejected it with "off by 209 characters"
+    // — every lowercase letter in the canonical body differed from
+    // its uppercase counterpart in the candidate. Real TTB-approved
+    // labels appear in both presentations; the regulatory text is
+    // what matters, not the typographic case. Layer 1 still enforces
+    // the all-caps prefix per Jenny's interview ("the 'GOVERNMENT
+    // WARNING:' part has to be in all caps and bold").
+    const allCapsBody =
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.";
+    const result = govWarningMatch(allCapsBody);
+    expect(result.status).toBe("pass");
+  });
+
   it("passes when smart quotes are injected around (1)/(2) but body is otherwise canonical", () => {
     // NFKC + smart-quote fold should normalise these back, leaving the
     // canonical body unchanged.

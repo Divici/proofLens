@@ -81,10 +81,19 @@ function applyTypographicFolds(text: string): string {
 /**
  * Normalise a body string for Layer 2 comparison.
  *
- * NOTE: this never lower-cases. Layer 1 already enforced uppercase prefix;
- * Layer 2 validates wording against the canonical *body* (which is mixed
- * case starting with `(1) According to the Surgeon General…`). Lower-
- * casing here would let `Drink Responsibly` slip past the strict check.
+ * Case is folded here: real TTB-approved labels render the warning in
+ * either mixed case (matching the canonical printed in 27 CFR § 16.21)
+ * or ALL CAPS, and both are widely accepted in the field. The
+ * regulatory rule is on the *words*, not the typographic case. Layer 1
+ * already enforces the all-caps prefix (per Jenny's interview note:
+ * "the 'GOVERNMENT WARNING:' part has to be in all caps and bold");
+ * the body's case is a stylistic choice.
+ *
+ * Case-folding here does NOT loosen the strict check — every mutation
+ * in the CI fuzz harness changes WORDS (substitution, comma drops,
+ * sentence reorders, etc.), not pure case. A pure-case-only mutation
+ * would by construction be word-identical to the canonical, which is
+ * exactly the case we want to accept.
  */
 function normaliseBody(text: string): string {
   let out = text;
@@ -102,6 +111,9 @@ function normaliseBody(text: string): string {
   out = out.replace(/<[^>]+>/g, "");
   // Collapse whitespace runs to a single ASCII space, then trim.
   out = out.replace(/\s+/g, " ").trim();
+  // Case-fold last so every other normalisation step sees the original
+  // casing (some fold tables could be case-sensitive in future).
+  out = out.toLowerCase();
   return out;
 }
 
