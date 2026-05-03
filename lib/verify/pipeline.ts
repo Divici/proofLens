@@ -16,6 +16,7 @@ import {
   isUnitedStates,
 } from "./nuanced/matchers";
 import { bottlerAddressMatch } from "./nuanced/address";
+import { findBottlerFunctionPhrase } from "./nuanced/bottler-function-phrase";
 import {
   resolveStrictStatus,
   resolveNuancedStatus,
@@ -548,15 +549,35 @@ export async function runVerificationPipeline({
         f.confidence,
         imageQualityPoor,
       );
+
+      // Function-describing-phrase warning overlay (TTB §§ 5.66 /
+      // 4.35 / 7.66). When value-match passed but the OCR has no
+      // approved verb near the bottler-name evidence, demote
+      // pass / likely-match → warning. We scan the RAW OCR (not the
+      // structured field) because the LLM strips verbs during
+      // extraction. See ADR 0009 for the warning-vs-fail rationale.
+      let bottlerNameStatus = status;
+      const bottlerNameOutcomes: RuleOutcome[] = [ruleOutcome];
+      if (status === "pass" || status === "likely-match") {
+        const phrase = findBottlerFunctionPhrase(rawText, f.evidenceQuote);
+        if (!phrase.found) {
+          bottlerNameStatus = "warning";
+          bottlerNameOutcomes.unshift({
+            kind: "bottler_function_phrase_missing",
+            detail: {},
+          });
+        }
+      }
+
       fieldResults.push(
         buildFieldResult({
           field: "bottlerName",
           label: "Bottler / producer",
-          status,
+          status: bottlerNameStatus,
           value: f.value,
           expected: expected.bottlerName,
           aiConfidence: f.confidence,
-          outcomes: [ruleOutcome],
+          outcomes: bottlerNameOutcomes,
           evidenceQuote: f.evidenceQuote,
           bbox: bboxFor(f.evidenceQuote, words, imageDims),
           imageQualityPoor,

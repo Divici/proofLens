@@ -61,6 +61,8 @@ export const RuleOutcomeKindSchema = z.enum([
   "nuanced_manual_review",
   "nuanced_fail",
   "nuanced_missing",
+  // Bottler-specific
+  "bottler_function_phrase_missing",
   // Generic
   "field_missing",
   "field_not_required",

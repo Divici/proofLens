@@ -344,6 +344,38 @@ describe("runVerificationPipeline — gray-band judge wiring (slice 0009)", () =
   });
 });
 
+describe("runVerificationPipeline — bottler function-describing phrase (TTB §§ 5.66 / 4.35 / 7.66)", () => {
+  it("matches application AND raw OCR has 'Bottled by' near the name → pass (no warning)", async () => {
+    const result = await runVerificationPipeline({
+      extracted: passingExtraction(),
+      expected: EXPECTED,
+      words: WORDS,
+      rawText:
+        "BOTTLED BY OLD TOM DISTILLERY, LLC\nBARDSTOWN, KENTUCKY\n" +
+        GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const bn = result.fieldResults.find((f) => f.field === "bottlerName");
+    expect(bn!.status).toBe("pass");
+  });
+
+  it("matches application but raw OCR has no function verb anywhere → warning", async () => {
+    const result = await runVerificationPipeline({
+      extracted: passingExtraction(),
+      expected: EXPECTED,
+      words: WORDS,
+      // No 'bottled by' / 'distilled by' / etc. anywhere in the OCR.
+      rawText:
+        "Old Tom Distillery, LLC\nBardstown, Kentucky\n" +
+        GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const bn = result.fieldResults.find((f) => f.field === "bottlerName");
+    expect(bn!.status).toBe("warning");
+    expect(bn!.outcomes[0]!.kind).toBe("bottler_function_phrase_missing");
+  });
+});
+
 describe("runVerificationPipeline — net-contents standards-of-fill warning (TTB §§ 4.72 / 5.203)", () => {
   it("680 mL spirits matches the application but warns on non-standard fill", async () => {
     const e = passingExtraction();

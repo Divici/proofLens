@@ -20,6 +20,7 @@ const ALL_KINDS: RuleOutcomeKind[] = [
   "nuanced_manual_review",
   "nuanced_fail",
   "nuanced_missing",
+  "bottler_function_phrase_missing",
   "field_missing",
   "field_not_required",
   "field_low_confidence",

@@ -88,6 +88,8 @@ export const RULE_TEMPLATES: Record<RuleOutcomeKind, TemplateFn> = {
     )}%).`,
   nuanced_missing: () =>
     "Value not visible on the label.",
+  bottler_function_phrase_missing: () =>
+    "Bottler name matches the application's entry, but no TTB-approved function-describing phrase ('bottled by', 'distilled by', 'brewed and bottled by', etc.) was found near the bottler name in the OCR. § 5.66 / § 4.35 / § 7.66 require this phrase. Reviewer should confirm the verb is present on the artwork.",
 
   // ── Generic ───────────────────────────────────────────────────────
   field_missing: () => "This required field is not visible on the label.",
