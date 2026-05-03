@@ -90,11 +90,18 @@ export function findBottlerFunctionPhrase(
     return phrase ? { found: true, phrase } : { found: false };
   }
 
-  // Strict proximity check: only count a verb that precedes the
-  // bottler name within the proximity window. This rejects unrelated
-  // verb mentions that pertain to a different brand on the label.
+  // Proximity check: scan the 80 chars BEFORE the evidence quote
+  // PLUS the evidence quote itself. Including the evidence range
+  // matters because the LLM's bottler `evidenceQuote` is sometimes
+  // a longer slice than the structured `bottlerName.value` and
+  // already contains the verb (e.g., evidenceQuote = "BOTTLED BY OLD
+  // TOM DISTILLERY, LLC"). Without it we miss verbs that sit at the
+  // start of the evidence — which is the typical layout.
+  // Verbs more than 80 chars upstream still don't count, so unrelated
+  // mentions on a different label panel are correctly rejected.
   const windowStart = Math.max(0, nameIndex - PROXIMITY_WINDOW_CHARS);
-  const window = haystack.slice(windowStart, nameIndex);
+  const windowEnd = nameIndex + needle.length;
+  const window = haystack.slice(windowStart, windowEnd);
   const phrase = findAnyApprovedPhrase(window);
   return phrase ? { found: true, phrase } : { found: false };
 }

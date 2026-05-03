@@ -13,6 +13,29 @@ describe("findBottlerFunctionPhrase — TTB §§ 5.66 / 4.35 / 7.66", () => {
     expect(result.phrase?.toLowerCase()).toContain("bottled by");
   });
 
+  it("detects 'Bottled by' when the evidence quote ITSELF includes the verb (LLM evidence is a longer slice than the structured name)", async () => {
+    // Real bug: LLM extracts bottlerName.value = "OLD TOM
+    // DISTILLERY, LLC" (clean) but evidenceQuote = "BOTTLED BY OLD
+    // TOM DISTILLERY, LLC" (full slice including the verb). Window
+    // must include the evidence range itself, not just the chars
+    // before it.
+    const evidenceWithVerb = "BOTTLED BY OLD TOM DISTILLERY, LLC";
+    // Mid-label OCR — evidence is at a non-zero index.
+    const ocr =
+      "OLD TOM DISTILLERY\n750 mL\nBOTTLED BY OLD TOM DISTILLERY, LLC\nBARDSTOWN, KENTUCKY";
+    const result = findBottlerFunctionPhrase(ocr, evidenceWithVerb);
+    expect(result.found).toBe(true);
+  });
+
+  it("detects 'Bottled by' when the evidence quote starts at index 0 (the empty-before-window edge case)", () => {
+    // If evidence sits at the start of the OCR, the old "chars before
+    // the evidence" window is empty even though the verb is RIGHT
+    // there inside the evidence.
+    const evidenceWithVerb = "BOTTLED BY OLD TOM DISTILLERY, LLC";
+    const result = findBottlerFunctionPhrase(evidenceWithVerb, evidenceWithVerb);
+    expect(result.found).toBe(true);
+  });
+
   it("detects 'Distilled by' (spirits) — case-insensitive", () => {
     const result = findBottlerFunctionPhrase(
       "Distilled by Old Tom Distillery, LLC",
