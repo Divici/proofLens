@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   AlertTriangle,
   Camera,
@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/card";
 import { FieldRow } from "./FieldRow";
 import { FinalDecisionPanel } from "./FinalDecisionPanel";
-import { LabelImagePreview } from "./LabelImagePreview";
 import type {
   FieldOverride,
   FieldResult,
@@ -35,7 +34,13 @@ import { UNKNOWN_BEVERAGE_BANNER } from "@/lib/verify/beverage-rules";
 import { cn } from "@/lib/utils";
 
 export interface VerificationDetailProps {
-  imageSrc: string | null;
+  /**
+   * Deprecated. The label image is rendered by the page in the left
+   * column where the bbox highlight overlay lives. Kept optional for
+   * backward compatibility with existing callers (BatchDetailModal,
+   * test fixtures); ignored internally.
+   */
+  imageSrc?: string | null;
   fieldResults: ReadonlyArray<FieldResult>;
   overall: OverallStatus;
   processingTimeMs: number;
@@ -62,12 +67,18 @@ export interface VerificationDetailProps {
   saving?: boolean;
   /** Show a non-blocking quota warning banner above the decision panel. */
   quotaWarning?: { percentage: number } | null;
-  /**
-   * Override the LabelImagePreview empty-state copy. Used by the batch
-   * drill-in modal where the file was uploaded but no object URL was
-   * retained for memory reasons.
-   */
+  /** Deprecated alongside imageSrc — see above. Ignored internally. */
   imageEmptyMessage?: string;
+  /**
+   * Controlled selected-field id for the click-to-highlight feature.
+   * When provided alongside `onSelectField`, this component delegates
+   * selection state to the parent (so the parent can render the bbox
+   * overlay on its own image). When omitted, falls back to internal
+   * state — the click still toggles, but the highlight is not rendered
+   * here.
+   */
+  selectedField?: string | null;
+  onSelectField?: (field: string | null) => void;
 }
 
 const OVERALL_VISUALS: Record<
@@ -111,7 +122,6 @@ const OVERALL_VISUALS: Record<
 };
 
 export function VerificationDetail({
-  imageSrc,
   fieldResults,
   overall,
   processingTimeMs,
@@ -128,21 +138,27 @@ export function VerificationDetail({
   existingDecision,
   saving,
   quotaWarning,
-  imageEmptyMessage,
+  selectedField,
+  onSelectField,
 }: VerificationDetailProps) {
-  const [activeField, setActiveField] = useState<string | null>(null);
+  const [internalActiveField, setInternalActiveField] = useState<string | null>(
+    null,
+  );
+  const isControlled = onSelectField !== undefined;
+  const activeField = isControlled
+    ? (selectedField ?? null)
+    : internalActiveField;
   const qualityFlags = imageQualityFlags ?? [];
   const showQualityBanner = qualityFlags.length > 0;
   const showUnknownBanner = beverageType === "unknown";
 
-  const activeBbox = useMemo(() => {
-    if (!activeField) return null;
-    const f = fieldResults.find((r) => r.field === activeField);
-    return f?.bbox ?? null;
-  }, [activeField, fieldResults]);
-
   const handleSelect = (field: string) => {
-    setActiveField((current) => (current === field ? null : field));
+    const next = activeField === field ? null : field;
+    if (isControlled) {
+      onSelectField?.(next);
+    } else {
+      setInternalActiveField(next);
+    }
   };
 
   const overallVisual = OVERALL_VISUALS[overall];
@@ -175,19 +191,7 @@ export function VerificationDetail({
           <CardDescription>{overallVisual.description}</CardDescription>
         </CardHeader>
 
-        <CardContent className="grid grid-cols-1 gap-4 px-0 py-0 lg:grid-cols-[1fr_1.2fr]">
-          <div className="border-b lg:border-b-0 lg:border-r p-4">
-            <LabelImagePreview
-              src={imageSrc}
-              alt="Label preview with verification highlight"
-              bbox={activeBbox}
-              emptyMessage={imageEmptyMessage}
-            />
-            <p className="text-muted-foreground mt-2 text-xs">
-              Click a field on the right to highlight its source on the label.
-            </p>
-          </div>
-
+        <CardContent className="flex flex-col px-0 py-0">
           <div className="flex flex-col">
             {showQualityBanner ? (
               <div
@@ -307,6 +311,7 @@ export function VerificationDetail({
             onSave={onSaveDecision}
             onReviewerNameChange={onReviewerNameChange}
             saving={saving}
+            overall={overall}
           />
         </div>
       ) : null}

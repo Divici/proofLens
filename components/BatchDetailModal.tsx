@@ -65,7 +65,6 @@ export function BatchDetailModal({ item, onClose }: BatchDetailModalProps) {
         </div>
         {item.response ? (
           <VerificationDetail
-            imageSrc={null}
             fieldResults={item.response.fieldResults}
             overall={item.response.overall}
             processingTimeMs={item.response.processingTimeMs}
@@ -73,7 +72,6 @@ export function BatchDetailModal({ item, onClose }: BatchDetailModalProps) {
             ocrConfidence={item.response.ocrConfidence}
             imageQualityFlags={item.response.imageQualityFlags}
             beverageType={item.expected.beverageType}
-            imageEmptyMessage="Image not retained for batch view — open this review from /history to see the original."
           />
         ) : (
           <p className="text-muted-foreground rounded-lg border border-dashed border-border p-6 text-center text-sm">

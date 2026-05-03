@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VerificationDetail } from "./VerificationDetail";
@@ -75,37 +75,50 @@ describe("VerificationDetail", () => {
     expect(screen.getByText(/alcohol content/i)).toBeInTheDocument();
   });
 
-  it("clicking a field row updates the bbox highlight on the image", async () => {
+  it("clicking a field row calls onSelectField (controlled) so the page can drive the bbox highlight on the left-column image", async () => {
     const user = userEvent.setup();
-    const { container } = render(
+    const onSelectField = vi.fn();
+    render(
       <VerificationDetail
-        imageSrc="/img.jpg"
         fieldResults={FIELDS}
         overall="fail"
         processingTimeMs={2400}
         primaryUsd={0.0042}
         ocrConfidence={0.92}
+        selectedField={null}
+        onSelectField={onSelectField}
       />,
     );
-
-    // No bbox initially.
-    expect(container.querySelector("[data-testid='bbox-polygon']")).toBeNull();
-
     await user.click(
       screen.getByRole("button", { name: /brand name/i }),
     );
-
-    // Bbox now drawn for brand row.
-    expect(
-      container.querySelector("[data-testid='bbox-polygon']"),
-    ).not.toBeNull();
+    expect(onSelectField).toHaveBeenCalledWith("brand");
   });
 
-  it("clicking a row whose bbox is null doesn't crash and clears the overlay", async () => {
+  it("clicking the currently-selected row toggles selection off (page receives null)", async () => {
     const user = userEvent.setup();
-    const { container } = render(
+    const onSelectField = vi.fn();
+    render(
       <VerificationDetail
-        imageSrc="/img.jpg"
+        fieldResults={FIELDS}
+        overall="fail"
+        processingTimeMs={2400}
+        primaryUsd={0.0042}
+        ocrConfidence={0.92}
+        selectedField="brand"
+        onSelectField={onSelectField}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: /brand name/i }),
+    );
+    expect(onSelectField).toHaveBeenCalledWith(null);
+  });
+
+  it("uncontrolled mode (no onSelectField) — clicking still toggles internal state and doesn't crash", async () => {
+    const user = userEvent.setup();
+    render(
+      <VerificationDetail
         fieldResults={FIELDS}
         overall="fail"
         processingTimeMs={2400}
@@ -113,20 +126,13 @@ describe("VerificationDetail", () => {
         ocrConfidence={0.92}
       />,
     );
-
+    // Two clicks: select then deselect — should not throw.
     await user.click(
       screen.getByRole("button", { name: /brand name/i }),
     );
-    expect(
-      container.querySelector("[data-testid='bbox-polygon']"),
-    ).not.toBeNull();
-
     await user.click(
-      screen.getByRole("button", { name: /alcohol content/i }),
+      screen.getByRole("button", { name: /brand name/i }),
     );
-    expect(
-      container.querySelector("[data-testid='bbox-polygon']"),
-    ).toBeNull();
   });
 
   it.each<OverallStatus>([

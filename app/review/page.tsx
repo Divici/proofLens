@@ -19,6 +19,7 @@ import { ExportMenu } from "@/components/ExportMenu";
 import { ProviderHealthBanner } from "@/components/ProviderHealthBanner";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { JumpToFinalReviewButton } from "@/components/JumpToFinalReviewButton";
+import { LabelImagePreview } from "@/components/LabelImagePreview";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Maximize2 } from "lucide-react";
@@ -171,6 +172,22 @@ function ReviewPageInner() {
   >(undefined);
   const [saving, setSaving] = useState(false);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  // Lifted from VerificationDetail so the click-to-highlight overlay
+  // can render on the left-column image (the inner thumbnail in
+  // VerificationDetail was redundant with that image already visible).
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const activeBbox = useMemo(() => {
+    if (!activeField) return null;
+    const f = fieldResults.find((r) => r.field === activeField);
+    return f?.bbox ?? null;
+  }, [activeField, fieldResults]);
+  // Override-aware overall — drives the verdict pill, the FAB color,
+  // and the FinalDecisionPanel border. Computing once keeps all three
+  // surfaces in sync (R-012: human override > AI).
+  const overrideAwareOverall = useMemo(
+    () => rollUpOverall(fieldResults),
+    [fieldResults],
+  );
   const tabParam = searchParams?.get("tab") ?? null;
   // Tab state lives in the URL (`?tab=results`) so a refresh keeps the
   // reviewer where they were. Initial value: results tab when reopening
@@ -399,6 +416,12 @@ function ReviewPageInner() {
     }
 
     setStatus({ kind: "loading" });
+    // Switch to the Results tab IMMEDIATELY so the centered loading
+    // spinner is visible while the verify call is in flight. Without
+    // this the agent stays on the Application data tab and only sees
+    // the spinner once results land — confusing because nothing
+    // appears to happen for the 3-5s extraction window.
+    handleTabChange("results");
 
     const formData = new FormData();
     formData.set("image", imageFile);
@@ -422,9 +445,6 @@ function ReviewPageInner() {
 
       const result = (await response.json()) as ExtractionResult;
       setStatus({ kind: "success", result });
-      // Auto-switch to the Results tab so the agent doesn't have to
-      // hunt for the verdict (also persists ?tab=results in the URL).
-      handleTabChange("results");
     } catch (cause) {
       console.error("[review] extraction request failed", cause);
       setStatus({
@@ -708,10 +728,27 @@ function ReviewPageInner() {
                 />
               )}
             </div>
-            {/* Desktop: full-size preview. Queue flow → read-only static
-                <img>; direct flow → editable LabelUploader. */}
+            {/* Desktop: full-size preview. After verify success the
+                image becomes a LabelImagePreview so the click-to-
+                highlight bbox overlay renders here (it used to live in
+                a duplicate thumbnail inside the Results tab — removed
+                because it was redundant with this image being right
+                there). Pre-verify: queue flow shows a read-only static
+                <img>; direct flow shows the editable LabelUploader. */}
             <div className="hidden lg:block">
-              {fromQueue ? (
+              {successResult && previewUrl ? (
+                <div className="flex flex-col gap-2">
+                  <LabelImagePreview
+                    src={previewUrl}
+                    alt="Label artwork — click a field row on the right to highlight its source"
+                    bbox={activeBbox}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Click a field on the right to highlight its source
+                    on the label.
+                  </p>
+                </div>
+              ) : fromQueue ? (
                 previewUrl ? (
                   <div className="overflow-hidden rounded-xl border border-border bg-card/40 p-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -830,9 +867,8 @@ function ReviewPageInner() {
                 {successResult ? (
                   <>
                     <VerificationDetail
-                      imageSrc={previewUrl}
                       fieldResults={fieldResults}
-                      overall={rollUpOverall(fieldResults)}
+                      overall={overrideAwareOverall}
                       processingTimeMs={successResult.processingTimeMs}
                       primaryUsd={successResult.aiSpend.primaryUsd}
                       ocrConfidence={successResult.ocrConfidence}
@@ -846,6 +882,8 @@ function ReviewPageInner() {
                       existingDecision={existingDecision}
                       saving={saving}
                       quotaWarning={quotaWarning}
+                      selectedField={activeField}
+                      onSelectField={setActiveField}
                     />
                     {savedReviewId ? (
                       <SavedReviewExport reviewId={savedReviewId} />
@@ -865,6 +903,7 @@ function ReviewPageInner() {
       <JumpToFinalReviewButton
         visible={status.kind === "success"}
         onJump={handleJumpToFinalReview}
+        overall={overrideAwareOverall}
       />
 
       <ImageLightbox

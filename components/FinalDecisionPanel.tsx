@@ -14,6 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { HumanDecision } from "@/lib/storage/types";
+import type { OverallStatus } from "@/lib/verify/types";
+import {
+  DEFAULT_OVERALL_TONE,
+  OVERALL_TONES,
+} from "@/lib/verify/overall-tone";
 import { cn } from "@/lib/utils";
 
 /**
@@ -74,6 +79,12 @@ export interface FinalDecisionPanelProps {
   onReviewerNameChange?: (name: string) => void;
   saving?: boolean;
   className?: string;
+  /**
+   * Overall verdict — colors the panel's border and surface tint to
+   * match the JumpToFinalReviewButton FAB. When omitted, falls back
+   * to the default (emerald) tone. See `lib/verify/overall-tone.ts`.
+   */
+  overall?: OverallStatus;
 }
 
 export function FinalDecisionPanel({
@@ -83,6 +94,7 @@ export function FinalDecisionPanel({
   onReviewerNameChange,
   saving,
   className,
+  overall,
 }: FinalDecisionPanelProps) {
   const [reviewerName, setReviewerName] = useState<string>(
     existingDecision?.reviewerName ?? defaultReviewerName ?? "",
@@ -109,10 +121,13 @@ export function FinalDecisionPanel({
   return (
     <div
       className={cn(
-        // Border + ring tinted emerald to match the JumpToFinalReview FAB,
-        // so the CTA's destination is unmistakable when the agent scrolls
-        // into it (or jumps via the FAB).
-        "border-emerald-500/50 ring-1 ring-emerald-500/15 bg-emerald-50/40 dark:bg-emerald-500/5 flex flex-col gap-4 rounded-xl border p-4",
+        // Border + ring + surface tint match the overall verdict so
+        // the CTA-flavoured zone visually echoes the FAB and the
+        // verdict pill at the top of the Results tab.
+        "ring-1 flex flex-col gap-4 rounded-xl border p-4",
+        (overall ? OVERALL_TONES[overall] : DEFAULT_OVERALL_TONE).border,
+        (overall ? OVERALL_TONES[overall] : DEFAULT_OVERALL_TONE).panelRing,
+        (overall ? OVERALL_TONES[overall] : DEFAULT_OVERALL_TONE).panelBg,
         className,
       )}
       aria-label="Final decision"
