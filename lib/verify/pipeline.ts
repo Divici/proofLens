@@ -13,6 +13,7 @@ import {
   bottlerMatch,
   countryMatch,
 } from "./nuanced/matchers";
+import { bottlerAddressMatch } from "./nuanced/address";
 import {
   resolveStrictStatus,
   resolveNuancedStatus,
@@ -546,7 +547,11 @@ export async function runVerificationPipeline({
       );
     } else {
       const f = extracted.bottlerAddress;
-      const ladder = await bottlerMatch({
+      // Address-specific matcher (TTB §§ 5.66 / 4.35 / 7.66 — only
+      // city + State are required on the label; street + ZIP are
+      // optional). Strips ZIPs and aliases full state names to USPS
+      // abbreviations before the standard ladder.
+      const ladder = await bottlerAddressMatch({
         extracted: typeof f.value === "string" ? f.value : null,
         expected: expected.bottlerAddress,
         callJudge,

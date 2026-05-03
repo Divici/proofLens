@@ -343,3 +343,34 @@ describe("runVerificationPipeline — gray-band judge wiring (slice 0009)", () =
     expect(brand?.status).toBe("fail");
   });
 });
+
+describe("runVerificationPipeline — bottler address (TTB §§ 5.66 / 4.35 / 7.66)", () => {
+  it("city+state on label passes against full street-address-with-ZIP in the application (Old Tom regression)", async () => {
+    const e = passingExtraction();
+    // What the synthetic Old Tom label actually prints: city + state,
+    // all caps, no ZIP.
+    e.bottlerAddress = {
+      value: "BARDSTOWN, KENTUCKY",
+      evidenceQuote: "BARDSTOWN, KENTUCKY",
+      confidence: 0.95,
+    };
+    const result = await runVerificationPipeline({
+      extracted: e,
+      // Expected has the full mailing address from COLA — street, city,
+      // state-abbreviation, ZIP. § 5.66 says only city+state need to be
+      // on the label; the rest is optional.
+      expected: {
+        ...EXPECTED,
+        bottlerAddress: "123 Bourbon Lane, Bardstown, KY 40004",
+      },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const address = result.fieldResults.find(
+      (f) => f.field === "bottlerAddress",
+    );
+    expect(address).toBeDefined();
+    expect(["pass", "likely-match"]).toContain(address!.status);
+  });
+});
