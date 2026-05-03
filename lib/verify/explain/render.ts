@@ -14,20 +14,29 @@ export function renderExplanation(outcome: RuleOutcome): string {
  * Suggested-action prose per status. Short imperative phrasing matched to
  * the badge's verbal weight. When `imageQualityPoor` is true, manual-
  * review and low-confidence rows surface the canonical "Request Better
- * Image" copy that the PRD §19 image-quality scenarios call out.
+ * Image" copy that the PRD §19 image-quality scenarios call out — UNLESS
+ * the deterministic matcher already validated the value, in which case
+ * the softer "spot-check" message reads more honestly than asking for a
+ * better image when we already know the value matches.
  */
 export const REQUEST_BETTER_IMAGE_ACTION =
   "Request Better Image — image quality is too low for confident verification.";
 
+export const SPOT_CHECK_VALIDATED_ACTION =
+  "Image quality is low — spot-check the artwork; the value matches the expected entry.";
+
 export function suggestedActionFor(
   status: FieldStatus,
   imageQualityPoor = false,
+  matchValidated = false,
 ): string {
   if (
     imageQualityPoor &&
     (status === "manual-review" || status === "low-confidence")
   ) {
-    return REQUEST_BETTER_IMAGE_ACTION;
+    return matchValidated
+      ? SPOT_CHECK_VALIDATED_ACTION
+      : REQUEST_BETTER_IMAGE_ACTION;
   }
   switch (status) {
     case "pass":

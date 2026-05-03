@@ -247,7 +247,7 @@ describe("runVerificationPipeline — beverage-aware routing (slice 0004)", () =
     expect(abv?.status).toBe("not-required");
   });
 
-  it("image-quality flags demote a passing brand row to manual-review", async () => {
+  it("image-quality flags demote a passing brand row to manual-review with the 'spot-check' action (the value matched, so 'request better image' would contradict)", async () => {
     const result = await runVerificationPipeline({
       extracted: passingExtraction(),
       expected: EXPECTED,
@@ -258,7 +258,11 @@ describe("runVerificationPipeline — beverage-aware routing (slice 0004)", () =
     });
     const brand = result.fieldResults.find((f) => f.field === "brand");
     expect(brand?.status).toBe("manual-review");
-    expect(brand?.suggestedAction).toMatch(/request better image/i);
+    // matchValidated=true (ladder=pass) → softer spot-check copy.
+    expect(brand?.suggestedAction).toMatch(/spot-check/i);
+    expect(brand?.suggestedAction).toMatch(/value matches/i);
+    // Displayed confidence reflects the deterministic match, not LLM self-doubt.
+    expect(brand?.confidence).toBeGreaterThanOrEqual(0.95);
   });
 
   it("image-quality flags do NOT salvage a strict ABV fail", async () => {

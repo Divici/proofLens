@@ -19,13 +19,33 @@ describe("resolveStrictStatus — strict cells collapse to {Pass, Fail, Missing,
     ).toBe("fail");
   });
 
-  it("returns 'low-confidence' for ai < 0.6", () => {
+  it("returns 'low-confidence' for ai < 0.6 ONLY when match did not pass", () => {
+    // When the deterministic strict matcher passes, the LLM's
+    // self-doubt is moot — the value has been validated against
+    // expected. Phase-9 user report: angled/glared real photo had
+    // ai=0 across the board but every value matched expected; the
+    // UI showed "Low confidence 0%" with explanation text "matches
+    // exactly" — confusing.
     expect(
       resolveStrictStatus({ matchPassed: true, aiConfidence: 0.4 }),
-    ).toBe("low-confidence");
+    ).toBe("pass");
     expect(
       resolveStrictStatus({ matchPassed: false, aiConfidence: 0.4 }),
     ).toBe("low-confidence");
+  });
+
+  it("demotes a matched-but-low-AI cell to 'manual-review' when image quality is poor", () => {
+    // Image-quality flag still wins: the reviewer sees Manual Review
+    // with the Request-Better-Image action, but the underlying status
+    // is acknowledged as a pass that needs a human eyeball, not as a
+    // low-confidence extraction.
+    expect(
+      resolveStrictStatus({
+        matchPassed: true,
+        aiConfidence: 0.4,
+        imageQualityPoor: true,
+      }),
+    ).toBe("manual-review");
   });
 
   it("returns 'missing' when extracted value is null", () => {
@@ -78,10 +98,29 @@ describe("resolveNuancedStatus — full 8-state matrix", () => {
     ).toBe("warning");
   });
 
-  it("returns 'low-confidence' when AI confidence < 0.6", () => {
+  it("returns 'low-confidence' for AI < 0.6 ONLY when ladder did not pass cleanly", () => {
+    // Match-ladder passing IS the validation — LLM self-doubt is moot.
+    // Same Phase-9 user report: real-photo nuanced fields with ai=0
+    // showed "Low confidence" despite an exact ladder pass.
     expect(
       resolveNuancedStatus({ ladderKind: "pass", aiConfidence: 0.4 }),
+    ).toBe("pass");
+    expect(
+      resolveNuancedStatus({ ladderKind: "fail", aiConfidence: 0.4 }),
     ).toBe("low-confidence");
+    expect(
+      resolveNuancedStatus({ ladderKind: "missing", aiConfidence: 0.4 }),
+    ).toBe("missing");
+  });
+
+  it("demotes a ladder-pass + low-AI cell to 'manual-review' when image quality is poor", () => {
+    expect(
+      resolveNuancedStatus({
+        ladderKind: "pass",
+        aiConfidence: 0.4,
+        imageQualityPoor: true,
+      }),
+    ).toBe("manual-review");
   });
 
   it("returns 'missing' when ladder is missing", () => {

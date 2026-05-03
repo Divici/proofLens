@@ -41,13 +41,19 @@ export function resolveStrictStatus({
   imageQualityPoor = false,
 }: ResolveStrictArgs): FieldStatus {
   if (extractedNull) return "missing";
+  // Match-passed means the deterministic strict matcher (gov-warning,
+  // ABV tolerance, net-contents tolerance) confirmed the value matches
+  // expected. The LLM's self-confidence becomes moot — we have ground
+  // truth via the deterministic check. Phase-9 user report: angled /
+  // glared real photo had ai=0 across the board but every value
+  // matched expected; the UI showed "Low confidence 0%" with
+  // explanation text "matches exactly", which read as a contradiction.
+  if (matchPassed) {
+    return imageQualityPoor ? "manual-review" : "pass";
+  }
+  // Match did not pass — now the AI confidence floor matters.
   if (aiConfidence < AI_CONFIDENCE_MID) return "low-confidence";
-  // Strict-fails take precedence over image-quality. A non-compliant
-  // label can't be salvaged by a better photo of the same artwork.
-  if (!matchPassed) return "fail";
-  // Pass cell + poor quality → demote to manual-review.
-  if (imageQualityPoor) return "manual-review";
-  return "pass";
+  return "fail";
 }
 
 export interface ResolveNuancedArgs {
@@ -62,21 +68,38 @@ export function resolveNuancedStatus({
   imageQualityPoor = false,
 }: ResolveNuancedArgs): FieldStatus {
   if (ladderKind === "missing") return "missing";
-  if (aiConfidence < AI_CONFIDENCE_MID) return "low-confidence";
 
-  // Image-quality override applies to every non-fail / non-missing cell.
-  // Demote to manual-review so the reviewer requests a better image.
-  if (imageQualityPoor && ladderKind !== "fail") return "manual-review";
+  // Ladder = pass means the nuanced matcher (NFKC + smart-quote/dash
+  // fold + case fold + punctuation strip) confirmed the value matches
+  // expected. The LLM's self-confidence is moot — we have a
+  // deterministic match. Phase-9 user report: real-photo nuanced
+  // fields with ai=0 showed "Low confidence" despite a clean match.
+  if (ladderKind === "pass") {
+    return imageQualityPoor ? "manual-review" : "pass";
+  }
 
-  if (ladderKind === "pass") return "pass";
-  if (ladderKind === "likely-match") return "likely-match";
+  // Ladder = likely-match: the matcher routed through the gray band
+  // and the judge or fallback ladder said "probably matches". Treat
+  // similarly — the deterministic chain validated; AI-floor is moot.
+  if (ladderKind === "likely-match") {
+    return imageQualityPoor ? "manual-review" : "likely-match";
+  }
+
+  // Ladder = manual-review: matcher itself wants a human eye, so
+  // honor that regardless of AI confidence or image quality.
   if (ladderKind === "manual-review") return "manual-review";
 
-  // Ladder failed.
-  // High AI confidence + ladder fail → strong fail signal.
-  // Mid AI confidence (0.6 ≤ ai < 0.85) softens to a warning so the
-  // reviewer can sanity-check before strict-failing.
+  // Ladder = fail. Strict-fail signal at high AI confidence stays
+  // strict regardless of image quality — a non-compliant label can't
+  // be salvaged by a better photo of the same artwork.
   if (aiConfidence >= AI_CONFIDENCE_HIGH) return "fail";
+  // LLM doesn't trust its own extraction → low-confidence (could be
+  // a hallucinated value driven by glare / blur).
+  if (aiConfidence < AI_CONFIDENCE_MID) return "low-confidence";
+  // Mid AI confidence (0.6 ≤ ai < 0.85): under poor image quality
+  // demote to manual-review; otherwise soften to a warning so the
+  // reviewer sanity-checks before strict-failing.
+  if (imageQualityPoor) return "manual-review";
   return "warning";
 }
 

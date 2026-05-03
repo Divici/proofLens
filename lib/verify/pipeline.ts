@@ -99,12 +99,21 @@ function ladderToStatus(
   outcome: LadderOutcome,
   aiConfidence: number,
   imageQualityPoor = false,
-): { status: FieldStatus; ruleOutcome: RuleOutcome } {
+): {
+  status: FieldStatus;
+  ruleOutcome: RuleOutcome;
+  matchValidated: boolean;
+} {
   const status = resolveNuancedStatus({
     ladderKind: outcome.kind,
     aiConfidence,
     imageQualityPoor,
   });
+  // The deterministic ladder validates the value when it lands on
+  // `pass` or `likely-match` — both branches trace back to a positive
+  // match (exact normalisation match or judge-confirmed gray-band hit).
+  const matchValidated =
+    outcome.kind === "pass" || outcome.kind === "likely-match";
 
   let kind: RuleOutcome["kind"];
   switch (outcome.kind) {
@@ -127,6 +136,7 @@ function ladderToStatus(
 
   return {
     status,
+    matchValidated,
     ruleOutcome: {
       kind,
       detail: {
@@ -140,6 +150,17 @@ function ladderToStatus(
   };
 }
 
+/**
+ * Floor on the displayed confidence when a deterministic match
+ * validated the value. The pill semantically reads "how confident are
+ * we this field is correct?" — once the strict matcher (or nuanced
+ * ladder) confirmed the extracted value matches expected, we are
+ * effectively certain. We pin it at 0.95 (not 1.0) to leave a small
+ * residual for image-quality demotion contexts where the ground truth
+ * exists but the reviewer should still spot-check the artwork.
+ */
+const VALIDATED_CONFIDENCE_FLOOR = 0.95;
+
 function buildFieldResult(args: {
   field: string;
   label: string;
@@ -151,6 +172,13 @@ function buildFieldResult(args: {
   evidenceQuote: string | null;
   bbox: FieldResult["bbox"];
   imageQualityPoor?: boolean;
+  /**
+   * True iff the deterministic check validated the extracted value
+   * against the expected entry. When true the displayed confidence is
+   * bumped to {@link VALIDATED_CONFIDENCE_FLOOR}, since the LLM's
+   * self-doubt is moot — we have ground truth via the match logic.
+   */
+  matchValidated?: boolean;
 }): FieldResult {
   const primary = args.outcomes[0] ?? {
     kind: "field_missing" as const,
@@ -160,14 +188,18 @@ function buildFieldResult(args: {
   const suggestedAction = suggestedActionFor(
     args.status,
     args.imageQualityPoor,
+    args.matchValidated,
   );
+  const displayedConfidence = args.matchValidated
+    ? Math.max(args.aiConfidence, VALIDATED_CONFIDENCE_FLOOR)
+    : args.aiConfidence;
   return {
     field: args.field,
     label: args.label,
     status: args.status,
     value: args.value,
     expected: args.expected,
-    confidence: args.aiConfidence,
+    confidence: displayedConfidence,
     explanation,
     suggestedAction,
     evidenceQuote: args.evidenceQuote,
@@ -249,7 +281,7 @@ export async function runVerificationPipeline({
         expected: expected.brand,
         callJudge,
       });
-      const { status, ruleOutcome } = ladderToStatus(
+      const { status, ruleOutcome, matchValidated } = ladderToStatus(
         ladder,
         f.confidence,
         imageQualityPoor,
@@ -266,6 +298,7 @@ export async function runVerificationPipeline({
           evidenceQuote: f.evidenceQuote,
           bbox: bboxFor(f.evidenceQuote, words, imageDims),
           imageQualityPoor,
+          matchValidated,
         }),
       );
     }
@@ -289,7 +322,7 @@ export async function runVerificationPipeline({
         expected: expected.classType,
         callJudge,
       });
-      const { status, ruleOutcome } = ladderToStatus(
+      const { status, ruleOutcome, matchValidated } = ladderToStatus(
         ladder,
         f.confidence,
         imageQualityPoor,
@@ -306,6 +339,7 @@ export async function runVerificationPipeline({
           evidenceQuote: f.evidenceQuote,
           bbox: bboxFor(f.evidenceQuote, words, imageDims),
           imageQualityPoor,
+          matchValidated,
         }),
       );
     }
@@ -401,6 +435,7 @@ export async function runVerificationPipeline({
           evidenceQuote,
           bbox: bboxFor(evidenceQuote, words, imageDims),
           imageQualityPoor,
+          matchValidated: outcome.status === "pass",
         }),
       );
     }
@@ -452,6 +487,7 @@ export async function runVerificationPipeline({
         evidenceQuote: f.evidenceQuote,
         bbox: bboxFor(f.evidenceQuote, words, imageDims),
         imageQualityPoor,
+        matchValidated: outcome.status === "pass",
       }),
     );
   }
@@ -474,7 +510,7 @@ export async function runVerificationPipeline({
         expected: expected.bottlerName,
         callJudge,
       });
-      const { status, ruleOutcome } = ladderToStatus(
+      const { status, ruleOutcome, matchValidated } = ladderToStatus(
         ladder,
         f.confidence,
         imageQualityPoor,
@@ -491,6 +527,7 @@ export async function runVerificationPipeline({
           evidenceQuote: f.evidenceQuote,
           bbox: bboxFor(f.evidenceQuote, words, imageDims),
           imageQualityPoor,
+          matchValidated,
         }),
       );
     }
@@ -514,7 +551,7 @@ export async function runVerificationPipeline({
         expected: expected.bottlerAddress,
         callJudge,
       });
-      const { status, ruleOutcome } = ladderToStatus(
+      const { status, ruleOutcome, matchValidated } = ladderToStatus(
         ladder,
         f.confidence,
         imageQualityPoor,
@@ -531,6 +568,7 @@ export async function runVerificationPipeline({
           evidenceQuote: f.evidenceQuote,
           bbox: bboxFor(f.evidenceQuote, words, imageDims),
           imageQualityPoor,
+          matchValidated,
         }),
       );
     }
@@ -554,7 +592,7 @@ export async function runVerificationPipeline({
         expected: expected.countryOfOrigin,
         callJudge,
       });
-      const { status, ruleOutcome } = ladderToStatus(
+      const { status, ruleOutcome, matchValidated } = ladderToStatus(
         ladder,
         f.confidence,
         imageQualityPoor,
@@ -571,6 +609,7 @@ export async function runVerificationPipeline({
           evidenceQuote: f.evidenceQuote,
           bbox: bboxFor(f.evidenceQuote, words, imageDims),
           imageQualityPoor,
+          matchValidated,
         }),
       );
     }
@@ -658,6 +697,7 @@ export async function runVerificationPipeline({
           evidenceQuote: extracted.governmentWarningText.evidenceQuote,
           bbox,
           imageQualityPoor,
+          matchValidated: outcome.status === "pass",
         }),
       );
     }
