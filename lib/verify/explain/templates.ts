@@ -56,6 +56,18 @@ export const RULE_TEMPLATES: Record<RuleOutcomeKind, TemplateFn> = {
     "Could not parse a volume from the label.",
   net_contents_volume_mismatch: ({ expectedMl, foundMl }) =>
     `Expected ${num(expectedMl)} mL; found ${num(foundMl)} mL — outside the 0.1% tolerance.`,
+  net_contents_non_standard_fill: ({ foundMl, beverageType, cfrSection }) => {
+    const bevLabel =
+      beverageType === "wine"
+        ? "wine"
+        : beverageType === "distilled-spirits"
+          ? "distilled spirits"
+          : "this beverage class";
+    const cite = str(cfrSection, "§ 4.72 / § 5.203");
+    return `Net contents (${num(foundMl)} mL) match the application's expected value, but ${num(
+      foundMl,
+    )} mL is not on the TTB authorized standards of fill for ${bevLabel} (27 CFR ${cite}). Reviewer should flag for non-standard fill or correct the application.`;
+  },
 
   // ── Nuanced ladder ────────────────────────────────────────────────
   nuanced_pass: () => "Value matches the expected entry exactly.",

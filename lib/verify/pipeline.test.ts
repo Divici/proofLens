@@ -344,6 +344,63 @@ describe("runVerificationPipeline — gray-band judge wiring (slice 0009)", () =
   });
 });
 
+describe("runVerificationPipeline — net-contents standards-of-fill warning (TTB §§ 4.72 / 5.203)", () => {
+  it("680 mL spirits matches the application but warns on non-standard fill", async () => {
+    const e = passingExtraction();
+    e.netContents = {
+      value: "680 mL",
+      evidenceQuote: "680 mL",
+      confidence: 0.95,
+    };
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: { ...EXPECTED, netContents: "680 mL" },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const nc = result.fieldResults.find((f) => f.field === "netContents");
+    expect(nc).toBeDefined();
+    expect(nc!.status).toBe("warning");
+    expect(nc!.outcomes[0]!.kind).toBe("net_contents_non_standard_fill");
+  });
+
+  it("750 mL spirits is on the TTB list and passes cleanly (no warning overlay)", async () => {
+    const result = await runVerificationPipeline({
+      extracted: passingExtraction(),
+      expected: EXPECTED, // 750 mL by default
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const nc = result.fieldResults.find((f) => f.field === "netContents");
+    expect(nc!.status).toBe("pass");
+    expect(nc!.outcomes[0]!.kind).toBe("net_contents_pass");
+  });
+
+  it("malt beverages always pass standards-of-fill (no fixed list per § 7.70)", async () => {
+    const e = passingExtraction();
+    e.netContents = {
+      value: "680 mL",
+      evidenceQuote: "680 mL",
+      confidence: 0.95,
+    };
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: {
+        ...EXPECTED,
+        netContents: "680 mL",
+        beverageType: "malt-beverage",
+      },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const nc = result.fieldResults.find((f) => f.field === "netContents");
+    expect(nc!.status).toBe("pass");
+  });
+});
+
 describe("runVerificationPipeline — country-of-origin (auto-derived isImported)", () => {
   it("imported product (Guatemala) — country marking present → pass / likely-match", async () => {
     const e = passingExtraction();

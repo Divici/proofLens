@@ -7,6 +7,7 @@ import type { TesseractWord } from "@/lib/ocr/tesseract";
 import { govWarningMatch } from "./strict/gov-warning";
 import { abvMatch } from "./strict/abv";
 import { netContentsMatch } from "./strict/net-contents";
+import { isAuthorizedFillSize } from "./strict/standards-of-fill";
 import {
   brandMatch,
   classTypeMatch,
@@ -484,11 +485,34 @@ export async function runVerificationPipeline({
         },
       });
     }
+
+    // Standards-of-fill warning overlay (TTB §§ 4.72 / 5.203). When the
+    // value-match passes but the volume isn't on the authorized list,
+    // demote pass → warning. The label and application agree; the
+    // regulatory deviation is on the volume itself. Reviewer judgment.
+    let netContentsStatus = status;
+    if (
+      outcome.status === "pass" &&
+      outcome.foundMl !== null &&
+      !isAuthorizedFillSize(outcome.foundMl, expected.beverageType)
+    ) {
+      netContentsStatus = "warning";
+      ruleOutcomes.unshift({
+        kind: "net_contents_non_standard_fill",
+        detail: {
+          foundMl: outcome.foundMl,
+          beverageType: expected.beverageType,
+          cfrSection:
+            expected.beverageType === "wine" ? "§ 4.72" : "§ 5.203",
+        },
+      });
+    }
+
     fieldResults.push(
       buildFieldResult({
         field: "netContents",
         label: "Net contents",
-        status,
+        status: netContentsStatus,
         value: f.value,
         expected: expected.netContents,
         aiConfidence: f.confidence,
