@@ -353,18 +353,6 @@ function ReviewPageInner() {
       );
       return;
     }
-    // Reset volatile per-scenario state when the user navigates between
-    // queue rows. Without this, scenario A's verification result, saved
-    // review id, decision, and active-field selection bleed onto
-    // scenario B's image — the most visible symptom is the Results tab
-    // showing scenario A's verdict next to scenario B's artwork.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    setStatus({ kind: "idle" });
-    setFieldResults([]);
-    setSavedReviewId(null);
-    setExistingDecision(undefined);
-    setActiveField(null);
-    /* eslint-enable react-hooks/set-state-in-effect */
     let cancelled = false;
     (async () => {
       try {
