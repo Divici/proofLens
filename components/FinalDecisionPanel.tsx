@@ -109,7 +109,9 @@ export function FinalDecisionPanel({
   return (
     <div
       className={cn(
-        "border-border bg-card/50 flex flex-col gap-4 rounded-xl border p-4",
+        // Border + ring tinted with the primary token so the FAB target
+        // visually pops and it's clear this is the CTA-flavoured zone.
+        "border-primary/40 ring-1 ring-primary/15 bg-card/50 flex flex-col gap-4 rounded-xl border p-4",
         className,
       )}
       aria-label="Final decision"

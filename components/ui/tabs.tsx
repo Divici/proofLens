@@ -169,11 +169,11 @@ export function TabsTrigger({
       data-state={active ? "active" : "inactive"}
       onClick={() => ctx.onValueChange(value)}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors",
+        "inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
         "data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground",
-        "disabled:pointer-events-none disabled:opacity-50",
+        "disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
     >

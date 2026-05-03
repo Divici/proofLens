@@ -497,18 +497,34 @@ function ReviewPageInner() {
         }
 
         const id = savedReviewId ?? crypto.randomUUID();
+        // Stamp the reviewer name from the FinalDecisionPanel into any
+        // override that lacks one. The HumanOverridePanel no longer
+        // requires a name at edit time — a single name gate at final
+        // approval is enough, and matches the brief's audit model
+        // (one reviewer per saved Review record).
+        const stampedFieldResults = fieldResults.map((fr) =>
+          fr.humanOverride && !fr.humanOverride.reviewerName.trim()
+            ? {
+                ...fr,
+                humanOverride: {
+                  ...fr.humanOverride,
+                  reviewerName: decision.reviewerName,
+                },
+              }
+            : fr,
+        );
         // Recompute overall from the override-applied fieldResults
         // before persisting — otherwise the saved Review record (and
         // every history surface that reads from it) keeps the original
         // AI verdict despite reviewer overrides. R-012.
-        const persistedOverall = rollUpOverall(fieldResults);
+        const persistedOverall = rollUpOverall(stampedFieldResults);
         const review = composeReview({
           id,
           now: () => new Date(),
           reviewerName: decision.reviewerName,
           expectedData: result.expected,
           extracted: result.extracted,
-          fieldResults,
+          fieldResults: stampedFieldResults,
           overall: persistedOverall,
           imageQualityFlags: result.imageQualityFlags ?? [],
           thumbnail,
@@ -533,6 +549,10 @@ function ReviewPageInner() {
         await persistReviewerName(decision.reviewerName);
         setSavedReviewId(id);
         setExistingDecision(decision);
+        // Mirror the name-stamped overrides into local state so the
+        // UI immediately shows "<reviewer name>" on every override
+        // note (instead of an empty author).
+        setFieldResults(stampedFieldResults);
         toast.success("Review saved to your browser history.");
         // Also update the URL so a refresh keeps us in reopen mode.
         router.replace(`/review?reviewId=${id}`);
@@ -661,7 +681,7 @@ function ReviewPageInner() {
                   type="button"
                   onClick={() => setImageLightboxOpen(true)}
                   aria-label="Tap to expand label artwork"
-                  className="relative block w-full overflow-hidden rounded-xl border border-border bg-card/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="relative block w-full cursor-pointer overflow-hidden rounded-xl border border-border bg-card/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -673,6 +693,13 @@ function ReviewPageInner() {
                     <Maximize2 className="size-3" aria-hidden="true" /> Expand
                   </span>
                 </button>
+              ) : fromQueue ? (
+                <div
+                  role="status"
+                  className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/40 text-xs text-muted-foreground"
+                >
+                  Loading label artwork…
+                </div>
               ) : (
                 <LabelUploader
                   onFileSelected={setImageFile}
@@ -681,13 +708,34 @@ function ReviewPageInner() {
                 />
               )}
             </div>
-            {/* Desktop: full-size uploader / preview. */}
+            {/* Desktop: full-size preview. Queue flow → read-only static
+                <img>; direct flow → editable LabelUploader. */}
             <div className="hidden lg:block">
-              <LabelUploader
-                onFileSelected={setImageFile}
-                previewUrl={previewUrl}
-                previewAlt="Uploaded label preview"
-              />
+              {fromQueue ? (
+                previewUrl ? (
+                  <div className="overflow-hidden rounded-xl border border-border bg-card/40 p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewUrl}
+                      alt="Label artwork on file"
+                      className="mx-auto block max-h-[480px] w-auto rounded-lg object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    role="status"
+                    className="flex min-h-72 items-center justify-center rounded-xl border border-dashed border-border bg-card/40 text-sm text-muted-foreground"
+                  >
+                    Loading label artwork…
+                  </div>
+                )
+              ) : (
+                <LabelUploader
+                  onFileSelected={setImageFile}
+                  previewUrl={previewUrl}
+                  previewAlt="Uploaded label preview"
+                />
+              )}
             </div>
           </section>
 
@@ -753,10 +801,11 @@ function ReviewPageInner() {
                 {status.kind === "loading" ? (
                   <div
                     role="status"
-                    className="flex items-center gap-3 rounded-xl border border-border bg-card/40 p-6 text-sm"
+                    aria-label="Running verification"
+                    className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card/40 p-6 text-sm"
                   >
                     <Loader2
-                      className="size-4 animate-spin text-muted-foreground"
+                      className="size-8 animate-spin text-primary"
                       aria-hidden="true"
                     />
                     <span className="text-muted-foreground">

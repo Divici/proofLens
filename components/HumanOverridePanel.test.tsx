@@ -145,22 +145,27 @@ describe("HumanOverridePanel", () => {
     }
   });
 
-  it("warns when reviewer name is missing and disables save", async () => {
+  it("allows saving an override without a reviewer name (page-level save back-fills the name from FinalDecisionPanel)", async () => {
     const user = userEvent.setup();
+    const onSave = vi.fn();
     render(
       <HumanOverridePanel
         fieldLabel="Brand name"
         originalAiStatus="pass"
         reviewerName=""
-        onSave={() => {}}
+        onSave={onSave}
       />,
     );
     const reason = screen.getByLabelText(/reason for override/i);
     await user.type(reason, "Bad colour.");
+    const saveBtn = screen.getByRole("button", { name: /save override/i });
+    expect(saveBtn).toBeEnabled();
     expect(
-      screen.getByRole("button", { name: /save override/i }),
-    ).toBeDisabled();
-    expect(screen.getByText(/enter your name first/i)).toBeInTheDocument();
+      screen.queryByText(/enter your name first/i),
+    ).not.toBeInTheDocument();
+    await user.click(saveBtn);
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0]![0]!.reviewerName).toBe("");
   });
 
   it("limits the reason to 500 chars and surfaces a counter", async () => {

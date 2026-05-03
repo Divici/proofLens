@@ -178,7 +178,7 @@ function ApplicationRow({
       <Link
         href={href}
         aria-label={ariaLabel}
-        className={`${COLUMN_GRID} bg-background hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors items-center grid-cols-1 sm:grid`}
+        className={`${COLUMN_GRID} cursor-pointer bg-background hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors items-center grid-cols-1 sm:grid`}
       >
         <Cell label="APP-ID">
           <span className="font-mono text-xs text-foreground">

@@ -60,11 +60,11 @@ test.describe("queue → review handoff", () => {
     await expect(page.getByText(/Application Queue/i)).toBeVisible();
     await expect(page.getByText(/APP-2026-0001/)).toBeVisible();
     // Image preview rendered (left column or thumbnail).
-    // Desktop viewport renders the full-size preview (alt="Uploaded
-    // label preview"); the mobile thumbnail (alt="…— tap to expand")
+    // Desktop viewport renders the read-only preview (alt="Label
+    // artwork on file"); the mobile thumbnail (alt="…— tap to expand")
     // is hidden behind `lg:hidden` at 1280px.
     await expect(
-      page.getByAltText("Uploaded label preview", { exact: true }),
+      page.getByAltText("Label artwork on file", { exact: true }),
     ).toBeVisible();
     // Application data tab is the default and shows the brand value
     // read-only (the queue flow doesn't show an editable input — the
@@ -94,11 +94,11 @@ test.describe("queue → review handoff", () => {
       page.getByRole("heading", { level: 1, name: /active review/i }),
     ).toBeVisible();
     await expect(page.getByText(/APP-2026-R001/)).toBeVisible();
-    // Desktop viewport renders the full-size preview (alt="Uploaded
-    // label preview"); the mobile thumbnail (alt="…— tap to expand")
+    // Desktop viewport renders the read-only preview (alt="Label
+    // artwork on file"); the mobile thumbnail (alt="…— tap to expand")
     // is hidden behind `lg:hidden` at 1280px.
     await expect(
-      page.getByAltText("Uploaded label preview", { exact: true }),
+      page.getByAltText("Label artwork on file", { exact: true }),
     ).toBeVisible();
     // Application data tab default + a read-only Brand row populated
     // from the manifest. We don't assert a specific value because the

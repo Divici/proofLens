@@ -25,8 +25,11 @@ import { cn } from "@/lib/utils";
  *   4. clicks Save → emits the audit-record `FieldOverride` payload.
  *
  * Reviewer name is supplied from the parent (the FinalDecisionPanel owns
- * the input). Save is disabled until reviewerName, a *changed* status, and
- * a reason are all present.
+ * the input). Save here does NOT block on the name — the page-level save
+ * handler stamps the reviewer name from the FinalDecisionPanel into any
+ * override that lacks one before persisting. That keeps a single name
+ * gate at the bottom of the flow rather than per-row, so the agent
+ * isn't blocked from recording overrides while they're still inspecting.
  */
 
 const STATUS_OPTIONS: ReadonlyArray<{ value: FieldStatus; label: string }> = [
@@ -92,15 +95,16 @@ export function HumanOverridePanel({
     existingOverride?.reason ?? "",
   );
 
-  const reviewerMissing = reviewerName.trim().length === 0;
   const reasonEmpty = reason.trim().length === 0;
   const reasonTooLong = reason.length > MAX_REASON_LENGTH;
   // Save is allowed whenever the reviewer wrote a reason — including
   // when they kept the AI verdict (e.g. "Confirmed Pass after manual
   // zoom"). Locking save behind a status change blocks legitimate
   // re-affirmations and forces reviewers to invent a new status just to
-  // record their note.
-  const canSave = !reviewerMissing && !reasonEmpty && !reasonTooLong;
+  // record their note. Reviewer-name presence is intentionally NOT
+  // checked here — see the docstring; the page-level save handler
+  // stamps the name from the FinalDecisionPanel before persisting.
+  const canSave = !reasonEmpty && !reasonTooLong;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -172,15 +176,6 @@ export function HumanOverridePanel({
           {reason.length} / {MAX_REASON_LENGTH}
         </div>
       </div>
-
-      {reviewerMissing ? (
-        <p
-          role="status"
-          className="text-amber-700 dark:text-amber-300 text-xs"
-        >
-          Enter your name first in the Final decision panel below.
-        </p>
-      ) : null}
 
       <div className="flex items-center justify-end gap-2">
         {existingOverride && onClear ? (

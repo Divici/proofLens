@@ -32,8 +32,8 @@ export function JumpToFinalReviewButton({
       aria-label="Jump to final review"
       data-testid="jump-to-final-review"
       className={cn(
-        "fixed right-4 top-20 z-40 inline-flex items-center gap-2 rounded-full",
-        "bg-foreground text-background hover:bg-foreground/90",
+        "fixed right-4 top-20 z-40 inline-flex cursor-pointer items-center gap-2 rounded-full",
+        "bg-primary text-primary-foreground hover:bg-primary/90",
         "px-4 py-2 text-sm font-medium shadow-lg",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "transition-transform hover:-translate-y-0.5",

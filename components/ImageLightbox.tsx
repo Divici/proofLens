@@ -50,7 +50,7 @@ export function ImageLightbox({ open, src, alt, onClose }: ImageLightboxProps) {
           type="button"
           onClick={onClose}
           aria-label="Close image"
-          className="bg-background/90 hover:bg-background absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-full border border-border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="bg-background/90 hover:bg-background absolute right-2 top-2 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full border border-border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X className="size-4" aria-hidden="true" />
         </button>
