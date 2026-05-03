@@ -137,6 +137,33 @@ describe("fieldRequirementsFor — full per-beverage map", () => {
   });
 });
 
+describe("evaluateRule — country-of-origin (locked in: pipeline auto-derives isImported from expected.countryOfOrigin)", () => {
+  it("isImported true → required", () => {
+    expect(
+      evaluateRule("distilled-spirits", "countryOfOrigin", {
+        isImported: true,
+      }),
+    ).toBe("required");
+    expect(
+      evaluateRule("wine", "countryOfOrigin", { isImported: true }),
+    ).toBe("required");
+    expect(
+      evaluateRule("malt-beverage", "countryOfOrigin", { isImported: true }),
+    ).toBe("required");
+  });
+
+  it("isImported false (US product) → optional", () => {
+    expect(
+      evaluateRule("distilled-spirits", "countryOfOrigin", {
+        isImported: false,
+      }),
+    ).toBe("optional");
+    expect(
+      evaluateRule("wine", "countryOfOrigin", { isImported: false }),
+    ).toBe("optional");
+  });
+});
+
 describe("isUniversalField — only brand / gov-warning / net-contents stay Required for unknown", () => {
   it("identifies the three universal fields", () => {
     expect(isUniversalField("brand")).toBe(true);

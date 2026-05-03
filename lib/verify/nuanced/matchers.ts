@@ -63,17 +63,33 @@ const LEADING_PHRASES = [
   /^distilled in\s+/i,
 ];
 
-const US_ALIASES = new Set(
-  [
-    "usa",
-    "u s a",
-    "us",
-    "u s",
-    "united states",
-    "united states of america",
-    "america",
-  ].map((s) => normaliseForLadder(s)),
-);
+const US_ALIAS_LIST = [
+  "usa",
+  "u s a",
+  "us",
+  "u s",
+  "united states",
+  "united states of america",
+  "america",
+];
+
+const US_ALIASES = new Set(US_ALIAS_LIST.map((s) => normaliseForLadder(s)));
+
+/**
+ * True when the supplied country string is a US alias under the same
+ * Layer-1 normalisation used by the nuanced ladder. Empty / null /
+ * non-string inputs return false (treat as imported by default — a
+ * blank country in the application is suspicious).
+ *
+ * Used by the pipeline to auto-derive `isImported` for the country-of-
+ * origin requirement rule. The brief's "country of origin for imports"
+ * maps cleanly to "if it isn't US, it's imported" — no separate UI
+ * checkbox needed.
+ */
+export function isUnitedStates(country: string | null | undefined): boolean {
+  if (typeof country !== "string" || country.trim().length === 0) return false;
+  return US_ALIASES.has(normaliseForLadder(country));
+}
 
 function stripLeading(text: string): string {
   let out = text.trim();

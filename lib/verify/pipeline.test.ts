@@ -344,6 +344,63 @@ describe("runVerificationPipeline — gray-band judge wiring (slice 0009)", () =
   });
 });
 
+describe("runVerificationPipeline — country-of-origin (auto-derived isImported)", () => {
+  it("imported product (Guatemala) — country marking present → pass / likely-match", async () => {
+    const e = passingExtraction();
+    e.countryOfOrigin = {
+      value: "Product of Guatemala",
+      evidenceQuote: "Product of Guatemala",
+      confidence: 0.95,
+    };
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: { ...EXPECTED, countryOfOrigin: "Guatemala" },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const country = result.fieldResults.find(
+      (f) => f.field === "countryOfOrigin",
+    );
+    expect(country).toBeDefined();
+    expect(["pass", "likely-match"]).toContain(country!.status);
+  });
+
+  it("imported product (Guatemala) — missing country marking on label → 'missing' (rule auto-resolved to required, not optional)", async () => {
+    const e = passingExtraction();
+    e.countryOfOrigin = { value: null, evidenceQuote: null, confidence: 0.6 };
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: { ...EXPECTED, countryOfOrigin: "Guatemala" },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const country = result.fieldResults.find(
+      (f) => f.field === "countryOfOrigin",
+    );
+    expect(country).toBeDefined();
+    expect(country!.status).toBe("missing");
+  });
+
+  it("domestic product (United States) — missing extraction → 'not-required'", async () => {
+    const e = passingExtraction();
+    e.countryOfOrigin = { value: null, evidenceQuote: null, confidence: 0.6 };
+    const result = await runVerificationPipeline({
+      extracted: e,
+      expected: { ...EXPECTED, countryOfOrigin: "United States" },
+      words: WORDS,
+      rawText: GOV_WARNING_CANONICAL,
+      imageDims: { width: 1024, height: 1280 },
+    });
+    const country = result.fieldResults.find(
+      (f) => f.field === "countryOfOrigin",
+    );
+    expect(country).toBeDefined();
+    expect(country!.status).toBe("not-required");
+  });
+});
+
 describe("runVerificationPipeline — bottler address (TTB §§ 5.66 / 4.35 / 7.66)", () => {
   it("city+state on label passes against full street-address-with-ZIP in the application (Old Tom regression)", async () => {
     const e = passingExtraction();

@@ -12,6 +12,7 @@ import {
   classTypeMatch,
   bottlerMatch,
   countryMatch,
+  isUnitedStates,
 } from "./nuanced/matchers";
 import { bottlerAddressMatch } from "./nuanced/address";
 import {
@@ -260,7 +261,14 @@ export async function runVerificationPipeline({
    * `decisions/0002-verification-pipeline-architecture.md` and the
    * Known Limitations section of the README.
    */
-  const ruleContext = { expectedAbv: expected.abv };
+  // Auto-derive `isImported` from the application's countryOfOrigin —
+  // the brief's "country of origin for imports" maps cleanly to "if
+  // it isn't US, it's imported." Avoids adding a separate UI flag the
+  // applicant has to remember to tick.
+  const ruleContext = {
+    expectedAbv: expected.abv,
+    isImported: !isUnitedStates(expected.countryOfOrigin),
+  };
   const requirement = (field: BeverageField): ResolvedRequirement =>
     evaluateRule(expected.beverageType, field, ruleContext);
 
@@ -581,13 +589,31 @@ export async function runVerificationPipeline({
 
   // ── COUNTRY OF ORIGIN (nuanced + alias table) ─────────────────────
   {
-    if (requirement("countryOfOrigin") === "not-applicable") {
+    const countryReq = requirement("countryOfOrigin");
+    const countryCandidate =
+      typeof extracted.countryOfOrigin.value === "string"
+        ? extracted.countryOfOrigin.value
+        : null;
+    if (countryReq === "not-applicable") {
       fieldResults.push(
         notRequiredRow({
           field: "countryOfOrigin",
           label: "Country of origin",
           expected: expected.countryOfOrigin,
           reason: "not-applicable",
+        }),
+      );
+    } else if (countryReq === "optional" && countryCandidate === null) {
+      // Domestic product (US) with no country marking on the label —
+      // the regulation doesn't require it, so this is not a defect.
+      // Mirrors the ABV "optional-missing" branch.
+      fieldResults.push(
+        notRequiredRow({
+          field: "countryOfOrigin",
+          label: "Country of origin",
+          expected: expected.countryOfOrigin,
+          reason: "optional-missing",
+          extractedValue: null,
         }),
       );
     } else {
