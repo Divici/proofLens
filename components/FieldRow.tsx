@@ -17,6 +17,7 @@ import type {
   FieldStatus,
 } from "@/lib/verify/types";
 import { HumanOverridePanel } from "./HumanOverridePanel";
+import { GovWarningRedline } from "./GovWarningRedline";
 import { cn } from "@/lib/utils";
 
 export interface FieldRowProps {
@@ -215,6 +216,13 @@ export function FieldRow({
         <p className="text-muted-foreground text-xs leading-relaxed">
           {result.explanation}
         </p>
+
+        {result.field === "governmentWarning" &&
+        (visualStatus === "fail" || visualStatus === "warning") &&
+        typeof result.value === "string" &&
+        result.value.length > 0 ? (
+          <GovWarningRedline candidate={result.value} />
+        ) : null}
 
         {override ? (
           <p className="text-violet-700 dark:text-violet-300 text-[11px] italic">

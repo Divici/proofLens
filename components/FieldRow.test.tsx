@@ -161,6 +161,55 @@ describe("FieldRow", () => {
     expect(screen.getByTestId("human-override-panel")).toBeInTheDocument();
   });
 
+  it("surfaces the GovWarningRedline diff for a failing gov-warning row", () => {
+    // The 27 CFR § 16.21 field is the only one with a strict 100 %-recall
+    // contract. When the matcher rejects it, the row must show the
+    // canonical-vs-extracted diff so the audit trail captures *which*
+    // tokens differ — not just "off by N chars" prose.
+    render(
+      <FieldRow
+        result={makeField({
+          field: "governmentWarning",
+          label: "Government warning",
+          status: "fail",
+          value: "Government Warning: ...",
+          expected: "27 CFR § 16.21 verbatim text",
+        })}
+        onSelect={() => {}}
+        selected={false}
+      />,
+    );
+    expect(screen.getByTestId("gov-warning-redline")).toBeInTheDocument();
+  });
+
+  it("does not render the redline when the gov-warning row passes", () => {
+    render(
+      <FieldRow
+        result={makeField({
+          field: "governmentWarning",
+          label: "Government warning",
+          status: "pass",
+          value: "GOVERNMENT WARNING: ...",
+          expected: "27 CFR § 16.21 verbatim text",
+        })}
+        onSelect={() => {}}
+        selected={false}
+      />,
+    );
+    expect(screen.queryByTestId("gov-warning-redline")).not.toBeInTheDocument();
+  });
+
+  it("does not render the redline on non-governmentWarning failing rows", () => {
+    render(
+      <FieldRow
+        result={makeField({ status: "fail" })}
+        onSelect={() => {}}
+        selected={false}
+      />,
+    );
+    expect(screen.queryByTestId("gov-warning-redline")).not.toBeInTheDocument();
+  });
+
   it("does not render the override panel when collapsed", () => {
     render(
       <FieldRow
