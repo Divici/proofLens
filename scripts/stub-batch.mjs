@@ -32,7 +32,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -40,6 +40,9 @@ const REPO_ROOT = join(__dirname, "..");
 
 const argCount = Number(process.argv[2] ?? 300);
 const argOutDir = process.argv[3] ?? `tmp/batch-${argCount}`;
+// `path.resolve` ignores REPO_ROOT when argOutDir is absolute (Windows
+// drive paths included), so callers can drop output anywhere — handy
+// for putting a stress-test bundle in Downloads instead of tmp/.
 
 if (!Number.isFinite(argCount) || argCount <= 0) {
   console.error(`Invalid count: ${process.argv[2]}. Pass a positive integer.`);
@@ -52,7 +55,7 @@ const SOURCE_LABEL = join(
   "demo-labels",
   "01-spirits-pass.jpg",
 );
-const OUT_DIR = join(REPO_ROOT, argOutDir);
+const OUT_DIR = resolve(REPO_ROOT, argOutDir);
 
 if (!existsSync(SOURCE_LABEL)) {
   console.error(`Source label not found: ${SOURCE_LABEL}`);
@@ -124,7 +127,9 @@ console.log(`  2. Drop every *.jpg from ${argOutDir} into the file picker.`);
 console.log(`  3. Select ${argOutDir}/prooflens-batch.csv as the paired CSV.`);
 console.log("  4. Watch the live queue + click Save when done.");
 console.log("");
-if (argCount >= 250) {
+// HARD_CAP is 250 (lib/batch/state.ts) — the trim modal fires for
+// over-cap drops, not at the cap exactly.
+if (argCount > 250) {
   console.log(
     `Note: ${argCount} > 250 — the UI will surface the hard-cap "Trim to 250" modal first.`,
   );
