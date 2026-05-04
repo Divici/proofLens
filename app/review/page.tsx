@@ -916,6 +916,38 @@ function ReviewPageInner() {
   );
 }
 
+/**
+ * Routing wrapper — reads `?scenario=` and `?reviewId=` and uses them
+ * as a React key on `ReviewPageInner`. When either changes, React
+ * unmounts the inner component and remounts a fresh one, resetting
+ * every useState slot to its initial value.
+ *
+ * This guarantees clean state when the reviewer navigates between
+ * queue rows or reopens a saved review — no stale verification result,
+ * no carry-over of savedReviewId/decision/activeField from a previous
+ * scenario. URL changes WITHIN a scenario (e.g. `?tab=results` added
+ * by handleTabChange after Verify) keep the same key → no remount →
+ * the verify flow keeps its in-progress state intact.
+ *
+ * Cleaner than try-to-reset-everything-in-an-effect because there's
+ * no timing race between the reset write and the new scenario's load:
+ * the remount is atomic.
+ */
+function ReviewPageRouter() {
+  const searchParams = useSearchParams();
+  const scenarioParam = searchParams?.get("scenario") ?? null;
+  const reviewId = searchParams?.get("reviewId") ?? null;
+  // Compose a stable identity per (scenario, reviewId) pair. Direct
+  // /review entry (neither set) gets a stable "direct" key so that
+  // path doesn't remount on every render.
+  const identity = reviewId
+    ? `review:${reviewId}`
+    : scenarioParam
+      ? `scenario:${scenarioParam}`
+      : "direct";
+  return <ReviewPageInner key={identity} />;
+}
+
 export default function ReviewPage() {
   return (
     <Suspense
@@ -928,7 +960,7 @@ export default function ReviewPage() {
         </>
       }
     >
-      <ReviewPageInner />
+      <ReviewPageRouter />
     </Suspense>
   );
 }
