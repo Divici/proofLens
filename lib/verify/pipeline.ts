@@ -266,8 +266,8 @@ export async function runVerificationPipeline({
    * not surfaced by the application form, so country-of-origin and
    * malt-beverage ABV evaluators conservatively default to "optional".
    * Reviewers can override the per-field result manually. See
-   * `decisions/0002-verification-pipeline-architecture.md` and the
-   * Known Limitations section of the README.
+   * `decisions.md` (ADR 0002 — verification pipeline architecture) and
+   * the Known Limitations section of the README.
    */
   // Auto-derive `isImported` from the application's countryOfOrigin —
   // the brief's "country of origin for imports" maps cleanly to "if

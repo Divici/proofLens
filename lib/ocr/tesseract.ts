@@ -45,7 +45,7 @@ async function getWorker(): Promise<Worker> {
     // (`tessdata.projectnaptha.com`) for `eng.traineddata` — local dev
     // is the only environment that hits this path. Production
     // (`/api/extract-label` on Vercel) skips Tesseract entirely; see
-    // `decisions/0007-ocr-prod-vs-local.md` for the rationale.
+    // `decisions.md` (ADR 0007 — OCR strategy) for the rationale.
     const worker = await createWorker("eng", undefined, {
       logger: () => {},
     });

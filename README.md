@@ -2,6 +2,17 @@
 
 AI-powered alcohol-label verification for TTB compliance reviewers.
 
+## Deliverables
+
+- 🌐 **Live app:** <https://prooflens-ai.vercel.app/queue>
+- 📦 **Source repo:** <https://github.com/Divici/proofLens>
+- 🧭 **Project brief (verbatim):** [`PROJECT_BRIEF.md`](./PROJECT_BRIEF.md) — every UX decision cites this
+- 📜 **Decision log (consolidated ADRs):** [`decisions.md`](./decisions.md) — 10 architectural turns from bootstrap through finalization
+- 🏗️ **Architecture deep-dive:** [`docs/architecture.md`](./docs/architecture.md)
+- 🧠 **Slice context + memory bank:** [`memory-bank/`](./memory-bank) — per-slice plans, handoffs, progress log
+
+## What it is
+
 proofLens helps compliance agents verify that uploaded alcohol-label
 artwork matches the expected application data. It extracts visible
 label fields with a vision LLM (Claude Haiku 4.5 via OpenRouter), runs
@@ -255,7 +266,7 @@ the active rules version (`ttb-2026-04-30`).
 - **OpenRouter** is the single LLM gateway; model names are env vars
   so providers can be swapped without code changes.
 
-See `docs/architecture.md` for a deeper walk-through, `decisions/`
+See `docs/architecture.md` for a deeper walk-through, `decisions.md`
 for ADRs, and `memory-bank/` for slice-by-slice context.
 
 ## Environment variables

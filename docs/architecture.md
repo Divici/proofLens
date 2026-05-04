@@ -150,7 +150,7 @@ appended as Notices 237/238 land.
 
 ## Verification pipeline
 
-See [`decisions/0002-verification-pipeline-architecture.md`](../decisions/0002-verification-pipeline-architecture.md)
+See [`decisions.md` (ADR 0002 — verification pipeline architecture)](../decisions.md#0002-verification-pipeline-architecture)
 for the full architecture lock. Summary:
 
 - **Strict (gov-warning, ABV, net-contents)**: pure code, CI mutation
