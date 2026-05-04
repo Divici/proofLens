@@ -68,7 +68,18 @@ export default function QueuePage() {
     () => listApplications(),
     [],
   );
-  const { reviewedScenarioIds, ready } = useReviewedScenarios();
+  const { reviewedScenarioIds } = useReviewedScenarios();
+  // Reviewed apps are removed from the queue (not just badged) so the
+  // inbox shrinks as work is done — Sarah Chen's "next application"
+  // cadence. /history remains the source of truth for saved reviews;
+  // the agent can reopen any of them from there.
+  const visibleApplications = useMemo(
+    () =>
+      applications.filter(
+        (a) => !reviewedScenarioIds.has(a.scenarioId),
+      ),
+    [applications, reviewedScenarioIds],
+  );
 
   return (
     <>
@@ -109,46 +120,40 @@ export default function QueuePage() {
           </span>
         </aside>
 
-        {applications.length === 0 ? (
-          <EmptyState />
+        {visibleApplications.length === 0 ? (
+          <EmptyState reviewedAll={applications.length > 0} />
         ) : (
-          <ApplicationTable
-            applications={applications}
-            reviewedScenarioIds={reviewedScenarioIds}
-            statusReady={ready}
-          />
+          <ApplicationTable applications={visibleApplications} />
         )}
       </main>
     </>
   );
 }
 
-function EmptyState() {
+function EmptyState({ reviewedAll = false }: { reviewedAll?: boolean }) {
   return (
     <div
       role="status"
       className="text-muted-foreground rounded-xl border border-dashed border-border bg-card/40 p-8 text-center text-sm"
     >
-      No pending applications. Drop a batch CSV in /batch to add reviews
-      to your queue.
+      {reviewedAll
+        ? "Inbox empty — every queued application has been reviewed. Drop more in /batch, or open /history to revisit a saved review."
+        : "No pending applications. Drop a batch CSV in /batch to add reviews to your queue."}
     </div>
   );
 }
 
 interface ApplicationTableProps {
   applications: QueuedApplication[];
-  reviewedScenarioIds: Set<string>;
-  statusReady: boolean;
 }
 
+// Status column dropped: every visible row is implicitly Pending now
+// that reviewed apps disappear from the queue entirely. The grid
+// goes APP-ID | Brand | Beverage | Source | Description | Open.
 const COLUMN_GRID =
-  "grid grid-cols-[7.5rem_minmax(8rem,1fr)_minmax(7rem,1fr)_5.5rem_minmax(10rem,2fr)_6.5rem_2.5rem]";
+  "grid grid-cols-[7.5rem_minmax(8rem,1fr)_minmax(7rem,1fr)_5.5rem_minmax(10rem,2fr)_2.5rem]";
 
-function ApplicationTable({
-  applications,
-  reviewedScenarioIds,
-  statusReady,
-}: ApplicationTableProps) {
+function ApplicationTable({ applications }: ApplicationTableProps) {
   return (
     <div className="border-border/60 rounded-xl border overflow-hidden">
       <div
@@ -160,17 +165,11 @@ function ApplicationTable({
         <div className="px-4 py-3">Beverage</div>
         <div className="px-4 py-3">Source</div>
         <div className="px-4 py-3">Description</div>
-        <div className="px-4 py-3">Status</div>
         <div className="px-4 py-3 sr-only">Open</div>
       </div>
       <ul className="divide-y divide-border/60">
         {applications.map((app) => (
-          <ApplicationRow
-            key={app.applicationId}
-            application={app}
-            reviewed={reviewedScenarioIds.has(app.scenarioId)}
-            statusReady={statusReady}
-          />
+          <ApplicationRow key={app.applicationId} application={app} />
         ))}
       </ul>
     </div>
@@ -179,15 +178,9 @@ function ApplicationTable({
 
 interface ApplicationRowProps {
   application: QueuedApplication;
-  reviewed: boolean;
-  statusReady: boolean;
 }
 
-function ApplicationRow({
-  application,
-  reviewed,
-  statusReady,
-}: ApplicationRowProps) {
+function ApplicationRow({ application }: ApplicationRowProps) {
   const href = `/review?scenario=${encodeURIComponent(application.scenarioId)}`;
   const ariaLabel = `Open review for ${application.applicationId} — ${application.brand}`;
 
@@ -220,12 +213,6 @@ function ApplicationRow({
           <span className="text-sm text-muted-foreground line-clamp-2">
             {application.description}
           </span>
-        </Cell>
-        <Cell label="Status">
-          <ReviewedPill
-            reviewed={reviewed}
-            ready={statusReady}
-          />
         </Cell>
         <Cell label="Open">
           <ArrowRight
@@ -266,34 +253,6 @@ function SourcePill({ source }: { source: "synthetic" | "real" }) {
   return (
     <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-500/15 text-gray-700 dark:text-gray-300 px-2 py-0.5 text-[11px] font-medium">
       Synthetic
-    </span>
-  );
-}
-
-function ReviewedPill({
-  reviewed,
-  ready,
-}: {
-  reviewed: boolean;
-  ready: boolean;
-}) {
-  if (!ready) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium">
-        …
-      </span>
-    );
-  }
-  if (reviewed) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[11px] font-medium">
-        Reviewed
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">
-      Pending
     </span>
   );
 }

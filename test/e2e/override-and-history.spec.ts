@@ -261,12 +261,15 @@ test.describe("slice 0005 — override + history e2e", () => {
     await page.getByRole("button", { name: /save review/i }).click();
 
     // Brief-matching cadence — agent saves, lands back in the queue
-    // ready for the next application. The Reviewed pill on the row
-    // they just finished is the visible signal that the save round-
-    // tripped through IndexedDB.
+    // ready for the next application. Reviewed rows are removed
+    // entirely from the queue (the inbox shrinks as work is done).
     await expect(page).toHaveURL(/\/queue$/);
     await expect(
       page.getByRole("heading", { level: 1, name: /pending applications/i }),
     ).toBeVisible();
+    // The just-reviewed app is gone from the queue.
+    await expect(page.getByText(/^APP-2026-0001$/)).toHaveCount(0);
+    // Other unreviewed apps still appear.
+    await expect(page.getByText(/^APP-2026-0002$/)).toBeVisible();
   });
 });
