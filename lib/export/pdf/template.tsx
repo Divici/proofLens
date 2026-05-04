@@ -194,6 +194,25 @@ const styles = StyleSheet.create({
   cellExtracted: { width: "30%" },
   cellStatus: { width: "12%" },
   cellConfidence: { width: "8%" },
+  // Phase 5 — full-width sub-row carries the templated explanation prose
+  // (the audit-of-record per `lib/verify/explain/templates.ts`). Without
+  // it the printed PDF lost the "why" behind each verdict — only the
+  // Status/Confidence columns survived to paper.
+  explanationRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderColor: "#e5e7eb",
+    backgroundColor: "#fafafa",
+  },
+  explanationText: {
+    width: "100%",
+    padding: 4,
+    fontSize: 7,
+    color: "#374151",
+    fontStyle: "italic",
+    borderRightWidth: 1,
+    borderColor: "#e5e7eb",
+  },
   verdictPill: {
     marginTop: 4,
     marginBottom: 8,
@@ -343,20 +362,27 @@ export function ReviewReport({
             <Text style={[styles.cell, styles.cellConfidence]}>Conf.</Text>
           </View>
           {review.fieldResults.map((fr) => (
-            <View style={styles.tableRow} key={fr.field} wrap={false}>
-              <Text style={[styles.cell, styles.cellField]}>{fr.label}</Text>
-              <Text style={[styles.cell, styles.cellExpected]}>
-                {fmtCellValue(fr.expected)}
-              </Text>
-              <Text style={[styles.cell, styles.cellExtracted]}>
-                {fmtCellValue(fr.value)}
-              </Text>
-              <Text style={[styles.cell, styles.cellStatus]}>
-                {STATUS_LABEL[fr.status]}
-              </Text>
-              <Text style={[styles.cell, styles.cellConfidence]}>
-                {fr.confidence.toFixed(2)}
-              </Text>
+            <View key={fr.field} wrap={false}>
+              <View style={styles.tableRow}>
+                <Text style={[styles.cell, styles.cellField]}>{fr.label}</Text>
+                <Text style={[styles.cell, styles.cellExpected]}>
+                  {fmtCellValue(fr.expected)}
+                </Text>
+                <Text style={[styles.cell, styles.cellExtracted]}>
+                  {fmtCellValue(fr.value)}
+                </Text>
+                <Text style={[styles.cell, styles.cellStatus]}>
+                  {STATUS_LABEL[fr.status]}
+                </Text>
+                <Text style={[styles.cell, styles.cellConfidence]}>
+                  {fr.confidence.toFixed(2)}
+                </Text>
+              </View>
+              {fr.explanation ? (
+                <View style={styles.explanationRow}>
+                  <Text style={styles.explanationText}>{fr.explanation}</Text>
+                </View>
+              ) : null}
             </View>
           ))}
         </View>

@@ -18,6 +18,11 @@ export const PER_FIELD_HEADERS = [
   "Extracted",
   "Status",
   "Confidence",
+  // Phase 5 — the templated rule-sourced explanation is the audit-of-
+  // record (per `lib/verify/explain/templates.ts`). Without it in the
+  // CSV, a reviewer analysing a batch in a spreadsheet has no way to
+  // see *why* a row passed/failed without opening every PDF.
+  "Explanation",
   "AI status",
   "Human status",
   "Override reason",
@@ -55,6 +60,7 @@ function rowFor(review: Review, fr: FieldResult): PerFieldRow {
     Extracted: fmtCellValue(fr.value),
     Status: fr.status,
     Confidence: fr.confidence.toFixed(2),
+    Explanation: fr.explanation,
     "AI status": fr.humanOverride?.originalAiStatus ?? "",
     "Human status": fr.humanOverride?.humanStatus ?? "",
     "Override reason": fr.humanOverride?.reason ?? "",
