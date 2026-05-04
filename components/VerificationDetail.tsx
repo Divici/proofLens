@@ -277,12 +277,19 @@ export function VerificationDetail({
               {formatCost(primaryUsd)}
             </span>
           </span>
-          <span>
-            OCR confidence:{" "}
-            <span className="text-foreground font-medium">
-              {Math.round(ocrConfidence * 100)}%
+          {/* OCR confidence is the per-word Tesseract score. On Vercel,
+              Tesseract is disabled (ADR 0007), so this value is
+              hardcoded to 0 — not a measurement. Cut the stat there
+              rather than display a misleading "0%" (ADR 0010
+              production-or-cut). */}
+          {ocrConfidence > 0 ? (
+            <span>
+              OCR confidence:{" "}
+              <span className="text-foreground font-medium">
+                {Math.round(ocrConfidence * 100)}%
+              </span>
             </span>
-          </span>
+          ) : null}
         </div>
       </Card>
 

@@ -264,4 +264,25 @@ describe("VerificationDetail", () => {
     expect(screen.getByText(/\$0\.0042/)).toBeInTheDocument();
     expect(screen.getByText(/92%/)).toBeInTheDocument();
   });
+
+  it("hides the OCR confidence stat when ocrConfidence is 0 (Vercel LLM-fallback path — Tesseract didn't run)", () => {
+    // Production-or-cut (ADR 0010): Tesseract is disabled on Vercel
+    // (ADR 0007), so ocrConfidence is hardcoded to 0 there. Surfacing
+    // "OCR confidence: 0%" reads as a measurement when there's no
+    // measurement to report.
+    render(
+      <VerificationDetail
+        imageSrc="/img.jpg"
+        fieldResults={FIELDS}
+        overall="pass"
+        processingTimeMs={2400}
+        primaryUsd={0.0042}
+        ocrConfidence={0}
+      />,
+    );
+    expect(screen.queryByText(/OCR confidence/i)).not.toBeInTheDocument();
+    // Latency + AI spend still render — they're meaningful.
+    expect(screen.getByText(/2\.4\s*s/)).toBeInTheDocument();
+    expect(screen.getByText(/\$0\.0042/)).toBeInTheDocument();
+  });
 });
