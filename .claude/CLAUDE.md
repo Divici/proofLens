@@ -13,7 +13,7 @@ deliverable doc is `APPROACH.md`.
 - **UI:** shadcn/ui + Tailwind v4 + Inter
 - **Package manager:** pnpm
 - **AI gateway:** OpenRouter (Claude Haiku 4.5 primary, Sonnet 4.6 fallback)
-- **OCR:** Tesseract.js (in-process, gov-warning ground truth)
+- **OCR:** Tesseract.js — local-dev only (Vercel's bytecode runtime can't load it; production is LLM-only)
 - **Persistence:** IndexedDB only (no server-side user data; per Marcus IT note)
 - **Tests:** Vitest + RTL + fast-check + MSW + Playwright
 - **Deploy:** Vercel Hobby + Fluid compute
@@ -29,7 +29,7 @@ and must pass — any regression fails the build.
 ## Modules
 
 - `lib/ai/` — OpenRouter client, prompts, schemas
-- `lib/ocr/` — Tesseract.js wrapper
+- `lib/ocr/` — Tesseract.js wrapper (local-dev only)
 - `lib/verify/strict/` — gov-warning, ABV, net-contents (pure code)
 - `lib/verify/nuanced/` — match-ladder + LLM-judge gray band
 - `lib/verify/explain/` — templated rule-sourced explanations
@@ -53,9 +53,10 @@ This project uses the conductor + global user-level skills:
 - **No server-side user data.** Per Marcus IT note: "not storing anything
   sensitive for this exercise." Originals are always ephemeral; review
   history lives in IndexedDB. Server endpoints are stateless.
-- **Strict gov-warning recall is non-negotiable.** Tesseract.js (not the
-  LLM) is the ground-truth source for the `27 CFR § 16.21` exact-match.
-  CI mutation fuzz must pass.
+- **Strict gov-warning recall is non-negotiable.** The strict matcher
+  enforces 27 CFR § 16.21 byte-for-byte against the LLM's verbatim
+  capture. CI mutation fuzz at `numRuns:100` must pass — every
+  regression fails the build.
 - **TDD per `~/.claude/rules/tdd.md`.** Failing test first, every time.
 - **Auto-commit per `~/.claude/rules/commit-message.md`** at the end of
   each task.

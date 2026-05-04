@@ -17,11 +17,10 @@ proofLens compares an alcohol-label image against the application data the agent
 - **Strict fields cannot architecturally reach the LLM judge.** The "LLM normalised our compliance check away" failure mode is closed off by code shape, not policy.
 - **Verdicts are deterministic.** Same input → same output. The LLM extracts facts; the server compares.
 
-### 2. Two extractors run in parallel (locally)
+### 2. LLM-only extraction
 
-- **Vision LLM** (Claude Haiku 4.5 via OpenRouter, structured tool-use) returns each field with an `evidenceQuote` and a `confidence` score.
-- **Tesseract.js** runs in-process on local dev for word-level bboxes + a non-LLM source of `rawText` to feed the gov-warning matcher.
-- **On Vercel, Tesseract is disabled** — the experimental Rust bytecode runtime can't load tesseract.js v5's CJS worker chain. The route synthesizes `rawText` from the LLM's verbatim gov-warning capture and ships `words = []`. Defense-in-depth is weakened on production; the matcher logic is identical and Layer 2 against the deployed instance still hits **11/11 gov-warning recall**.
+- **Vision LLM** (Claude Haiku 4.5 via OpenRouter, structured tool-use) returns every required field with an `evidenceQuote` and a per-field `confidence` score.
+- **Government-warning text** is captured verbatim by the LLM and consumed directly by the strict matcher. The matcher's character-level enforcement (NFKC + smart-quote/dash fold + Damerau-Levenshtein on the body) plus the CI mutation fuzz harness defend the 100 %-recall constraint at the matcher level — Layer 2 production smoke holds **11/11 gov-warning recall**.
 
 ### 3. Templated rule-sourced explanations
 
@@ -54,7 +53,6 @@ Bulk uploads live at `/batch` (Janet Park's "200, 300 at once" use case): drop l
 | UI | **shadcn/ui** + **Tailwind v4** + **base-ui** | Familiar patterns, accessible primitives, no design-system churn |
 | Vision LLM | **Claude Haiku 4.5** (Anthropic) | Cheap + fast on clean labels; reliable structured tool-use |
 | LLM gateway | **OpenRouter** via `openai` SDK | Single SDK; swap models via env vars (primary / fallback / judge) |
-| OCR | **Tesseract.js** (in-process, local dev only) | Non-LLM ground-truth source for the gov-warning matcher |
 | Image preprocessing | **`sharp`** | Auto-rotate via EXIF + downscale to ≤ 2 MP (handles "weird sideways phone photos") |
 | Fuzzy matching | **`fuzzball`** (token-set ratio) + **`fastest-levenshtein`** | Set-aware match for nuanced fields; Damerau-Levenshtein for gov-warning prose |
 | Text diff | **`diff`** (jsdiff) | Side-by-side red-line for failing gov-warning rows |
@@ -90,8 +88,6 @@ The full dependency surface is in [`package.json`](./package.json); rationale fo
 ## Trade-offs and known limitations
 
 - **Latency over the brief's 5 s ceiling on the tail.** Sarah Chen: *"if we can't get results back in about 5 seconds, nobody's going to use it."* Production p50 ≈ 5.7 s, p95 ≈ 7.3 s — the LLM round-trip dominates. Mitigations available but not shipped: per-VLM-call `AbortController` timeout + retry on 429/5xx, ephemeral prompt caching, provider pinning.
-- **Tesseract.js disabled on Vercel.** Vercel's bytecode runtime can't resolve tesseract.js v5's `require('..')` worker chain. Production uses the LLM's verbatim gov-warning capture as `rawText` instead. 100 %-recall held empirically; defense-in-depth weaker than local dev.
-- **Bbox click-to-highlight removed on production.** Word-level coordinates aren't available without Tesseract. The UI affordance was cut rather than shipped as a dead click.
 - **`fallbackUsd` always 0.** Schema + cost-tracking plumbing is in place; the confidence-gate routing to the fallback model isn't wired end-to-end yet.
 - **No cross-device sync.** Per-browser IndexedDB. Reviewers should export important reviews (PDF / JSON / CSV) before clearing browser data.
 - **Real bottle photos limited.** The queue ships 16 entries (6 synthetic deterministic JPEGs + 10 real-photo variants). Brief encouraged AI-generated test labels; we shipped a small real-photo set on top.

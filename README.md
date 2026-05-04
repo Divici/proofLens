@@ -14,11 +14,12 @@ AI-powered alcohol-label verification for TTB compliance reviewers.
 
 proofLens helps compliance agents verify that uploaded alcohol-label
 artwork matches the expected application data. It extracts visible
-label fields with a vision LLM (Claude Haiku 4.5 via OpenRouter), runs
-the regulated government-warning check through Tesseract.js OCR for
-strict 100%-recall verification, compares every field against TTB
-rules (27 CFR Parts 4, 5, and 7), surfaces image-quality issues, and
-supports human override + final decision.
+label fields with a vision LLM (Claude Haiku 4.5 via OpenRouter),
+enforces the regulated 27 CFR § 16.21 government-warning text
+verbatim through a strict deterministic matcher (CI mutation fuzz at
+`numRuns:100`), compares every field against TTB rules (27 CFR Parts
+4, 5, and 7), surfaces image-quality issues, and supports human
+override + final decision.
 
 ## Problem statement
 
@@ -112,17 +113,17 @@ job passing.
    form, and demo-scenario picker are all available. Bulk uploads
    live at `/batch` for Janet's "200, 300 at once" use case.
 
-## AI / OCR approach
+## AI approach
 
-**Two extraction systems run in parallel** for every label
-(`Promise.all`):
-
-1. **Vision LLM** (Claude Haiku 4.5 via OpenRouter) — extracts
-   structured fields (brand, class/type, ABV, net contents, bottler,
-   country, government-warning region) with evidence quotes.
-2. **Tesseract.js** (in-process) — produces raw text + word-level
-   bounding boxes. Tesseract is the **ground truth source for the
-   government-warning verbatim check**.
+**Vision LLM extraction** (Claude Haiku 4.5 via OpenRouter, structured
+tool-use) returns every required field — brand, class/type, ABV, net
+contents, bottler name + address, country of origin, and the
+government-warning text — with an evidence quote and per-field
+confidence. The 100 %-recall guarantee on the gov-warning is enforced
+at the **matcher level**: NFKC + smart-quote/dash fold + Damerau-
+Levenshtein on the body, plus a CI mutation fuzz harness that rejects
+every generated mutation at `numRuns:100`. Build fails on any
+matcher regression.
 
 Fallback model (Claude Sonnet 4.6) is wired but called only when the
 primary extractor reports low confidence. Today the routing emits
@@ -235,8 +236,8 @@ anything sensitive for this exercise":
   encouraging the reviewer to export and clear before adding more.
 
 The `/settings` page exposes the read-only provider allow-list
-(OpenRouter required, Tesseract.js in-process, Langfuse eval-only) and
-the active rules version (`ttb-2026-04-30`).
+(OpenRouter required, Langfuse eval-only) and the active rules version
+(`ttb-2026-04-30`).
 
 ## Architecture overview
 
@@ -248,7 +249,6 @@ the active rules version (`ttb-2026-04-30`).
   point per `PROJECT_BRIEF.md`).
 - **`lib/`** — pure modules:
   - `lib/ai/` — OpenRouter client, prompts, schemas, judge call
-  - `lib/ocr/` — Tesseract.js wrapper
   - `lib/verify/strict/` — gov-warning, ABV, net-contents matchers
   - `lib/verify/nuanced/` — match-ladder + LLM-judge gray band
   - `lib/verify/explain/` — templated rule-sourced explanations
@@ -303,13 +303,11 @@ is `import "server-only"` and must not be imported from client code.
 
 ## Tradeoffs
 
-- **More moving parts than an LLM-only extractor.** Two extraction
-  systems running in parallel + a verification pipeline + status
-  engine + explanation render layer + judge endpoint. Justified by
-  the 100%-recall constraint on the government-warning check.
-- **Tesseract.js cold-start latency** ~0.5 s on first call after a
-  Vercel function spin-up. Mitigated in production by a planned
-  warm-keep cron at `/api/health`.
+- **More moving parts than an LLM-only verifier.** Verification
+  pipeline + status engine + explanation render layer + judge
+  endpoint. Justified by the 100 %-recall constraint on the
+  government-warning check — the LLM extracts; deterministic code
+  decides.
 - **Per-tab batch state.** Closing the tab mid-run loses unsaved
   rows; saves are atomic at batch-completion. Acceptable for a POC,
   documented as a known limitation.
@@ -331,11 +329,6 @@ is `import "server-only"` and must not be imported from client code.
 - **`fallbackUsd` is currently always 0.** Plumbing is stable; the
   fallback model call path will activate once the confidence gate is
   threaded.
-- **No bbox click-to-highlight on production.** Tesseract.js is
-  disabled on Vercel (ADR 0007 — bytecode-runtime incompatibility),
-  so word-level bboxes aren't available. The affordance was removed
-  from the UI under the production-or-cut rule (ADR 0010); local-dev
-  data still carries bboxes for forensic export.
 - **Real TTB COLA bundle.** The demo bundle ships programmatic JPEG
   placeholders for all seven scenarios; sourcing license-clean real
   COLA artwork is a future improvement.
@@ -345,14 +338,11 @@ is `import "server-only"` and must not be imported from client code.
 
 - Wire the fallback model call path end-to-end (today: schema +
   cost-tracking only).
-- bbox fuzzy fallback (sliding-window 0.85 threshold) for OCR
-  tokenization drift.
 - LLM-narrative explanations on Manual Review rows.
 - Real TTB COLA samples for the demo bundle (license-cleared from
   https://www.ttbonline.gov).
 - `isImported` UI flag in the form so the country-of-origin
   evaluator can demand it instead of treating it as optional.
-- Tesseract warm-keep cron at `/api/health` (every 5 minutes).
 - Cross-device sync via opt-in cloud storage (out of scope under
   the IT note today).
 
@@ -370,9 +360,10 @@ This project uses the conductor + global user-level skills:
 - **No server-side user data.** Per Marcus IT note: originals are
   always ephemeral; review history lives in IndexedDB. Server
   endpoints are stateless.
-- **Strict gov-warning recall is non-negotiable.** Tesseract.js (not
-  the LLM) is the ground-truth source for the `27 CFR § 16.21`
-  exact-match. CI mutation fuzz must pass.
+- **Strict gov-warning recall is non-negotiable.** The strict matcher
+  enforces 27 CFR § 16.21 byte-for-byte (NFKC + smart-quote/dash
+  fold + Damerau-Levenshtein on the body). CI mutation fuzz at
+  `numRuns:100` must pass — every regression fails the build.
 - **TDD per `~/.claude/rules/tdd.md`.** Failing test first, every
   time.
 - **Auto-commit per `~/.claude/rules/commit-message.md`** at the end
