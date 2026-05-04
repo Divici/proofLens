@@ -17,7 +17,7 @@ import type {
   FieldStatus,
 } from "@/lib/verify/types";
 import { HumanOverridePanel } from "./HumanOverridePanel";
-import { FieldComparison } from "./FieldComparison";
+import { GovWarningRedline } from "./GovWarningRedline";
 import { cn } from "@/lib/utils";
 
 export interface FieldRowProps {
@@ -113,6 +113,20 @@ const STATUS_VISUALS: Record<FieldStatus, StatusVisual> = {
   },
 };
 
+function renderValue(value: FieldResult["value"]): React.ReactNode {
+  if (value === null || value === undefined) {
+    return <span className="text-muted-foreground italic">Not visible</span>;
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
+function renderExpected(value: FieldResult["expected"]): React.ReactNode {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
 export function FieldRow({
   result,
   onSelect,
@@ -125,13 +139,8 @@ export function FieldRow({
   const visualStatus: FieldStatus = override?.humanStatus ?? result.status;
   const visual = STATUS_VISUALS[visualStatus];
   const { Icon } = visual;
+  const expected = renderExpected(result.expected);
   const overrideEnabled = onOverrideSave !== undefined;
-  // Render the Expected vs Extracted block whenever either side has a
-  // value. "not-required" rows (e.g., wine ABV ≤ 14 % missing) typically
-  // have no expected and no extracted — skip them so the row doesn't
-  // grow with empty placeholders.
-  const showComparison =
-    !(result.value === null && result.expected === null);
 
   return (
     <div
@@ -187,16 +196,33 @@ export function FieldRow({
           </span>
         </div>
 
-        {showComparison ? (
-          <FieldComparison
-            expected={result.expected}
-            extracted={result.value}
-          />
-        ) : null}
+        <div className="flex flex-col gap-1">
+          <div className="text-foreground text-sm">
+            {renderValue(result.value)}
+          </div>
+          {expected !== null && expected !== "" ? (
+            <div className="text-muted-foreground text-xs">
+              <strong className="font-semibold text-foreground/90">
+                Expected:
+              </strong>{" "}
+              <span className="text-foreground/80">{expected}</span>{" "}
+              <span className="text-muted-foreground/80 italic">
+                (as seen in the application data tab)
+              </span>
+            </div>
+          ) : null}
+        </div>
 
         <p className="text-muted-foreground text-xs leading-relaxed">
           {result.explanation}
         </p>
+
+        {result.field === "governmentWarning" &&
+        (visualStatus === "fail" || visualStatus === "warning") &&
+        typeof result.value === "string" &&
+        result.value.length > 0 ? (
+          <GovWarningRedline candidate={result.value} />
+        ) : null}
 
         {override ? (
           <p className="text-violet-700 dark:text-violet-300 text-[11px] italic">

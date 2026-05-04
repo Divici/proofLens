@@ -61,11 +61,11 @@ describe("FieldRow", () => {
     expect(onSelect).toHaveBeenCalledWith("brand");
   });
 
-  it("renders the Expected vs Extracted comparison block on every value-bearing row", () => {
-    // Replaced the inline 'Expected: X (as seen in the application
-    // data tab)' line with a side-by-side red-line block — same
-    // layout the gov-warning row uses. Reviewer scans one pattern
-    // across every field; the diff highlights tokens that differ.
+  it("renders the Expected line with bold label and an 'as seen in the application data tab' annotation", () => {
+    // Reviewer feedback: the inline Expected line is the per-field
+    // comparison anchor, but it was reading as ambient text. Bolding
+    // the label + annotating its source ties the row back to the
+    // Application data tab without requiring a tab switch to verify.
     render(
       <FieldRow
         result={makeField({ expected: "40", value: "38" })}
@@ -73,11 +73,11 @@ describe("FieldRow", () => {
         selected={false}
       />,
     );
-    expect(screen.getByTestId("field-comparison")).toBeInTheDocument();
-    expect(screen.getByText(/^expected$/i)).toBeInTheDocument();
-    expect(screen.getByText(/extracted from label/i)).toBeInTheDocument();
+    const expectedLabel = screen.getByText(/^expected:$/i);
+    expect(expectedLabel).toBeInTheDocument();
+    expect(expectedLabel.tagName).toBe("STRONG");
     expect(
-      screen.getByText(/from the application data tab/i),
+      screen.getByText(/as seen in the application data tab/i),
     ).toBeInTheDocument();
   });
 
@@ -161,9 +161,11 @@ describe("FieldRow", () => {
     expect(screen.getByTestId("human-override-panel")).toBeInTheDocument();
   });
 
-  it("uses the same comparison block on the gov-warning row when it fails", () => {
-    // The 27 CFR § 16.21 field shares the now-uniform comparison block
-    // with every other field — single visual pattern across the panel.
+  it("surfaces the GovWarningRedline diff for a failing gov-warning row", () => {
+    // The 27 CFR § 16.21 field is the only one with a strict 100 %-recall
+    // contract. When the matcher rejects it, the row must show the
+    // canonical-vs-extracted diff so the audit trail captures *which*
+    // tokens differ — not just "off by N chars" prose.
     render(
       <FieldRow
         result={makeField({
@@ -177,23 +179,35 @@ describe("FieldRow", () => {
         selected={false}
       />,
     );
-    expect(screen.getByTestId("field-comparison")).toBeInTheDocument();
+    expect(screen.getByTestId("gov-warning-redline")).toBeInTheDocument();
   });
 
-  it("skips the comparison block on rows where neither expected nor extracted is set", () => {
+  it("does not render the redline when the gov-warning row passes", () => {
     render(
       <FieldRow
         result={makeField({
-          field: "abv",
-          status: "not-required",
-          value: null,
-          expected: null,
+          field: "governmentWarning",
+          label: "Government warning",
+          status: "pass",
+          value: "GOVERNMENT WARNING: ...",
+          expected: "27 CFR § 16.21 verbatim text",
         })}
         onSelect={() => {}}
         selected={false}
       />,
     );
-    expect(screen.queryByTestId("field-comparison")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gov-warning-redline")).not.toBeInTheDocument();
+  });
+
+  it("does not render the redline on non-governmentWarning failing rows", () => {
+    render(
+      <FieldRow
+        result={makeField({ status: "fail" })}
+        onSelect={() => {}}
+        selected={false}
+      />,
+    );
+    expect(screen.queryByTestId("gov-warning-redline")).not.toBeInTheDocument();
   });
 
   it("does not render the override panel when collapsed", () => {
