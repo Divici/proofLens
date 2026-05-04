@@ -2,12 +2,25 @@
 SKILLS_AUDIT.md
 CONDUCTOR_DESIGN.md
 STUDY_GUIDE.md
+PRIOR_ART*.md
 
 # Conductor working docs — not project documentation
 ALIGNMENT.md
 CONDUCTOR_STATE.md
 architecture-audit.md
 .forge/
+
+# Working memory + slice plans + research docs — not part of the
+# deliverable. The brief asks for "brief documentation of approach,
+# tools used, assumptions made"; that lives in APPROACH.md. The rest
+# is personal context for the developer's next session, not the
+# reviewer's reading material.
+memory-bank/
+issues/
+research-findings/
+PRD.md
+PRESEARCH.md
+RESEARCH.md
 
 # Local Claude Code overrides
 .claude/settings.local.json

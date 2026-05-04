@@ -1,18 +1,14 @@
 # proofLens architecture
 
 This document is a deeper walk-through of the proofLens architecture
-than the README. It assumes familiarity with the [PRESEARCH.md](../PRESEARCH.md)
-and [RESEARCH.md](../RESEARCH.md) phase documents and the
-[`decisions/`](../decisions/) ADRs. Each section links back to the
-authoritative source where decisions were locked.
+than the README. The brief's required *"approach, tools, assumptions"*
+deliverable lives in [APPROACH.md](../APPROACH.md); this doc goes one
+level deeper.
 
 ## Source of truth
 
-- [`PRD.md`](../PRD.md) — product spec (input)
-- [`PRESEARCH.md`](../PRESEARCH.md) — Phase 2 architecture lock
-- [`RESEARCH.md`](../RESEARCH.md) — Phase 1 brief
-- [`decisions/`](../decisions/) — ADRs per major architectural choice
-- [`research-findings/`](../research-findings/) — Phase 1 deep dives
+- [`PROJECT_BRIEF.md`](../PROJECT_BRIEF.md) — verbatim take-home brief
+- [`APPROACH.md`](../APPROACH.md) — approach, tools, assumptions (the brief deliverable)
 
 ## Stack
 
@@ -150,8 +146,8 @@ appended as Notices 237/238 land.
 
 ## Verification pipeline
 
-See [`decisions.md` (ADR 0002 — verification pipeline architecture)](../decisions.md#0002-verification-pipeline-architecture)
-for the full architecture lock. Summary:
+See [`APPROACH.md`](../APPROACH.md) for the approach summary. The
+verification pipeline:
 
 - **Strict (gov-warning, ABV, net-contents)**: pure code, CI mutation
   fuzz on gov-warning. No LLM judge.
@@ -219,8 +215,6 @@ tracks the ruleset each review was verified against.
 
 ## Deferred items / future work
 
-See the README "Future improvements" section. Tracked in:
-
-- `decisions/0002` "Deferred" section
-- `decisions/0003` "Deferred" section
-- Slice plans under `memory-bank/plans/`
+See the README "Future improvements" section and the
+[APPROACH.md](../APPROACH.md) "Trade-offs and known limitations"
+section.

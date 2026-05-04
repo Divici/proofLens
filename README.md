@@ -6,10 +6,9 @@ AI-powered alcohol-label verification for TTB compliance reviewers.
 
 - 🌐 **Live app:** <https://prooflens-ai.vercel.app/queue>
 - 📦 **Source repo:** <https://github.com/Divici/proofLens>
-- 🧭 **Project brief (verbatim):** [`PROJECT_BRIEF.md`](./PROJECT_BRIEF.md) — every UX decision cites this
-- 📜 **Decision log (consolidated ADRs):** [`decisions.md`](./decisions.md) — 10 architectural turns from bootstrap through finalization
+- 📝 **Approach, tools, and assumptions:** [`APPROACH.md`](./APPROACH.md) — the brief's *"brief documentation"* deliverable
+- 🧭 **Project brief (verbatim):** [`PROJECT_BRIEF.md`](./PROJECT_BRIEF.md)
 - 🏗️ **Architecture deep-dive:** [`docs/architecture.md`](./docs/architecture.md)
-- 🧠 **Slice context + memory bank:** [`memory-bank/`](./memory-bank) — per-slice plans, handoffs, progress log
 
 ## What it is
 
@@ -266,8 +265,9 @@ the active rules version (`ttb-2026-04-30`).
 - **OpenRouter** is the single LLM gateway; model names are env vars
   so providers can be swapped without code changes.
 
-See `docs/architecture.md` for a deeper walk-through, `decisions.md`
-for ADRs, and `memory-bank/` for slice-by-slice context.
+See [`APPROACH.md`](./APPROACH.md) for the brief's approach + tools +
+assumptions deliverable, and [`docs/architecture.md`](./docs/architecture.md)
+for a deeper walk-through.
 
 ## Environment variables
 

@@ -75,7 +75,7 @@ interface ExtractLabelSuccessBody {
    *                       `rawText` falls back to the LLM's verbatim
    *                       gov-warning capture, and bbox highlighting
    *                       degrades gracefully (empty word stream).
-   * Documented in `decisions.md` (ADR 0007 — OCR strategy).
+   * Documented in `APPROACH.md` under "Two extractors run in parallel".
    */
   ocrSource: "tesseract" | "llm-fallback";
 }
@@ -230,7 +230,7 @@ export async function POST(
   // matcher still runs server-side against the canonical 27 CFR § 16.21
   // text, so the 100 %-recall guarantee is empirically intact (Layer 2
   // against the deployed instance shows 11/11). Local dev still runs
-  // Tesseract in parallel — see `decisions.md` (ADR 0007 — OCR strategy).
+  // Tesseract in parallel — see APPROACH.md "Two extractors run in parallel".
   const skipTesseract = !!process.env.VERCEL;
   const ocrSource: "tesseract" | "llm-fallback" = skipTesseract
     ? "llm-fallback"
