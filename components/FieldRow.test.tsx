@@ -27,10 +27,10 @@ describe("FieldRow", () => {
     expect(screen.getByText("Brand name")).toBeInTheDocument();
     // The value appears at least once (so does Expected for byte-equal pairs).
     expect(screen.getAllByText("Old Tom Distillery").length).toBeGreaterThan(0);
-    // Field-level pass renders as "Match" per the Phase-9 design language
-    // (TTB reviewers think in match/mismatch at the field level; the
-    // overall pill keeps the "Pass" verb per PRD R-008).
-    expect(screen.getByText(/^match$/i)).toBeInTheDocument();
+    // Field-level pass renders as "Pass" — same as the overall pill.
+    // The strict-vs-nuanced architecture is internal; reviewer-facing
+    // vocabulary is one word.
+    expect(screen.getByText(/^pass$/i)).toBeInTheDocument();
   });
 
   it("renders distinct text + icon for fail status (never colour-only)", () => {

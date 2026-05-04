@@ -349,7 +349,7 @@ test.describe("verification pipeline e2e", () => {
     await expect(abvRow.getByText(/^fail$/i)).toBeVisible();
   });
 
-  test("scenario 04 — gov-warning capitalization yields strict Fail with bbox", async ({
+  test("scenario 04 — gov-warning capitalization yields strict Fail", async ({
     page,
   }) => {
     await page.route("**/api/extract-label", async (route) => {
@@ -379,11 +379,13 @@ test.describe("verification pipeline e2e", () => {
 
     await expect(page.getByLabel(/overall:\s*fail/i)).toBeVisible();
 
-    // Click the gov-warning row → bbox polygon appears on the preview.
+    // Click-to-highlight bbox UI was removed in ADR 0010 (production-
+    // or-cut: Tesseract is disabled on Vercel, no word coordinates).
+    // The strict Fail itself is the contract under test here; the
+    // gov-warning row clicking still expands the override panel.
     const govRow = page.getByRole("button", { name: /government warning/i });
     await govRow.click();
-
-    await expect(page.locator("[data-testid='bbox-polygon']")).toBeVisible();
+    await expect(page.getByTestId("human-override-panel")).toBeVisible();
   });
 
   test("scenario 02 — Stone's Throw nuanced brand match yields Pass with Warnings (slice 0004)", async ({

@@ -172,15 +172,14 @@ function ReviewPageInner() {
   >(undefined);
   const [saving, setSaving] = useState(false);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
-  // Lifted from VerificationDetail so the click-to-highlight overlay
-  // can render on the left-column image (the inner thumbnail in
-  // VerificationDetail was redundant with that image already visible).
-  const [activeField, setActiveField] = useState<string | null>(null);
-  const activeBbox = useMemo(() => {
-    if (!activeField) return null;
-    const f = fieldResults.find((r) => r.field === activeField);
-    return f?.bbox ?? null;
-  }, [activeField, fieldResults]);
+  // Bbox click-to-highlight removed (production-or-cut rule):
+  // Tesseract is disabled on Vercel (ADR 0007) so the word-level
+  // coordinates needed for the SVG overlay aren't available in
+  // production. Rather than ship a dead UI affordance ("Click a
+  // field on the right..." that does nothing), the click on a
+  // field row now only opens the HumanOverridePanel — the always-
+  // useful action. VerificationDetail's internal `activeField`
+  // state still drives the override-expand toggle.
   // Override-aware overall — drives the verdict pill, the FAB color,
   // and the FinalDecisionPanel border. Computing once keeps all three
   // surfaces in sync (R-012: human override > AI).
@@ -728,26 +727,21 @@ function ReviewPageInner() {
                 />
               )}
             </div>
-            {/* Desktop: full-size preview. After verify success the
-                image becomes a LabelImagePreview so the click-to-
-                highlight bbox overlay renders here (it used to live in
-                a duplicate thumbnail inside the Results tab — removed
-                because it was redundant with this image being right
-                there). Pre-verify: queue flow shows a read-only static
-                <img>; direct flow shows the editable LabelUploader. */}
+            {/* Desktop: full-size preview. Bbox click-to-highlight
+                removed (ADR 0010 — Tesseract is disabled on Vercel
+                so word-level coordinates aren't available; we don't
+                ship a dead UI affordance). Pre-verify: queue flow
+                shows a read-only static <img>; direct flow shows the
+                editable LabelUploader. Post-verify: a static
+                LabelImagePreview without overlay. */}
             <div className="hidden lg:block">
               {successResult && previewUrl ? (
-                <div className="flex flex-col gap-2">
-                  <LabelImagePreview
-                    src={previewUrl}
-                    alt="Label artwork — click a field row on the right to highlight its source"
-                    bbox={activeBbox}
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    Click a field on the right to highlight its source
-                    on the label.
-                  </p>
-                </div>
+                <LabelImagePreview
+                  src={previewUrl}
+                  alt="Label artwork"
+                  bbox={null}
+                />
+
               ) : fromQueue ? (
                 previewUrl ? (
                   <div className="overflow-hidden rounded-xl border border-border bg-card/40 p-3">
@@ -882,8 +876,6 @@ function ReviewPageInner() {
                       existingDecision={existingDecision}
                       saving={saving}
                       quotaWarning={quotaWarning}
-                      selectedField={activeField}
-                      onSelectField={setActiveField}
                     />
                     {savedReviewId ? (
                       <SavedReviewExport reviewId={savedReviewId} />

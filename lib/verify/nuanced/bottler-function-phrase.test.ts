@@ -102,6 +102,26 @@ describe("findBottlerFunctionPhrase — TTB §§ 5.66 / 4.35 / 7.66", () => {
     ).toBe(false);
   });
 
+  it("Vercel regression — sparse rawText (gov-warning only), but evidence quote contains 'BREWED AND BOTTLED BY ...' → found", () => {
+    // Production path on Vercel: Tesseract is disabled (ADR 0007),
+    // so `rawText` is just the LLM's gov-warning capture and does
+    // NOT contain the bottler statement. The verb-bearing slice is
+    // in the LLM's evidenceQuote. The scanner must merge both
+    // sources so this case finds the verb. Phase-9 user reported
+    // Stone's Throw being false-flagged with exactly this layout.
+    const evidenceWithVerb =
+      "BREWED AND BOTTLED BY STONE'S THROW BREWING CO.";
+    const sparseRawText =
+      "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, " +
+      "WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY ...";
+    const result = findBottlerFunctionPhrase(
+      sparseRawText,
+      evidenceWithVerb,
+    );
+    expect(result.found).toBe(true);
+    expect(result.phrase?.toLowerCase()).toContain("brewed and bottled by");
+  });
+
   it("when the evidence quote can't be found in the OCR (rare — fragmentation or LLM normalisation drift), falls back to whole-OCR scan", () => {
     // Evidence is "Old Tom Distillery, LLC" but OCR only has
     // "OLD TOM" on one line and "DISTILLERY" on the next — the indexOf

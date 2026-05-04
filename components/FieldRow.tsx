@@ -42,7 +42,10 @@ interface StatusVisual {
 // ring-inset look and more readable on the new white-card surfaces.
 const STATUS_VISUALS: Record<FieldStatus, StatusVisual> = {
   pass: {
-    label: "Match",
+    // "Pass" everywhere — strict and nuanced. The strict-vs-nuanced
+    // split is internal architecture; the reviewer-facing vocabulary
+    // is one word, matching the overall verdict pill.
+    label: "Pass",
     badgeClass:
       "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
     Icon: CircleCheck,
@@ -58,7 +61,9 @@ const STATUS_VISUALS: Record<FieldStatus, StatusVisual> = {
     testId: "status-icon-likely-match",
   },
   warning: {
-    label: "Flagged",
+    // "Warning" matches the underlying FieldStatus enum value; the
+    // previous "Flagged" label drifted from the codebase's vocabulary.
+    label: "Warning",
     badgeClass:
       "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
     Icon: AlertTriangle,
