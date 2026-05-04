@@ -1,15 +1,22 @@
 "use client";
 
 /**
- * Client-side 256-px JPEG thumbnail generation for the History list.
+ * Client-side JPEG thumbnail generation for the History list AND the
+ * reopen-from-history preview.
  *
  * Browsers happily resize via `<canvas>`. We hold no DOM references — the
  * canvas is created, drawn into, and tossed. The resulting Blob lands
  * directly on the IndexedDB Review record (`thumbnail` field). The
  * uploaded original is never persisted server-side.
+ *
+ * Sizing — 768-px max edge so the reopened review's left-column preview
+ * (capped at 480-px height on desktop) doesn't visibly upscale a
+ * 256-edge thumbnail. Storage cost stays modest at quality 0.82
+ * (≈ 100–200 KB per review on typical photos), well under the 80 %
+ * IndexedDB quota threshold even at hundreds of saved reviews.
  */
 
-export const THUMBNAIL_MAX_EDGE_PX = 256;
+export const THUMBNAIL_MAX_EDGE_PX = 768;
 const JPEG_QUALITY = 0.82;
 
 export function fitToMaxEdge(

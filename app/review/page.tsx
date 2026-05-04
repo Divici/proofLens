@@ -134,6 +134,14 @@ function ReviewPageInner() {
   const reviewId = searchParams?.get("reviewId") ?? null;
   const scenarioParam = searchParams?.get("scenario") ?? null;
   const fromQueue = Boolean(scenarioParam);
+  // `isReopen` flags the "viewing a saved review" mode. Per the brief
+  // (Sarah Chen — agent reviews against the application on file) AND
+  // the polish bar set in the post-Phase-9 finalize plan, the saved
+  // review's application data + artwork are both immutable; only the
+  // override notes and final decision can be re-edited. Demo-scenario
+  // loading is a manual-flow affordance and must not appear here.
+  const isReopen = Boolean(reviewId);
+  const isReadOnlyView = fromQueue || isReopen;
   const queueAppId = useMemo(
     () => (scenarioParam ? applicationIdForScenario(scenarioParam) : null),
     [scenarioParam],
@@ -268,6 +276,11 @@ function ReviewPageInner() {
         setExistingDecision(review.decision);
         setReviewerNameState(review.reviewerName);
         setFieldResults(review.fieldResults);
+        // Feed the persisted ApplicationData into the same slot the
+        // queue-flow scenario loader uses so the read-only
+        // ApplicationDataView renders without an editable RHF form.
+        setLoadedDemoData(review.expectedData);
+        setFormKey((n) => n + 1);
         // Hand the persisted thumbnail to the dedicated object-URL effect
         // below so the URL is properly revoked on unmount / navigation.
         setReopenThumbnail(review.thumbnail);
@@ -665,7 +678,7 @@ function ReviewPageInner() {
               <h2 className="text-foreground text-sm font-semibold">
                 Label image
               </h2>
-              {fromQueue ? null : (
+              {isReadOnlyView ? null : (
                 <div className="flex flex-wrap items-center gap-2">
                   <label htmlFor="demo-scenario" className="sr-only">
                     Demo scenario
@@ -712,7 +725,7 @@ function ReviewPageInner() {
                     <Maximize2 className="size-3" aria-hidden="true" /> Expand
                   </span>
                 </button>
-              ) : fromQueue ? (
+              ) : isReadOnlyView ? (
                 <div
                   role="status"
                   className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/40 text-xs text-muted-foreground"
@@ -742,7 +755,7 @@ function ReviewPageInner() {
                   bbox={null}
                 />
 
-              ) : fromQueue ? (
+              ) : isReadOnlyView ? (
                 previewUrl ? (
                   <div className="overflow-hidden rounded-xl border border-border bg-card/40 p-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -787,7 +800,7 @@ function ReviewPageInner() {
               </TabsList>
 
               <TabsContent value="data" className="pt-4">
-                {fromQueue ? (
+                {isReadOnlyView ? (
                   loadedDemoData ? (
                     <ApplicationDataView
                       data={loadedDemoData as ApplicationData}
@@ -805,7 +818,9 @@ function ReviewPageInner() {
                         className="size-4 animate-spin"
                         aria-hidden="true"
                       />
-                      Loading application from the queue…
+                      {isReopen
+                        ? "Loading saved application…"
+                        : "Loading application from the queue…"}
                     </div>
                   )
                 ) : (

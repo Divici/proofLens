@@ -18,6 +18,9 @@ describe("fitToMaxEdge", () => {
   });
 
   it("uses the documented thumbnail edge by default", () => {
-    expect(THUMBNAIL_MAX_EDGE_PX).toBe(256);
+    // Bumped from 256 → 768 so the reopened review preview (capped at
+    // 480-px height on desktop) doesn't visibly upscale the saved
+    // image. See lib/image/thumbnail.ts for the storage-cost note.
+    expect(THUMBNAIL_MAX_EDGE_PX).toBe(768);
   });
 });

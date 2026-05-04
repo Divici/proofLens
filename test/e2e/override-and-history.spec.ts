@@ -183,6 +183,27 @@ test.describe("slice 0005 — override + history e2e", () => {
     ).toBeVisible();
     // Reviewer name pre-filled.
     await expect(page.getByLabel(/your name/i)).toHaveValue("Jane Doe");
+
+    // Reopen contract — neither the application data nor the artwork
+    // is editable, and the "Load demo scenario" affordance is hidden
+    // (it belongs to the manual / direct-upload flow only).
+    // Reopen lands on the Results tab by default; switch to
+    // Application data to assert the read-only contract.
+    await page
+      .getByRole("tab", { name: /application data/i })
+      .click();
+    await expect(
+      page.getByText(/on file with this application — read-only/i),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /load demo scenario/i }),
+    ).toHaveCount(0);
+    await expect(page.locator("#demo-scenario")).toHaveCount(0);
+    // No file picker affordance on the artwork — neither the drag-drop
+    // text nor a file input should be reachable.
+    await expect(
+      page.getByText(/drag (and )?drop|click to upload/i),
+    ).toHaveCount(0);
   });
 
   test("save is disabled until reviewer name and decision are set", async ({
