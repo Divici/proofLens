@@ -88,6 +88,7 @@ The full dependency surface is in [`package.json`](./package.json); rationale fo
 ## Trade-offs and known limitations
 
 - **Latency over the brief's 5 s ceiling on the tail.** Sarah Chen: *"if we can't get results back in about 5 seconds, nobody's going to use it."* Production p50 ≈ 5.7 s, p95 ≈ 7.3 s — the LLM round-trip dominates. Mitigations available but not shipped: per-VLM-call `AbortController` timeout + retry on 429/5xx, ephemeral prompt caching, provider pinning.
+- **OpenRouter daily spend cap of $10.** The provider key is configured with a $10/day hard cap. At an average ≈ $0.0085 per `/api/extract-label` call, that's a budget of roughly 1,100 verifications per day before OpenRouter starts rejecting requests. Sufficient for the POC + reviewer-evaluation traffic profile; production deployment would need a higher cap and per-tenant accounting.
 - **`fallbackUsd` always 0.** Schema + cost-tracking plumbing is in place; the confidence-gate routing to the fallback model isn't wired end-to-end yet.
 - **No cross-device sync.** Per-browser IndexedDB. Reviewers should export important reviews (PDF / JSON / CSV) before clearing browser data.
 - **Real bottle photos limited.** The queue ships 16 entries (6 synthetic deterministic JPEGs + 10 real-photo variants). Brief encouraged AI-generated test labels; we shipped a small real-photo set on top.
