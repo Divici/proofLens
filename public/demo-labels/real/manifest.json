@@ -78,5 +78,85 @@
       "applicationNotes": "Same product as ron-zacapa-FRONT; glare overlay to exercise exposure-histogram heuristics.",
       "beverageType": "distilled-spirits"
     }
+  },
+  {
+    "filename": "bacardi-rasberry-LOWLIGHT.jpeg",
+    "description": "Bacardi Raspberry — under-exposed (low-light test)",
+    "applicationData": {
+      "brand": "Bacardi",
+      "classType": "Raspberry Flavored Rum",
+      "abv": 35,
+      "netContents": "750 mL",
+      "bottlerName": "Bacardi U.S.A., Inc.",
+      "bottlerAddress": "Coral Gables, Florida",
+      "countryOfOrigin": "Puerto Rico",
+      "govWarningRequired": true,
+      "applicationNotes": "Programmatically dimmed copy of bacardi-rasberry-FRONT — exercises mean-luminance low-light heuristic.",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "jack-daniels-ANGLE-BLUR.jpeg",
+    "description": "Jack Daniel's — angled + heavy motion blur",
+    "applicationData": {
+      "brand": "Jack Daniel's",
+      "classType": "Tennessee Whiskey",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Jack Daniel Distillery, Lem Motlow, Prop., Inc.",
+      "bottlerAddress": "Lynchburg, Tennessee 37352",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "Programmatically blurred copy of jack-daniels-ANGLE — exercises Laplacian-variance blur heuristic.",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "ron-zacapa-FRONT-DIM.jpeg",
+    "description": "Ron Zacapa — dim warehouse lighting",
+    "applicationData": {
+      "brand": "Ron Zacapa",
+      "classType": "Rum",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Industrias Licoreras de Guatemala",
+      "bottlerAddress": "Quetzaltenango, Guatemala",
+      "countryOfOrigin": "Guatemala",
+      "govWarningRequired": true,
+      "applicationNotes": "Programmatically darkened copy of ron-zacapa-FRONT — low-light + gov-warning recall stress.",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "bacardi-rasberry-OVEREXPOSED.jpeg",
+    "description": "Bacardi Raspberry — blown-out highlights (glare-style)",
+    "applicationData": {
+      "brand": "Bacardi",
+      "classType": "Raspberry Flavored Rum",
+      "abv": 35,
+      "netContents": "750 mL",
+      "bottlerName": "Bacardi U.S.A., Inc.",
+      "bottlerAddress": "Coral Gables, Florida",
+      "countryOfOrigin": "Puerto Rico",
+      "govWarningRequired": true,
+      "applicationNotes": "Over-exposed copy of bacardi-rasberry-FRONT — extreme-bright-bin histogram test.",
+      "beverageType": "distilled-spirits"
+    }
+  },
+  {
+    "filename": "jack-daniels-DIM-BLUR.jpeg",
+    "description": "Jack Daniel's — combined dim + soft blur (compound)",
+    "applicationData": {
+      "brand": "Jack Daniel's",
+      "classType": "Tennessee Whiskey",
+      "abv": 40,
+      "netContents": "750 mL",
+      "bottlerName": "Jack Daniel Distillery, Lem Motlow, Prop., Inc.",
+      "bottlerAddress": "Lynchburg, Tennessee 37352",
+      "countryOfOrigin": "United States",
+      "govWarningRequired": true,
+      "applicationNotes": "Compound dim+blur copy of jack-daniels-ANGLE — exercises multiple flags firing together.",
+      "beverageType": "distilled-spirits"
+    }
   }
 ]
