@@ -74,7 +74,12 @@ export function resolveNuancedStatus({
   // expected. The LLM's self-confidence is moot — we have a
   // deterministic match. Phase-9 user report: real-photo nuanced
   // fields with ai=0 showed "Low confidence" despite a clean match.
-  if (ladderKind === "pass") {
+  //
+  // Pass-normalised collapses to the same "Pass" pill (Phase 2 §3 #5):
+  // the values are byte-equal once Layer-1 normalisation runs, so the
+  // at-a-glance signal should be unambiguous. Audit-trail distinction
+  // is preserved via the RuleOutcome kind, not the FieldStatus.
+  if (ladderKind === "pass" || ladderKind === "pass-normalised") {
     return imageQualityPoor ? "manual-review" : "pass";
   }
 

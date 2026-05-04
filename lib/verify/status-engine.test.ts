@@ -74,6 +74,27 @@ describe("resolveNuancedStatus — full 8-state matrix", () => {
     ).toBe("pass");
   });
 
+  it("returns 'pass' for ladder=pass-normalised (rung 1, byte-equal after Layer-1 normalisation)", () => {
+    // The visual pill collapses pass + pass-normalised to the same
+    // "Pass" affordance — the audit-trail distinction is preserved
+    // via the rule outcome kind, not the FieldStatus.
+    expect(
+      resolveNuancedStatus({
+        ladderKind: "pass-normalised",
+        aiConfidence: 0.95,
+      }),
+    ).toBe("pass");
+  });
+
+  it("returns 'pass' for ladder=pass-normalised even with low AI confidence (deterministic chain validated)", () => {
+    expect(
+      resolveNuancedStatus({
+        ladderKind: "pass-normalised",
+        aiConfidence: 0.4,
+      }),
+    ).toBe("pass");
+  });
+
   it("returns 'likely-match' for ladder=likely-match, ai high", () => {
     expect(
       resolveNuancedStatus({ ladderKind: "likely-match", aiConfidence: 0.9 }),
@@ -295,6 +316,19 @@ describe("image-quality override (slice 0004 R-011)", () => {
     expect(
       resolveNuancedStatus({
         ladderKind: "pass",
+        aiConfidence: 0.95,
+        imageQualityPoor: true,
+      }),
+    ).toBe("manual-review");
+  });
+
+  it("nuanced: quality flag + ladder=pass-normalised → manual-review", () => {
+    // Same demotion contract as ladder=pass — the deterministic
+    // ladder validated the value, but glare/blur means the reviewer
+    // should still spot-check the artwork.
+    expect(
+      resolveNuancedStatus({
+        ladderKind: "pass-normalised",
         aiConfidence: 0.95,
         imageQualityPoor: true,
       }),

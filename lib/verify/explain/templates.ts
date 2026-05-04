@@ -71,6 +71,8 @@ export const RULE_TEMPLATES: Record<RuleOutcomeKind, TemplateFn> = {
 
   // ── Nuanced ladder ────────────────────────────────────────────────
   nuanced_pass: () => "Value matches the expected entry exactly.",
+  nuanced_pass_normalised: () =>
+    "Value matches the expected entry after case and punctuation normalisation.",
   nuanced_likely_match: ({ similarity }) =>
     `Value matches after case + punctuation normalisation (similarity ${num(
       typeof similarity === "number" ? similarity * 100 : 0,

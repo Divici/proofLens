@@ -54,7 +54,7 @@
     },
     "bottlerName": {
       "value": "Old Tom Distillery, LLC",
-      "evidenceQuote": "Old Tom Distillery, LLC",
+      "evidenceQuote": "BOTTLED BY Old Tom Distillery, LLC",
       "confidence": 0.92
     },
     "bottlerAddress": {
@@ -72,7 +72,7 @@
       "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
       "confidence": 0.92
     },
-    "rawText": "Old Tom Distillery Kentucky Straight Bourbon Whiskey 45% Alc./Vol. 90 Proof 750 mL Old Tom Distillery, LLC 123 Bourbon Lane, Bardstown, KY 40004 United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    "rawText": "Old Tom Distillery Kentucky Straight Bourbon Whiskey 45% Alc./Vol. 90 Proof 750 mL BOTTLED BY Old Tom Distillery, LLC 123 Bourbon Lane, Bardstown, KY 40004 United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
     "imageQualityNotes": [],
     "extractionConfidence": 0.95
   },
@@ -80,7 +80,7 @@
     "rawText": "OLD TOM DISTILLERY KENTUCKY STRAIGHT BOURBON WHISKEY 45% Alc./Vol. 750 mL GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
   },
   "expected": {
-    "overall": "pass-with-warnings",
+    "overall": "pass",
     "fieldExpectations": [
       {
         "field": "brand",

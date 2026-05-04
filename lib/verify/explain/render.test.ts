@@ -16,6 +16,7 @@ const ALL_KINDS: RuleOutcomeKind[] = [
   "net_contents_volume_mismatch",
   "net_contents_non_standard_fill",
   "nuanced_pass",
+  "nuanced_pass_normalised",
   "nuanced_likely_match",
   "nuanced_manual_review",
   "nuanced_fail",

@@ -114,8 +114,11 @@ export async function countryMatch(
   if (US_ALIASES.has(expectedNorm) && typeof cleanedExtracted === "string") {
     const foundNorm = normaliseForLadder(cleanedExtracted);
     if (US_ALIASES.has(foundNorm)) {
+      // Alias-driven equivalence is morally rung 1 — the values are
+      // equal once a small alias table is consulted. Render as Pass
+      // for the same reason rung-1 byte-equality does (Phase 2 §3 #5).
       return {
-        kind: "likely-match",
+        kind: "pass-normalised",
         similarity: 1,
         normalisedFound: foundNorm,
         normalisedExpected: expectedNorm,

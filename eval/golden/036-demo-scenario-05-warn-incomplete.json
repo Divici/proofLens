@@ -55,7 +55,7 @@
     },
     "bottlerName": {
       "value": "Riverfront Vineyards",
-      "evidenceQuote": "Riverfront Vineyards",
+      "evidenceQuote": "VINTED AND BOTTLED BY Riverfront Vineyards",
       "confidence": 0.92
     },
     "bottlerAddress": {
@@ -73,7 +73,7 @@
       "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
       "confidence": 0.92
     },
-    "rawText": "Riverfront Vineyards Estate Chardonnay 13.5% Alc./Vol. 27 Proof 750 mL Riverfront Vineyards Napa, CA United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
+    "rawText": "Riverfront Vineyards Estate Chardonnay 13.5% Alc./Vol. 27 Proof 750 mL VINTED AND BOTTLED BY Riverfront Vineyards Napa, CA United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
     "imageQualityNotes": [],
     "extractionConfidence": 0.95
   },

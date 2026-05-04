@@ -54,7 +54,7 @@
     },
     "bottlerName": {
       "value": "Stone's Throw Brewing Co.",
-      "evidenceQuote": "Stone's Throw Brewing Co.",
+      "evidenceQuote": "BREWED AND BOTTLED BY Stone's Throw Brewing Co.",
       "confidence": 0.92
     },
     "bottlerAddress": {
@@ -72,7 +72,7 @@
       "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
       "confidence": 0.92
     },
-    "rawText": "Stone's Throw American Amber Lager 5.2% Alc./Vol. 10.4 Proof 12 fl oz Stone's Throw Brewing Co. Bend, OR United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+    "rawText": "Stone's Throw American Amber Lager 5.2% Alc./Vol. 10.4 Proof 12 fl oz BREWED AND BOTTLED BY Stone's Throw Brewing Co. Bend, OR United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
     "imageQualityNotes": [],
     "extractionConfidence": 0.95
   },
@@ -80,11 +80,11 @@
     "rawText": "STONE'S THROW AMERICAN AMBER LAGER 5.2% Alc./Vol. 12 fl oz GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
   },
   "expected": {
-    "overall": "pass-with-warnings",
+    "overall": "pass",
     "fieldExpectations": [
       {
         "field": "brand",
-        "status": "likely-match"
+        "status": "pass"
       }
     ],
     "imageQualityFlags": []

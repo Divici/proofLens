@@ -30,14 +30,29 @@ describe("runLadder — case-strip → punct-strip → NFKC → fuzzball.token_s
     expect(result.similarity).toBe(1);
   });
 
-  it("returns Likely Match for case-only differences (sim ≥ 0.92)", async () => {
+  it("returns Pass-Normalised for case-only differences (rung 1: byte-equal after Layer-1 normalisation)", async () => {
+    // Phase 2 §3 #5 — rung-1 (post-normalisation byte equality, sim
+    // 1.0) used to render as "Likely match (100%)", which the reviewer
+    // read as ambiguous. The values are byte-equal once case +
+    // punctuation noise is folded out → status pill should be Pass.
+    // Audit-trail distinction lives in the rule outcome kind
+    // (`nuanced_pass_normalised` vs `nuanced_pass`).
     const result = await runLadder({
       extracted: "STONE'S THROW",
       expected: "Stone's Throw",
       callJudge: fakeJudge,
     });
-    expect(result.kind).toBe("likely-match");
-    expect(result.similarity).toBeGreaterThanOrEqual(0.92);
+    expect(result.kind).toBe("pass-normalised");
+    expect(result.similarity).toBe(1);
+  });
+
+  it("returns Pass-Normalised for whitespace and punctuation noise that collapses under Layer-1 normalisation", async () => {
+    const result = await runLadder({
+      extracted: "Old Tom  Distillery,  LLC",
+      expected: "Old Tom Distillery, LLC",
+    });
+    expect(result.kind).toBe("pass-normalised");
+    expect(result.similarity).toBe(1);
   });
 
   it("returns Fail for clearly different strings (sim < 0.78)", async () => {
@@ -109,11 +124,4 @@ describe("runLadder — case-strip → punct-strip → NFKC → fuzzball.token_s
     expect(result.kind).toBe("missing");
   });
 
-  it("treats whitespace and punctuation noise as Likely Match", async () => {
-    const result = await runLadder({
-      extracted: "Old Tom  Distillery,  LLC",
-      expected: "Old Tom Distillery, LLC",
-    });
-    expect(result.kind).toBe("likely-match");
-  });
 });

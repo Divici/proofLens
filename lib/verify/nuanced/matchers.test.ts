@@ -15,22 +15,22 @@ describe("brandMatch", () => {
     expect(r.kind).toBe("pass");
   });
 
-  it("returns Likely Match for case-only differences", async () => {
+  it("returns Pass-Normalised for case-only differences (rung 1)", async () => {
     const r = await brandMatch({
       extracted: "OLD TOM DISTILLERY",
       expected: "Old Tom Distillery",
     });
-    expect(r.kind).toBe("likely-match");
+    expect(r.kind).toBe("pass-normalised");
   });
 });
 
 describe("classTypeMatch", () => {
-  it("passes minor capitalization differences as Likely Match", async () => {
+  it("passes minor capitalization differences as Pass-Normalised (rung 1)", async () => {
     const r = await classTypeMatch({
       extracted: "kentucky straight bourbon whiskey",
       expected: "Kentucky Straight Bourbon Whiskey",
     });
-    expect(r.kind).toBe("likely-match");
+    expect(r.kind).toBe("pass-normalised");
   });
 });
 
@@ -53,20 +53,20 @@ describe("countryMatch", () => {
     expect(["pass", "likely-match"]).toContain(r.kind);
   });
 
-  it("recognises U.S.A. as United States via the alias table", async () => {
+  it("recognises U.S.A. as United States via the alias table (Pass-Normalised — alias-driven equivalence)", async () => {
     const r = await countryMatch({
       extracted: "U.S.A.",
       expected: "United States",
     });
-    expect(r.kind).toBe("likely-match");
+    expect(r.kind).toBe("pass-normalised");
   });
 
-  it("recognises 'Product of U.S.A.' as United States", async () => {
+  it("recognises 'Product of U.S.A.' as United States (Pass-Normalised)", async () => {
     const r = await countryMatch({
       extracted: "Product of U.S.A.",
       expected: "United States",
     });
-    expect(r.kind).toBe("likely-match");
+    expect(r.kind).toBe("pass-normalised");
   });
 
   it("fails on a clear country mismatch", async () => {

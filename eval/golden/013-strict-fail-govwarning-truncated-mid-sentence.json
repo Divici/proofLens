@@ -54,7 +54,7 @@
     },
     "bottlerName": {
       "value": "Lakeside Spirits, LLC",
-      "evidenceQuote": "Lakeside Spirits, LLC",
+      "evidenceQuote": "BOTTLED BY Lakeside Spirits, LLC",
       "confidence": 0.92
     },
     "bottlerAddress": {
@@ -72,7 +72,7 @@
       "evidenceQuote": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
       "confidence": 0.92
     },
-    "rawText": "Lakeside Gin London Dry Gin 47% Alc./Vol. 94 Proof 750 mL Lakeside Spirits, LLC 200 Lakeside Drive, Traverse City, MI 49684 United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
+    "rawText": "Lakeside Gin London Dry Gin 47% Alc./Vol. 94 Proof 750 mL BOTTLED BY Lakeside Spirits, LLC 200 Lakeside Drive, Traverse City, MI 49684 United States GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy",
     "imageQualityNotes": [],
     "extractionConfidence": 0.95
   },

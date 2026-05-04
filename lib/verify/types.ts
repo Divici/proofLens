@@ -57,6 +57,11 @@ export const RuleOutcomeKindSchema = z.enum([
   "net_contents_non_standard_fill",
   // Nuanced ladder kinds
   "nuanced_pass",
+  // Rung 1 — byte-equal after Layer-1 normalisation (case + punctuation
+  // fold) OR alias-table equivalence (e.g., "U.S.A." ≡ "United States").
+  // Renders the same "Pass" pill as `nuanced_pass`; distinct kind only
+  // so the audit trail records that a normalisation step was needed.
+  "nuanced_pass_normalised",
   "nuanced_likely_match",
   "nuanced_manual_review",
   "nuanced_fail",

@@ -114,15 +114,21 @@ function ladderToStatus(
     imageQualityPoor,
   });
   // The deterministic ladder validates the value when it lands on
-  // `pass` or `likely-match` — both branches trace back to a positive
-  // match (exact normalisation match or judge-confirmed gray-band hit).
+  // `pass`, `pass-normalised`, or `likely-match` — every branch traces
+  // back to a positive match (exact equality, normalisation/alias
+  // equivalence, or judge-confirmed gray-band hit).
   const matchValidated =
-    outcome.kind === "pass" || outcome.kind === "likely-match";
+    outcome.kind === "pass" ||
+    outcome.kind === "pass-normalised" ||
+    outcome.kind === "likely-match";
 
   let kind: RuleOutcome["kind"];
   switch (outcome.kind) {
     case "pass":
       kind = "nuanced_pass";
+      break;
+    case "pass-normalised":
+      kind = "nuanced_pass_normalised";
       break;
     case "likely-match":
       kind = "nuanced_likely_match";

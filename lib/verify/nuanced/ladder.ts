@@ -25,8 +25,26 @@ import * as fuzzball from "fuzzball";
 export const NUANCED_PASS_THRESHOLD = 0.92;
 export const NUANCED_FAIL_THRESHOLD = 0.78;
 
+/**
+ * Ladder outcome kinds. Distinct kinds for distinct semantic states so
+ * the pipeline can map each to a precise FieldStatus and audit-trail
+ * RuleOutcome:
+ *
+ *   - `pass`            — raw byte equality on the inputs (rung 0).
+ *   - `pass-normalised` — byte-equal AFTER Layer-1 normalisation
+ *                          (rung 1). Renders as "Pass" in the UI but
+ *                          the audit trail records the case/punctuation
+ *                          fold via `nuanced_pass_normalised` so a
+ *                          downstream auditor can see why it passed.
+ *   - `likely-match`    — token_set_ratio ≥ 0.92 OR judge said
+ *                          equivalent in the gray band (rung 2+).
+ *   - `manual-review`   — gray band without a usable judge verdict.
+ *   - `fail`            — score < 0.78, or judge said not_equivalent.
+ *   - `missing`         — extracted value is null.
+ */
 export type LadderKind =
   | "pass"
+  | "pass-normalised"
   | "likely-match"
   | "fail"
   | "manual-review"
@@ -125,11 +143,14 @@ export async function runLadder({
     };
   }
 
-  // Rung 1+ — equality after Layer 1 normalisation → Likely Match (the
-  // values agree once case + punctuation noise is folded out).
+  // Rung 1 — equality after Layer 1 normalisation → Pass-Normalised
+  // (Phase 2 §3 #5). The values are byte-equal once case + punctuation
+  // noise is folded out, so the at-a-glance pill should read "Pass".
+  // The audit-trail distinction (rung 0 vs rung 1) is preserved at the
+  // pipeline level via the `nuanced_pass_normalised` RuleOutcome kind.
   if (normalisedFound === normalisedExpected) {
     return {
-      kind: "likely-match",
+      kind: "pass-normalised",
       similarity: 1,
       normalisedFound,
       normalisedExpected,

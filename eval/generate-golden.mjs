@@ -25,15 +25,16 @@
  *   - `governmentWarning` (strict, universal) — NOT `governmentWarningText`
  *
  * Important Layer 1 behaviour (no LLM judge):
- *   - `countryMatch` returns `likely-match` for any US alias even on exact
- *     match — the special-case `US_ALIASES` short-circuit in
- *     `lib/verify/nuanced/country.ts` always emits Likely Match, never
- *     Pass. Every clean US label therefore rolls up to
- *     `pass-with-warnings` at Layer 1, never to `pass`. Layer 2's judge
- *     does not change this since the short-circuit fires before the
- *     ladder. Cases capture this faithfully.
- *   - Case-only diffs (e.g. `Stone's Throw` vs `STONE'S THROW`) collapse
- *     to `likely-match` after normalisation, NOT `pass`.
+ *   - `countryMatch` returns `pass-normalised` for any US-alias equivalence
+ *     (e.g. "U.S.A." ≡ "United States") — alias-driven equality is morally
+ *     rung-1 and renders as the "Pass" pill (Phase 2 §3 #5, ADR 0010).
+ *   - Case-only / smart-quote diffs collapse to byte-equality under Layer-1
+ *     normalisation → rung 1 → kind=`pass-normalised` → status=`pass`.
+ *     The audit-trail distinction is preserved via the rule outcome
+ *     (`nuanced_pass_normalised`), not the FieldStatus pill.
+ *   - Token-set matches that do NOT byte-equal post-normalisation
+ *     (e.g. "Stone's Throw" vs "Stone's Throw Brewing") still land on
+ *     `likely-match` since they're not byte-identical.
  *
  * Layer 1 (deterministic) reads `mockExtraction` + `mockOcr` and asserts the
  * pipeline lands on `expected.overall`. Layer 2 ignores those fields and
@@ -78,13 +79,27 @@ const f = (value, evidenceQuote = null, confidence = 0.92) => ({
 function cleanExtractionFor(app, override = {}) {
   const proof = typeof app.abv === "number" ? app.abv * 2 : null;
   const govText = override.governmentWarningText?.value ?? GOV_WARNING_CANONICAL;
+  // TTB §§ 5.66 / 4.35 / 7.66 — every clean label MUST carry a function-
+  // describing phrase (Bottled by / Brewed and bottled by / Distilled by)
+  // before the bottler name. The pipeline's function-phrase scanner
+  // correctly warns when this phrase is missing (ADR 0009). For
+  // synthetic "clean pass" fixtures we therefore weave the verb into
+  // both the bottlerName evidenceQuote (the Vercel haystack — ADR 0010)
+  // and the synthesized rawText so cases that should hit a clean pass
+  // actually do.
+  const verbForBeverage = (() => {
+    if (app.beverageType === "malt-beverage") return "BREWED AND BOTTLED BY";
+    if (app.beverageType === "wine") return "VINTED AND BOTTLED BY";
+    return "BOTTLED BY";
+  })();
+  const bottlerStatement = `${verbForBeverage} ${app.bottlerName}`;
   const baseRawText = [
     app.brand,
     app.classType,
     `${app.abv}% Alc./Vol.`,
     proof ? `${proof} Proof` : "",
     app.netContents,
-    app.bottlerName,
+    bottlerStatement,
     app.bottlerAddress,
     app.countryOfOrigin,
     govText,
@@ -98,7 +113,7 @@ function cleanExtractionFor(app, override = {}) {
     abvPercent: f(app.abv, `${app.abv}%`),
     proof: f(proof, proof ? `${proof} Proof` : null),
     netContents: f(app.netContents, app.netContents),
-    bottlerName: f(app.bottlerName, app.bottlerName),
+    bottlerName: f(app.bottlerName, bottlerStatement),
     bottlerAddress: f(app.bottlerAddress, app.bottlerAddress),
     countryOfOrigin: f(app.countryOfOrigin, app.countryOfOrigin),
     governmentWarningText: f(govText, govText),
@@ -182,9 +197,11 @@ const cases = [];
 const push = (c) => cases.push(c);
 
 // ── 1. Happy paths (clean label, exact match) — 4 cases ─────────────────────
-// NOTE: The deterministic country matcher emits `likely-match` for every US
-// alias, so any clean US label rolls up to `pass-with-warnings` at Layer 1.
-// This is faithful to the implemented pipeline behaviour.
+// NOTE: With the Phase 2 promotion of rung-1 (post-normalisation byte
+// equality) AND alias-table equivalence to `pass-normalised` → status `pass`,
+// any clean US label whose every field byte-matches (or alias-matches via
+// US_ALIASES) rolls up to `pass`, not `pass-with-warnings`. The audit
+// trail records the normalisation step via the rule-outcome kind.
 
 push({
   id: "001",
@@ -202,13 +219,14 @@ push({
       GOV_WARNING_CANONICAL,
   },
   expected: {
-    // US country alias always emits likely-match → pass-with-warnings overall.
-    overall: "pass-with-warnings",
+    // US country alias resolves to pass-normalised → status=pass; every
+    // other field byte-matches → overall=pass (Phase 2 §3 #5).
+    overall: "pass",
     fieldExpectations: [
       FIELD("brand", "pass"),
       FIELD("abv", "pass"),
       FIELD("netContents", "pass"),
-      FIELD("countryOfOrigin", "likely-match"),
+      FIELD("countryOfOrigin", "pass"),
       FIELD("governmentWarning", "pass"),
     ],
     imageQualityFlags: [],
@@ -234,12 +252,12 @@ push({
   expected: {
     // Wine ABV ≤ 14 % is conditional → optional. Field still has a value
     // here so it routes through the matcher and lands on `pass`. Country
-    // is the only `likely-match` driver.
-    overall: "pass-with-warnings",
+    // alias resolves to pass-normalised → status=pass.
+    overall: "pass",
     fieldExpectations: [
       FIELD("brand", "pass"),
       FIELD("abv", "pass"),
-      FIELD("countryOfOrigin", "likely-match"),
+      FIELD("countryOfOrigin", "pass"),
       FIELD("governmentWarning", "pass"),
     ],
     imageQualityFlags: [],
@@ -259,11 +277,11 @@ push({
     rawText: `STONE'S THROW AMERICAN AMBER LAGER 5.2% Alc./Vol. 12 fl oz ${GOV_WARNING_CANONICAL}`,
   },
   expected: {
-    overall: "pass-with-warnings",
+    overall: "pass",
     fieldExpectations: [
       FIELD("brand", "pass"),
       FIELD("abv", "pass"),
-      FIELD("countryOfOrigin", "likely-match"),
+      FIELD("countryOfOrigin", "pass"),
       FIELD("governmentWarning", "pass"),
     ],
     imageQualityFlags: [],
@@ -522,9 +540,9 @@ for (const variant of abvCases) {
     },
     expected: variant.pass
       ? {
-          // Inside-tolerance pass — country still likely-match → overall is
-          // pass-with-warnings.
-          overall: "pass-with-warnings",
+          // Inside-tolerance pass — country alias resolves to
+          // pass-normalised → status=pass; everything else clean → pass.
+          overall: "pass",
           fieldExpectations: [FIELD("abv", "pass")],
           imageQualityFlags: [],
         }
@@ -549,15 +567,17 @@ const brandCases = [
     id: "020",
     name: "nuanced-brand-case-only-diff",
     extractedBrand: "STONE'S THROW",
-    // Equal AFTER normalisation → likely-match (rung 1).
-    expectedBrandStatus: "likely-match",
+    // Byte-equal AFTER Layer-1 normalisation → rung 1 →
+    // kind=`pass-normalised` → status=`pass` (Phase 2 §3 #5).
+    expectedBrandStatus: "pass",
   },
   {
     id: "021",
     name: "nuanced-brand-smart-quote-diff",
     extractedBrand: "Stone’s Throw",
-    // Smart-quote folded then byte-equal-after-normalise → likely-match.
-    expectedBrandStatus: "likely-match",
+    // Smart-quote folded → byte-equal under Layer-1 normalisation →
+    // rung 1 → kind=`pass-normalised` → status=`pass`.
+    expectedBrandStatus: "pass",
   },
   {
     id: "022",
@@ -578,11 +598,24 @@ const brandCases = [
 
 for (const variant of brandCases) {
   const app = APP_STONES_THROW;
-  // Compute overall expectation from the brand status.
+  // Compute overall expectation from the brand status. Country resolves
+  // to pass-normalised → status=pass for US labels (Phase 2 §3 #5), so
+  // brand drives the rollup:
+  //   - brand=pass         → overall=pass
+  //   - brand=likely-match → overall=pass-with-warnings
+  //   - brand=manual-review→ overall=needs-manual-review
+  //   - brand=fail         → overall=fail
+  //   - brand=oneOf(...)   → overall=oneOf of the corresponding rolls
+  const overallForBrand = (status) => {
+    if (status === "fail") return "fail";
+    if (status === "pass") return "pass";
+    if (status === "manual-review") return "needs-manual-review";
+    return "pass-with-warnings"; // likely-match
+  };
   const overallExpected =
-    variant.expectedBrandStatus === "fail"
-      ? "fail"
-      : "pass-with-warnings"; // any non-fail brand + US country likely-match
+    typeof variant.expectedBrandStatus === "string"
+      ? overallForBrand(variant.expectedBrandStatus)
+      : { oneOf: variant.expectedBrandStatus.oneOf.map(overallForBrand) };
   push({
     id: variant.id,
     name: variant.name,
@@ -657,11 +690,11 @@ for (const variant of imageQualityCases) {
     },
     // Image quality flags drive the demotion override.
     expected: {
-      // Clean → pass-with-warnings (country likely-match drives it).
+      // Clean → pass (every field byte-equal or alias-equivalent).
       // Flagged → every non-fail/non-missing field demotes to manual-review,
       // so overall rolls up to needs-manual-review.
       overall:
-        variant.flags.length === 0 ? "pass-with-warnings" : "needs-manual-review",
+        variant.flags.length === 0 ? "pass" : "needs-manual-review",
       fieldExpectations:
         variant.flags.length === 0
           ? [FIELD("brand", "pass"), FIELD("governmentWarning", "pass")]
@@ -756,8 +789,9 @@ push({
   },
   expected: {
     // Beer ABV is conditional-optional → not-required row, doesn't block Pass.
-    // Country still likely-match → pass-with-warnings.
-    overall: "pass-with-warnings",
+    // Country alias resolves to pass-normalised → status=pass; everything
+    // else clean → overall=pass.
+    overall: "pass",
     fieldExpectations: [FIELD("abv", "not-required")],
     imageQualityFlags: [],
   },
@@ -820,7 +854,7 @@ push({
     rawText: `OLD TOM DISTILLERY KENTUCKY STRAIGHT BOURBON WHISKEY 45% Alc./Vol. 750 mL ${GOV_WARNING_CANONICAL}`,
   },
   expected: {
-    overall: "pass-with-warnings",
+    overall: "pass",
     fieldExpectations: [FIELD("brand", "pass"), FIELD("governmentWarning", "pass")],
     imageQualityFlags: [],
   },
@@ -841,9 +875,10 @@ push({
     rawText: `STONE'S THROW AMERICAN AMBER LAGER 5.2% Alc./Vol. 12 fl oz ${GOV_WARNING_CANONICAL}`,
   },
   expected: {
-    // Case-only diff → likely-match. Overall: pass-with-warnings.
-    overall: "pass-with-warnings",
-    fieldExpectations: [FIELD("brand", "likely-match")],
+    // Case-only diff → rung 1 → kind=`pass-normalised` → status=`pass`.
+    // Overall: pass (audit trail records the normalisation step).
+    overall: "pass",
+    fieldExpectations: [FIELD("brand", "pass")],
     imageQualityFlags: [],
   },
 });
