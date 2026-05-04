@@ -586,8 +586,21 @@ function ReviewPageInner() {
         // note (instead of an empty author).
         setFieldResults(stampedFieldResults);
         toast.success("Review saved to your browser history.");
-        // Also update the URL so a refresh keeps us in reopen mode.
-        router.replace(`/review?reviewId=${id}`);
+        // Routing on save:
+        //   - Queue flow (?scenario=...) → /queue. Matches Sarah Chen's
+        //     "agent picks the next application" cadence — the agent
+        //     just finished one, return them to the inbox.
+        //   - Reopen flow (?reviewId=...) → /queue. The reviewer was
+        //     editing a saved record; when they re-save they're done.
+        //   - Manual / direct-upload flow → stay on /review with the
+        //     new reviewId so the export menu (PDF / JSON) is reachable
+        //     in-place. Going back to /queue would force a /history →
+        //     Reopen detour just to export.
+        if (scenarioParam || reviewId) {
+          router.replace("/queue");
+        } else {
+          router.replace(`/review?reviewId=${id}`);
+        }
       } catch (cause) {
         console.error("[review] save failed", cause);
         const message =
@@ -599,7 +612,7 @@ function ReviewPageInner() {
         setSaving(false);
       }
     },
-    [fieldResults, imageFile, router, savedReviewId, scenarioParam, status],
+    [fieldResults, imageFile, reviewId, router, savedReviewId, scenarioParam, status],
   );
 
   const successResult = useMemo(

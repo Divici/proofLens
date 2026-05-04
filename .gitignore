@@ -71,6 +71,9 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# Local-only generated content (stub-batch output, ad-hoc fixtures, etc.)
+tmp/
+
 # IDE / editor
 .vscode/
 .idea/

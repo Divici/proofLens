@@ -160,6 +160,11 @@ test.describe("slice 0005 — override + history e2e", () => {
       page.getByText(/review saved to your browser history/i),
     ).toBeVisible();
 
+    // Manual / direct-upload flow stays on /review with the new
+    // reviewId so the export menu (PDF / JSON) is reachable in-place.
+    // Queue + reopen flows reroute back to /queue (covered separately).
+    await expect(page).toHaveURL(/\/review\?reviewId=/);
+
     // 4. Navigate to history and verify the row is present with override badge.
     await page.getByRole("link", { name: /^history$/i }).click();
     await expect(page).toHaveURL(/\/history/);
@@ -236,5 +241,32 @@ test.describe("slice 0005 — override + history e2e", () => {
   }) => {
     await page.goto("/history");
     await expect(page.getByText(/no reviews yet/i)).toBeVisible();
+  });
+
+  test("queue flow → verify → save reroutes back to /queue (Sarah Chen 'next application' cadence)", async ({
+    page,
+  }) => {
+    await page.goto("/queue");
+    await page.getByRole("link", { name: /APP-2026-0001/i }).click();
+    await expect(page).toHaveURL(/scenario=01-spirits-pass/);
+    await page
+      .getByRole("img", { name: /label artwork on file/i })
+      .waitFor({ state: "visible" });
+
+    await page.getByRole("button", { name: /verify label/i }).click();
+    await expect(page.getByLabel(/overall:\s*pass/i)).toBeVisible();
+
+    await page.getByLabel(/your name/i).fill("Jane Doe");
+    await page.getByRole("radio", { name: /approve/i }).click();
+    await page.getByRole("button", { name: /save review/i }).click();
+
+    // Brief-matching cadence — agent saves, lands back in the queue
+    // ready for the next application. The Reviewed pill on the row
+    // they just finished is the visible signal that the save round-
+    // tripped through IndexedDB.
+    await expect(page).toHaveURL(/\/queue$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: /pending applications/i }),
+    ).toBeVisible();
   });
 });
