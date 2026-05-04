@@ -4,10 +4,13 @@ import { GovWarningRedline } from "./GovWarningRedline";
 import { GOV_WARNING_CANONICAL } from "@/lib/verify/strict/gov-warning-canonical";
 
 describe("GovWarningRedline", () => {
-  it("renders both canonical and extracted columns", () => {
+  it("renders both expected and extracted columns", () => {
     render(<GovWarningRedline candidate={GOV_WARNING_CANONICAL} />);
     expect(screen.getByLabelText(/government warning red-line/i)).toBeInTheDocument();
-    expect(screen.getByText(/canonical 27 CFR § 16\.21/i)).toBeInTheDocument();
+    // Heading reads 'Expected' (not 'Canonical 27 CFR § 16.21') so the
+    // wording matches the rest of the panel. The cite still surfaces in
+    // the explanation prose under the row.
+    expect(screen.getByText(/^expected$/i)).toBeInTheDocument();
     expect(screen.getByText(/extracted from label/i)).toBeInTheDocument();
   });
 

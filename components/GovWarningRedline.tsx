@@ -37,7 +37,7 @@ export function GovWarningRedline({ candidate }: GovWarningRedlineProps) {
       aria-label="Government warning red-line comparison"
     >
       <DiffColumn
-        label="Canonical 27 CFR § 16.21"
+        label="Expected"
         emptyMessage="(canonical text is empty — should never happen)"
         renderer={renderCanonical}
         changes={changes}
