@@ -201,7 +201,13 @@ export function FieldRow({
           </div>
           {expected !== null && expected !== "" ? (
             <div className="text-muted-foreground text-xs">
-              Expected: <span className="text-foreground/80">{expected}</span>
+              <strong className="font-semibold text-foreground/90">
+                Expected:
+              </strong>{" "}
+              <span className="text-foreground/80">{expected}</span>{" "}
+              <span className="text-muted-foreground/80 italic">
+                (as seen in the application data tab)
+              </span>
             </div>
           ) : null}
         </div>

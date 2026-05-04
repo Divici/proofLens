@@ -61,6 +61,26 @@ describe("FieldRow", () => {
     expect(onSelect).toHaveBeenCalledWith("brand");
   });
 
+  it("renders the Expected line with bold label and an 'as seen in the application data tab' annotation", () => {
+    // Reviewer feedback: the inline Expected line is the per-field
+    // comparison anchor, but it was reading as ambient text. Bolding
+    // the label + annotating its source ties the row back to the
+    // Application data tab without requiring a tab switch to verify.
+    render(
+      <FieldRow
+        result={makeField({ expected: "40", value: "38" })}
+        onSelect={() => {}}
+        selected={false}
+      />,
+    );
+    const expectedLabel = screen.getByText(/^expected:$/i);
+    expect(expectedLabel).toBeInTheDocument();
+    expect(expectedLabel.tagName).toBe("STRONG");
+    expect(
+      screen.getByText(/as seen in the application data tab/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows the explanation prose", () => {
     render(
       <FieldRow
