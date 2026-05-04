@@ -3,7 +3,7 @@ import type { BeverageType } from "@/lib/ai/schema";
 /**
  * TTB authorized standards of fill for wine and distilled spirits.
  *
- * Sources (verbatim from research-findings/01-ttb-regulatory.md §Q5):
+ * Sources:
  *   - Wine: 27 CFR § 4.72 (T.D. TTB-200, eff. 2025-01-10)
  *   - Spirits: 27 CFR § 5.203 (T.D. TTB-200, eff. 2025-01-10)
  *

@@ -5,7 +5,7 @@ import type { FieldResult, FieldStatus, OverallStatus } from "./types";
  * Status engine — pure 2-D matrix from `(matchStrength, aiConfidence)`
  * to one of the 8-state field-status enum values.
  *
- * Per `research-findings/03-verification-logic.md` §Q5:
+ * Status matrix:
  *
  *   - Strict fields (gov-warning, ABV, net-contents) collapse to
  *     `{Pass, Fail, Missing, Low Confidence}`. There is no "Likely Match"

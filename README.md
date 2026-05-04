@@ -131,7 +131,7 @@ well; the schema and call path are stable for future activation.
 
 ## Verification approach
 
-Hybrid deterministic-first per `research-findings/03-verification-logic.md`:
+Hybrid deterministic-first (rationale in [`APPROACH.md`](./APPROACH.md)):
 
 - **Strict fields** (gov-warning, ABV, net contents) flow through pure
   code with a CI mutation fuzz harness on the gov-warning matcher.

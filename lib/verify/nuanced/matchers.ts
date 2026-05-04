@@ -49,11 +49,11 @@ export function bottlerMatch(
 /**
  * Country-of-origin nuanced match.
  *
- * Per `research-findings/01-ttb-regulatory.md` §Q7, accepted phrasings
- * include `Product of [Country]`, `Made in [Country]`, `Imported from
- * [Country]`, or just the country name. We light-pre-process the
- * extracted value to strip those leading phrases before running the
- * standard ladder against the expected country name.
+ * Per TTB labeling guidance (27 CFR §§ 5.66 / 4.35 / 7.66), accepted
+ * phrasings include `Product of [Country]`, `Made in [Country]`,
+ * `Imported from [Country]`, or just the country name. We light-pre-
+ * process the extracted value to strip those leading phrases before
+ * running the standard ladder against the expected country name.
  */
 const LEADING_PHRASES = [
   /^product of\s+/i,

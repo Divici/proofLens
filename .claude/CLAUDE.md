@@ -1,9 +1,10 @@
 # proofLens
 
 AI-powered alcohol-label verification web app for TTB compliance reviewers.
-Polished, deployed live URL is the deliverable. Source-of-truth specs:
-`PRD.md`, `ALIGNMENT.md` (gitignored), `PRESEARCH.md`, `RESEARCH.md`,
-`issues/`.
+Polished, deployed live URL is the deliverable. Source-of-truth specs
+(developer-local, gitignored): `PRD.md`, `PRESEARCH.md`, `RESEARCH.md`,
+`research-findings/`, `memory-bank/`, `issues/`. Reviewer-facing
+deliverable doc is `APPROACH.md`.
 
 ## Stack
 

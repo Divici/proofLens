@@ -3,9 +3,8 @@ import type { RuleOutcome, RuleOutcomeKind } from "@/lib/verify/types";
 /**
  * Templated, rule-sourced explanations. One entry per `RuleOutcomeKind`.
  *
- * These strings are the audit-of-record (per
- * `research-findings/03-verification-logic.md` §Q7) — same inputs always
- * produce the same explanation. Optional LLM narrative on Manual-Review
+ * These strings are the audit-of-record — same inputs always produce
+ * the same explanation. Optional LLM narrative on Manual-Review
  * rows is a separate, secondary field that the UI may surface but the
  * audit log keeps the templated string.
  */

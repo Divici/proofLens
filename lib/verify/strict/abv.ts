@@ -3,10 +3,9 @@ import type { BeverageType } from "@/lib/ai/schema";
 /**
  * ABV / proof strict matcher.
  *
- * Per `research-findings/03-verification-logic.md` §Q3, this is a hand-
- * rolled regex parser — no library fits. The tolerances come from
- * `research-findings/01-ttb-regulatory.md` §Q4 and the cited regulation
- * sections:
+ * Hand-rolled regex parser — no library fits the variety of label
+ * phrasings ("45% Alc./Vol.", "45% ABV", "Alcohol 45% by Volume",
+ * "90 Proof"). Tolerances come from the cited regulations:
  *
  *   - Spirits (Part 5):           ± 0.3 pp  (27 CFR § 5.65)
  *   - Wine (Part 4) > 14% ABV:    ± 1.0 pp  (27 CFR § 4.36)

@@ -7,8 +7,7 @@
  * strict matcher and the CI mutation-fuzz harness. Any edit here will
  * (correctly) fail the test suite.
  *
- * Character-level invariants (per `research-findings/01-ttb-regulatory.md`
- * §1.1):
+ * Character-level invariants (per 27 CFR § 16.21):
  *
  *  - Literal prefix `GOVERNMENT WARNING:` — 19 chars, all-caps, colon,
  *    single ASCII space after the colon.

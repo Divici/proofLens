@@ -3,9 +3,9 @@ import type { BeverageType } from "@/lib/ai/schema";
 /**
  * Per-beverage field-requirement table.
  *
- * Source-of-truth: 27 CFR Title 27 (TTB labeling regulations) extracted in
- * `research-findings/01-ttb-regulatory.md`. Each base requirement is cited
- * inline; conditional evaluators are documented at the call site.
+ * Source-of-truth: 27 CFR Title 27 (TTB labeling regulations). Each
+ * base requirement is cited inline; conditional evaluators are
+ * documented at the call site.
  *
  * Requirement levels:
  *   - `required`        : the field MUST appear on the label.

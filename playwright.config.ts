@@ -20,8 +20,8 @@ import { defineConfig, devices } from "@playwright/test";
  *            local dev server that lacks VERCEL=1 (the silent-attach
  *            failure mode that bit us pre-Phase-6).
  *
- * Phase 6 of `memory-bank/plans/2026-05-03-full-review-and-finalize.md`
- * — the regression net the production-or-cut rule (ADR 0010) demands.
+ * Regression net for the production-or-cut rule (see APPROACH.md
+ * "Trade-offs and known limitations" — Tesseract.js disabled on Vercel).
  */
 
 const PROD_SIM = process.env.PROOFLENS_PROD_SIM === "1";

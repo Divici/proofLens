@@ -4,7 +4,7 @@ import * as fuzzball from "fuzzball";
  * Nuanced match ladder for non-strict identity-bearing fields (brand,
  * class/type, bottler name, country of origin).
  *
- * Algorithm (per `research-findings/03-verification-logic.md` §Q2):
+ * Algorithm:
  *
  *     1. Normalise: NFKC → smart-quote/dash fold → case fold (en-US) →
  *        punctuation strip → whitespace collapse.

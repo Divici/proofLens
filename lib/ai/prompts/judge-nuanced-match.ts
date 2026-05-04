@@ -1,12 +1,11 @@
 /**
  * LLM-as-judge prompt for the nuanced gray-band tie-breaker.
  *
- * Per `research-findings/03-verification-logic.md` §Q6, the judge is
- * called only inside the deterministic ladder's gray band
- * (0.78 ≤ similarity < 0.92), only for non-strict fields, and returns a
- * structured verdict that maps into the same `RuleOutcome` template
- * shape as the deterministic rungs. The judge's prose is auxiliary, not
- * the audit-of-record.
+ * The judge is called only inside the deterministic ladder's gray
+ * band (0.78 ≤ similarity < 0.92), only for non-strict fields, and
+ * returns a structured verdict that maps into the same `RuleOutcome`
+ * template shape as the deterministic rungs. The judge's prose is
+ * auxiliary, not the audit-of-record.
  */
 
 export const JUDGE_SYSTEM_PROMPT = `You are an alcohol-label compliance assistant.

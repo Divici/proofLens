@@ -3,7 +3,7 @@ import convert from "convert-units";
 /**
  * Net-contents strict matcher.
  *
- * Per `research-findings/03-verification-logic.md` §Q4:
+ * Algorithm:
  *
  *   1. Tokenise the candidate via regex into `(numeric, unit)`.
  *   2. Convert to canonical millilitres via `convert-units`.
