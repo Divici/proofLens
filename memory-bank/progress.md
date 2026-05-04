@@ -31,7 +31,13 @@ Phase 8 sweep + Phase 9 deploy.
 
 ## Tests
 
-- Test count: Vitest 591 / Playwright 22 (after Phase 8 sweep + Phase 7 follow-up). Mutation fuzz at numRuns:100 with 0 slips. Lint warnings: 0. E2E flake fixed (5/5 consecutive clean runs proven). All 9 build slices merged + Phase 6 Cluster 1 refactor + Phase 7 Layer 1+Layer 2 evals + Phase 8 schema-coercion fix.
+- Test count: Vitest **645** / Playwright **26** chromium + **15**
+  production-sim. Mutation fuzz at numRuns:100 with 0 slips.
+  Typecheck/lint clean. E2E known-transient export-download race
+  re-runs clean (one per full sweep). All 9 build slices merged +
+  Phase 6 Cluster 1 refactor + Phase 7 Layer 1+Layer 2 evals + Phase
+  8 schema-coercion fix + Phase 9 deploy + post-Phase-9 redesign +
+  full-review plan Phases 1/6/2/5/7.
 
 ## Phase milestones
 
@@ -49,6 +55,26 @@ Phase 8 sweep + Phase 9 deploy.
   against the deployed instance: **11/11 (100%) gov-warning recall**,
   p50=5.7s / p95=7.3s (within p95 target), avg cost $0.0085/case.
   Production faster than local dev cold start.
+- **Full-review plan (post-Phase-9 finalization, 2026-05-03).**
+  8-phase audit at
+  `memory-bank/plans/2026-05-03-full-review-and-finalize.md`.
+  Phases shipped:
+  - **Phase 1** (`9e85d16`) — production-or-cut: dead bbox UI cut,
+    function-phrase scanner fixed for Vercel, pill vocab normalised,
+    ADR 0010 added.
+  - **Phase 6** (`c13fbe4`) — Vercel-sim test infrastructure: new
+    `lib/verify/pipeline.production-env.test.ts` + `production-sim`
+    playwright project (`pnpm test:e2e:prod-sim`).
+  - **Phase 2** (`a49f78a`) — rung-1 promotion: new ladder kind
+    `pass-normalised` + rule outcome kind `nuanced_pass_normalised`.
+    Eval Layer 1 regenerated, 37/37 still green.
+  - **Phase 5** (`b10fb1d`) — PDF/CSV explanation surfacing: PDF
+    sub-row + CSV "Explanation" column carry the templated
+    audit-of-record prose. New regression suite covers JSON
+    round-trip + PDF/CSV visibility for every new RuleOutcome kind.
+  - **Phase 7** (this commit) — docs reconciliation.
+  Phases 3 (grader correctness eyes-on), 4 (UX/mobile/keyboard
+  sweep), and 8 (eval re-run + final smoke) are queued.
 - **Post-Phase-9 redesign — `/queue` is the new home (ADR 0008,
   2026-05-02).** Reflects the workflow described in `PROJECT_BRIEF.md`
   (Sarah Chen, Deputy Director): "an agent pulls up an application,

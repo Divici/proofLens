@@ -2,12 +2,19 @@
 
 ## Current phase
 
-**Post-Phase-9 polish — Queue redesign complete — live at
-https://prooflens-ai.vercel.app/queue.** ADR 0008 introduced `/queue` as
-the new home (`/` redirects); `/review` accepts `?scenario=<id>` and
-pre-loads both image and form, mirroring the COLA-pre-load workflow
-described in `PROJECT_BRIEF.md` (Sarah Chen). Camera capture removed —
-brief is silent on live capture; ADR 0004 marked superseded.
+**Post-Phase-9 finalization — full-review plan in flight.** Live at
+https://prooflens-ai.vercel.app/queue. The 8-phase audit at
+`memory-bank/plans/2026-05-03-full-review-and-finalize.md` is closing
+out small gaps surfaced after Phase 9. Phases 1, 6, 2, 5, 7 of that
+plan are shipped; Phases 3 (grader correctness eyes-on the deployed
+URL), 4 (UX/mobile/keyboard sweep), and 8 (final smoke) are queued.
+
+**Post-Phase-9 polish — Queue redesign complete.** ADR 0008 introduced
+`/queue` as the new home (`/` redirects); `/review` accepts
+`?scenario=<id>` and pre-loads both image and form, mirroring the
+COLA-pre-load workflow described in `PROJECT_BRIEF.md` (Sarah Chen).
+Camera capture removed — brief is silent on live capture; ADR 0004
+marked superseded.
 
 **Phase 9 — DEPLOY COMPLETE — live at https://prooflens-ai.vercel.app/.**
 All 9 conductor phases done end-to-end. Project shipped.
@@ -27,6 +34,38 @@ the Tesseract hallucination cross-check degrade gracefully on
 production; both intact in local dev.
 
 ## Just completed
+
+- **Full-review plan — Phase 7 (docs reconciliation, this commit).**
+  README updated for the bbox cut + rung-1 promotion + PDF/CSV
+  explanation surfacing. memory-bank/{active-context, progress}
+  reconciled with the post-Phase-9 finalization work.
+- **Full-review plan — Phase 5 (PDF/CSV explanation surfacing,
+  commit `b10fb1d`).** PDF audit trail now carries the templated
+  explanation prose (italic sub-row under each field row); CSV
+  per-field has a new "Explanation" column. JSON round-trips every
+  outcome kind intact. New regression suite at
+  `lib/export/new-outcomes-round-trip.test.tsx` exercises all three
+  new RuleOutcome kinds end-to-end.
+- **Full-review plan — Phase 2 (status consistency, commit
+  `a49f78a`).** Rung-1 byte-equality (post case + punctuation
+  normalisation) and US-alias equivalence promoted from "Likely
+  match" to "Pass". New ladder kind `pass-normalised` and rule
+  outcome kind `nuanced_pass_normalised`. Eval generator + 37 golden
+  cases updated; eval Layer 1 still 37/37.
+- **Full-review plan — Phase 6 (Vercel-sim test infrastructure,
+  commit `c13fbe4`).** New vitest suite
+  `lib/verify/pipeline.production-env.test.ts` (11 tests) freezes
+  the Vercel contract — every grader is exercised against
+  `(rawText=gov-warning-only, words=[])`. New playwright project
+  `production-sim` boots a Next dev server on port 3210 with
+  `VERCEL=1` and runs queue/single-label/override/scenario-switch/
+  verification specs under it (`pnpm test:e2e:prod-sim`).
+- **Full-review plan — Phase 1 (production-or-cut, commit
+  `9e85d16`).** Bbox click-to-highlight UI removed (Tesseract is
+  disabled on Vercel — ADR 0007). Function-phrase scanner fixed for
+  Vercel (now merges `bottlerName.evidenceQuote` into the haystack).
+  Pill vocabulary normalised. ADR 0010 codifies the production-or-
+  cut rule.
 
 - **Grader audit (post-redesign) — four changes per ADR 0009.**
   (1) Bottler-address grader now strips ZIPs and aliases full state

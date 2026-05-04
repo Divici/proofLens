@@ -84,8 +84,8 @@ job passing.
    `/review?scenario=<id>` opens with both the artwork and the
    application form pre-loaded.
 3. Click **Verify label**.
-4. Review the per-field verdicts. Click any row to highlight its
-   bounding box on the image.
+4. Review the per-field verdicts. Click any row to expand the
+   per-field override panel.
 5. Apply per-field overrides where you disagree with the AI (capture
    a reason — every override carries a timestamped audit note).
 6. Pick a final decision (Approve / Reject / Manual Review / Request
@@ -134,10 +134,16 @@ Hybrid deterministic-first per `research-findings/03-verification-logic.md`:
 - **Status engine** maps `(matchStrength, aiConfidence,
   imageQualityPoor)` to the 8-state enum (Pass / Likely Match /
   Warning / Fail / Missing / Low Confidence / Manual Review /
-  Not Required).
+  Not Required). Rung-1 byte-equality (post case + punctuation
+  normalisation) and US-alias equivalence both render as **Pass** on
+  the field-row pill — the audit-trail distinction is preserved via
+  the `nuanced_pass_normalised` rule outcome (ADR 0010, Phase 2 of
+  the full-review plan).
 - **Templated explanations** are the audit-of-record. Every
-  `RuleOutcome` kind has a registered template; the LLM judge's prose
-  is auxiliary.
+  `RuleOutcome` kind has a registered template that surfaces both
+  on-screen (FieldRow), in PDF exports (per-field sub-row), and in
+  CSV exports (Explanation column). The LLM judge's prose is
+  auxiliary.
 
 ## Human-in-the-loop workflow
 
@@ -314,9 +320,11 @@ is `import "server-only"` and must not be imported from client code.
 - **`fallbackUsd` is currently always 0.** Plumbing is stable; the
   fallback model call path will activate once the confidence gate is
   threaded.
-- **bbox highlights are exact-match-only.** OCR-tokenization drift
-  can surface as a missing bbox; a fuzzy fallback is documented as a
-  future improvement.
+- **No bbox click-to-highlight on production.** Tesseract.js is
+  disabled on Vercel (ADR 0007 — bytecode-runtime incompatibility),
+  so word-level bboxes aren't available. The affordance was removed
+  from the UI under the production-or-cut rule (ADR 0010); local-dev
+  data still carries bboxes for forensic export.
 - **Real TTB COLA bundle.** The demo bundle ships programmatic JPEG
   placeholders for all seven scenarios; sourcing license-clean real
   COLA artwork is a future improvement.
